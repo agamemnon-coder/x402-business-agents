@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Task cards: a card for one task, from one sentence
+
+**The CFO types one sentence; Purser issues a single-use card for one flight, hotel or train, within the policy or after Face ID.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![A task card: one charge, single use](https://img.shields.io/badge/a_task_card-one_charge_%C2%B7_single_use-8b5cf6?style=flat-square&labelColor=1f2937)](#what-decides-what)&nbsp;[![Kinds: flights, hotels, trains](https://img.shields.io/badge/kinds-flights_%C2%B7_hotels_%C2%B7_trains-6366f1?style=flat-square&labelColor=1f2937)](#what-decides-what)&nbsp;[![Task cards up to 300.00 EUR, to start, without Face ID, typed at the runner](https://img.shields.io/badge/without_Face_ID-up_to_300.00_EUR%2C_to_start-10b981?style=flat-square&labelColor=1f2937)](#task-cards-a-card-for-one-task-from-one-sentence)&nbsp;[![Single use checked live in the Airwallex sandbox, 30 October](https://img.shields.io/badge/single_use-checked_live_%C2%B7_sandbox_%C2%B7_30_Oct-0ea5e9?style=flat-square&labelColor=1f2937)](runs/2026-10-30-single-use.md)&nbsp;[![The airline's charge: Airwallex's sandbox simulation](https://img.shields.io/badge/the_airline%27s_charge-simulated-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-simulated)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[What decides what](#what-decides-what) · [What is simulated](#what-is-simulated) · [The run of 30 Oct](runs/2026-10-30-single-use.md) · [The CFO policy](cfo-policy.md) · [Agent API](agent-api.md)
+
+</div>
 
 Until 21 November this feature was called "Ask Purser"; that name is now the chat on Purser Cloud (`/ask`,
 `cloud/src/ask/`), so the feature is called task cards here. The code keeps its old names (`src/agents/askPurser.ts`,
@@ -23,6 +35,27 @@ at Airwallex. Then:
 npm run ask -- book P-0011 189.00     # the agent books (T-0001 for a card issued within the policy); the
                                       # airline's charge is a sandbox simulation; the card is closed after it
 npm run ask -- show P-0011            # a second charge and a hotel charge: Airwallex declines both
+```
+
+```mermaid
+flowchart LR
+  MSG["One sentence<br/>a flight to Berlin, at most €250"] --> SCR{"Screened by code"}
+  SCR -- "aimed at the AI" --> NO["Refused whole"]
+  SCR --> READ["Claude Sonnet reads it<br/>or the plain parser"]
+  READ --> PLAN{"planTask, in code<br/>kind, amount in the CFO's words, date"}
+  PLAN -- "typed at the runner,<br/>within the policy" --> CARD
+  PLAN -- "the phone, the viewer link,<br/>an agent, or above it" --> FID["A proposal<br/>the CFO's Face ID"] --> CARD
+  CARD["Airwallex issues a virtual card<br/>SINGLE, the categories, EUR, active_to"] --> ONE["One charge"] --> CL["Closed<br/>a second charge declined"]
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class MSG wait
+  class SCR,PLAN,FID purser
+  class NO,CL stop
+  class READ ok
+  class CARD,ONE rails
 ```
 
 ## What decides what

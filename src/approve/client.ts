@@ -1481,6 +1481,19 @@ export function parsedOrEmpty(canonical: string): Obj {
 }
 
 /**
+ * Automation bias (EU AI Act Art. 14(4)(b), 26 Nov): whether the person opened "Details" (the agent's reasons, the
+ * review, the exact terms) of the view on screen before signing. Each view's Details fold is watched; drawing a view
+ * again (another option chosen) starts it over. An approval sends it beside the signature as `rationale_viewed`, and the
+ * runner records it next to the approval (src/passkey/process.ts RATIONALE_VIEWED). It is not signed and gates nothing:
+ * the passkey signs exactly the same hash, and approving without opening Details works as before.
+ */
+export function watchRationale(details: HTMLElement, view: HTMLElement): HTMLElement {
+  details.addEventListener("toggle", () => { if ((details as HTMLDetailsElement).open) view.dataset.rationale = "viewed"; });
+  return details;
+}
+export const rationaleViewed = (view: HTMLElement): boolean => view.dataset.rationale === "viewed";
+
+/**
  * The approval view (Max, 7 Nov: the first screen holds what he decides on). At 390 × 844 the first screen shows what
  * (amount, payee, agent), why it needs him in one line, "Approve with Face ID" and Reject; the rest (the exact terms,
  * the hash, the review, the options it is not) is behind one fold, "Details". Every line is built from the hashed
@@ -1551,6 +1564,8 @@ async function approvePage(attempt = 0): Promise<void> {
   function render(): void {
     for (const t of timers) clearTimeout(t);
     timers = [];
+    // A view drawn again has its Details closed: the automation-bias signal starts over (watchRationale).
+    view.dataset.rationale = "";
     for (const { c, b } of choices) {
       b.setAttribute("aria-checked", String(c === chosen));
       b.classList.toggle("chosen", c === chosen);
@@ -1615,7 +1630,7 @@ async function approvePage(attempt = 0): Promise<void> {
     const cd2 = el("span", "countdown big");
     cd2.dataset.expires = o.expires_at;
     const nots = many ? notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names) : [];
-    const details = el("details", "more", [
+    const details = watchRationale(el("details", "more", [
       txt("summary", "", "Details"),
       f ? txt("p", "sentence", f.sentence) : null,
       el("dl", "facts", [
@@ -1635,7 +1650,7 @@ async function approvePage(attempt = 0): Promise<void> {
       txt("p", "fineprint", str(terms.kind) === "owners_execute"
         ? "Your passkey signs the account's Execute digest written in these terms, not their SHA-256. This page checks the terms' SHA-256 against what the runner signed; it does not compute the digest itself: the runner relays only if the digest follows from these terms."
         : "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself, and the runner signed what the relay sent; any change to the terms makes the signature worthless."),
-    ]);
+    ]), view);
     view.replaceChildren(...[essentials, ...alarms, actions, details].filter((n): n is HTMLElement => n !== null));
     tickCountdowns();
 
@@ -1655,7 +1670,7 @@ async function approvePage(attempt = 0): Promise<void> {
         return;
       }
       signStatus.textContent = "Sending the signature…";
-      const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion })
+      const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion, ...(decision === "APPROVED" ? { rationale_viewed: rationaleViewed(view) } : {}) })
         .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
       if (sent.status !== 202) {
         signStatus.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. ${decision === "REJECTED" ? "Nothing was rejected." : "Nothing was approved."}`;
@@ -1745,7 +1760,7 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
   cd2.dataset.lang = lang;
   const review = o.review ? el("div", "review", [txt("p", "eyebrow", o.review.model ? ph(lang, "ph.review_model", { model: modelWord(o.review.model) }) : ph(lang, "ph.review_code")), txt("p", "", o.review.text)]) : null;
   view.replaceChildren(...[essentials, ...alarms, el("div", against ? "actions against" : "actions", against ? [reject, approve, status] : [approve, reject, status]),
-    el("details", "more", [
+    watchRationale(el("details", "more", [
       txt("summary", "", ph(lang, "ph.details")),
       el("dl", "facts", [
         ...p.details.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)]),
@@ -1756,7 +1771,7 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
       review,
       el("details", "all", [txt("summary", "", ph(lang, "ph.all_terms")), termsTable(terms)]),
       txt("p", "fineprint", ph(lang, "ph.fineprint")),
-    ]),
+    ]), view),
   ].filter((n): n is HTMLElement => n !== null));
   tickCountdowns();
   const go = async (decision: "APPROVED" | "REJECTED") => {
@@ -1765,7 +1780,7 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
     const got = await askPasskey(o, terms, decision, credentials, status, lang);
     if (!got.assertion) { armReject(); if (got.retry) armApprove(); return; }
     status.textContent = ph(lang, "ph.sending");
-    const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion })
+    const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion, ...(decision === "APPROVED" ? { rationale_viewed: rationaleViewed(view) } : {}) })
       .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
       status.textContent = ph(lang, "ph.not_accepted", { error: str(sent.data.error) || `${sent.status}` });
@@ -1847,12 +1862,12 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
     bad.length ? txt("p", "alarm big", ph(lang, "ph.do_not_lines", { list: bad.join(", ") })) : null,
     el("section", "batch", [txt("h2", "", ph(lang, "ph.what_you_approve")), list]),
     el("div", "actions", [approve, reject, status]),
-    el("details", "more", [
+    watchRationale(el("details", "more", [
       txt("summary", "", ph(lang, "ph.details")),
       el("dl", "facts", [txt("dt", "", ph(lang, "ph.hash")), hashCell(o.terms_sha256), txt("dt", "", ph(lang, "ph.batch")), txt("dd", "mono", o.proposal_id)]),
       termsTable(terms),
       txt("p", "fineprint", ph(lang, "ph.fineprint_batch")),
-    ]),
+    ]), view),
   ].filter((n): n is HTMLElement => n !== null));
   tickCountdowns();
   const lock = () => { approve.disabled = true; reject.disabled = true; for (const r of removers) r.disabled = true; };
@@ -1873,7 +1888,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
     lock();
     const got = await askPasskey(o, terms, decision, credentials, status, lang);
     if (!got.assertion) { unlock(); return; }
-    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion }, ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length }));
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion, ...(decision === "APPROVED" ? { rationale_viewed: rationaleViewed(view) } : {}) }, ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length }));
   };
   async function removeLine(line: string, invoiceNo: string): Promise<void> {
     lock();

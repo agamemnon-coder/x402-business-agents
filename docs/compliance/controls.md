@@ -10,18 +10,38 @@ Each row below maps one requirement of a framework to the Purser controls that a
 - **documented**: addressed by code, tests and documents only; there is nothing per period to count.
 - **gap**: Purser does not address it, or only part of it; the row says what is missing.
 
+## Summary
+
+| Framework | Requirements | Evidence in ledger | Documented | Gap |
+|---|---|---|---|---|
+| EU AI Act | 20 | 9 | 8 | 3 |
+| ISO/IEC 42001:2023 | 14 | 5 | 8 | 1 |
+| SOC 2 | 11 | 8 | 3 | 0 |
+| DORA | 17 | 7 | 8 | 2 |
+| PSD2 SCA | 10 | 6 | 4 | 0 |
+| GDPR | 13 | 2 | 9 | 2 |
+| eIDAS | 4 | 1 | 2 | 1 |
+| NIS2 | 10 | 3 | 5 | 2 |
+| ISO/IEC 27001:2022 | 19 | 7 | 9 | 3 |
+| **All** | 118 | 48 | 56 | 14 |
+
 ## Frameworks
 
-- **EU AI Act, Regulation (EU) 2024/1689** ([source](https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng)). Articles 9 to 15 set requirements for high-risk AI systems. Whether Purser's use would be one (Article 6, Annex III) has not been assessed; the rows show which controls would give evidence for each requirement if it were.
+- **EU AI Act, Regulation (EU) 2024/1689** ([source](https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng)). Articles 9 to 17 set requirements for high-risk AI systems. Purser's own reading (docs/compliance/ai-act-classification.md, not legal advice) finds no agent or feature in Annex III; the rows of Arts. 9 to 17 show which controls would give evidence if a deployer's use made it one. Arts. 4, 5 and 50 apply whatever the class.
 - **ISO/IEC 42001:2023, Annex A reference controls** ([source](https://www.iso.org/standard/81230.html)). A management-system standard: it applies to an organisation, not to a product. The rows show which Purser controls an organisation's AI management system could point to. Only the Annex A controls that can be mapped credibly are listed.
 - **SOC 2, AICPA Trust Services Criteria (2017, points of focus revised 2022): CC6, CC7, CC8** ([source](https://www.aicpa-cima.com/resources/download/2017-trust-services-criteria-with-revised-points-of-focus-2022)). A SOC 2 report is an independent service auditor's opinion on an organisation's controls over a period. Nobody has examined Purser; the rows show which controls, and which records, such an examination could test.
 - **DORA, Regulation (EU) 2022/2554** ([source](https://eur-lex.europa.eu/eli/reg/2022/2554/oj/eng)). DORA binds financial entities; Purser is not one. The rows show which controls would support such an entity. The regulatory technical standards made under DORA are not mapped.
+- **PSD2 SCA, Directive (EU) 2015/2366 Art. 97 and the RTS on strong customer authentication, Delegated Regulation (EU) 2018/389** ([source](https://eur-lex.europa.eu/eli/reg_del/2018/389/oj/eng)). SCA is the payment service provider's duty (PSD2 Art. 97); Purser is not a PSP. Airwallex, the PSP, applies its own SCA to its logins and payments. The rows map Purser's own approval inside the business, a passkey over the exact terms, to the RTS's requirements, as a second, independent control (docs/compliance/psd2-sca.md).
+- **GDPR, Regulation (EU) 2016/679** ([source](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)). The deploying business is the controller of its data; Purser Cloud processes it on the business's behalf. The rows show what Purser provides for the controller's duties (docs/compliance/gdpr.md: the record of processing, the DPIA, data subjects' rights, transfers). Not legal advice.
+- **eIDAS, Regulation (EU) No 910/2014 as amended by Regulation (EU) 2024/1183** ([source](https://eur-lex.europa.eu/eli/reg/2014/910/oj/eng)). What Purser's approval signatures are under eIDAS, and what the eIDAS option (src/eidas/, off by default) builds toward a qualified signature and time-stamp. No qualified trust service has been used (docs/legal/eidas-qes.md).
+- **NIS2, Directive (EU) 2022/2555, Art. 21(2) cybersecurity risk-management measures** ([source](https://eur-lex.europa.eu/eli/dir/2022/2555/oj/eng)). NIS2 binds essential and important entities in the sectors it lists, as each Member State transposes it; Purser is not one. The rows show which Purser controls an entity running it could point to for each of the ten measures.
+- **ISO/IEC 27001:2022, Annex A controls** ([source](https://www.iso.org/standard/27001)). A management-system standard for an organisation, not a product; nobody has audited Purser against it. Only the Annex A controls that can be mapped credibly are listed, from the organisational (5), people (6), physical (7) and technological (8) themes.
 
 ## Purser's controls
 
 | Id | Control | What it does | Where | Evidence source |
 |---|---|---|---|---|
-| PC-01 | Passkey-signed exact terms | Above the limits the CFO set, only a passkey signature (Face ID) over the SHA-256 of the exact terms approves a payment or a policy change; a person can also reject. | `src/policy/approvals.ts`, `src/passkey/webauthn.ts`, `src/passkey/process.ts`, `src/lib/terms.ts`, `docs/phone-approval.md` | audit events `proposal.created`, `proposal.approved`, `proposal.rejected`, `proposal.cosigned`, `proposal.factor_signed`, `approval.too_late`; table `approvals` rows by `created_at` (`proposal_id`, `decision`, `method`, `approved_sha256`, and each row's SHA-256) |
+| PC-01 | Passkey-signed exact terms | Above the limits the CFO set, only a passkey signature (Face ID) over the SHA-256 of the exact terms approves a payment or a policy change; a person can also reject. | `src/policy/approvals.ts`, `src/passkey/webauthn.ts`, `src/passkey/process.ts`, `src/lib/terms.ts`, `docs/phone-approval.md`, `docs/compliance/psd2-sca.md` | audit events `proposal.created`, `proposal.approved`, `proposal.rejected`, `proposal.cosigned`, `proposal.factor_signed`, `approval.too_late`; table `approvals` rows by `created_at` (`proposal_id`, `decision`, `method`, `approved_sha256`, and each row's SHA-256) |
 | PC-02 | Execution re-checks the signed terms | Before any call to a rail the executor hashes the terms again and checks the stored passkey signature behind the approval; terms that no longer match, an unsigned approval or an audit log that no longer verifies are refused and recorded. | `src/policy/approvals.ts`, `src/policy/hashFirst.ts`, `src/policy/blocked.ts`, `docs/evidence/tamper-matrix.md` | audit events `proposal.executing`, `proposal.executed`, `proposal.failed`, `proposal.needs_reapproval`, `execution.refused_unsigned`, `execution.refused_ledger_tampered`, `execution.blocked` |
 | PC-03 | Limits as hashed policy versions | The CFO policy (limits, floors, payees, switches) is stored whole per version and hashed; each decision records the version it was made under; code approves alone only within the limit the CFO signed. | `src/policy/versions.ts`, `src/policy/rules.ts`, `src/policy/signedApproval.ts`, `src/policy/aloneLimit.ts`, `docs/cfo-policy.md` | audit events `policy.version`, `proposal.within_limit`, `ap.alone_declined`; table `policy_versions` rows by `created_at` (`version`, `sha256`, and each row's SHA-256) |
 | PC-04 | Policy changes only by an approved change | A change to the CFO policy is itself a proposal: it takes effect only once approved (with the passkey above the limits) and executed; from the phone, limits can only be tightened. | `src/executors/policyChange.ts`, `src/policy/loosens.ts`, `docs/cfo-policy.md` | audit events `policy.changed` |
@@ -31,66 +51,84 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | PC-08 | Signed agent identity | On the agent API each money-relevant request carries the agent's Ed25519 signature over the method, target, body hash, time and a fresh nonce (required by default); the ledger keeps public keys only. | `src/policy/agentIdentity.ts`, `docs/security/agent-identity.md` | audit events `principal.identity_verified`, `principal.identity_refused`, `principal.identity_absent`; table `principal_identity_keys` rows by `created_at` (`key_id`, `principal_id`, `status`, and each row's SHA-256) |
 | PC-09 | Task mandates and short-lived tokens | Authority for a task is granted explicitly (a policy change the CFO signs), narrowed or revoked on record, and carried by a short-lived token of which only the hash is kept; a payment outside its mandate is refused. | `src/policy/taskMandates.ts`, `src/policy/taskTokens.ts`, `src/policy/agentTokens.ts`, `docs/security/agent-permissions.md` | audit events `task_mandate.narrowed`, `task_mandate.revoked`, `task_mandate.refused`, `task_token.issued`, `task_token.revoked`, `task_token.refused`, `agent_token.issued`, `agent_token.used`, `agent_token.refused`; audit event `policy.changed` whose subject matches `^task_mandate\.`; table `task_tokens` rows by `issued_at` (`token_id`, `agent`, `mandate_id`, `status`, `expires_at`, and each row's SHA-256) |
 | PC-10 | Hash-chained audit log and signed audit pack | Every decision, refusal and approval is a row of an append-only log, each row hashing the one before; the database refuses edits; a payment is refused on a log that no longer verifies; the signed audit pack carries a period's rows to an auditor. | `src/audit/log.ts`, `src/audit/intact.ts`, `src/audit/pack.ts`, `src/audit/checkpointer.ts`, `docs/compliance/README.md` | the period's run of `audit_log` (first and last `seq`, the hash it links to, its head); audit events `audit.checkpoint_refused` |
-| PC-11 | Refusals and holds recorded | Every refusal, hold, block and escalation is an audit row with its reason, before anything moves; the CFO's dashboard lists them. | `src/dashboard/snapshot.ts`, `src/audit/pack.ts`, `src/policy/blocked.ts`, `docs/fraud-and-injection.md` | audit events `approval.too_late`, `card.charge_declined`, `card.charge_reversed`, `claude.rejected`, `dispute.escalated`, `document.injection_flagged`, `execution.blocked`, `invoice.escalated`, `invoice.fraud_suspected`, `passkey.enrol_refused`, `passkey.refused`, `payment.anomaly_held`, `proposal.expired`, `proposal.failed`, `proposal.needs_reapproval`, `proposal.rejected`, `reconcile.difference`, `refund.held`, `refund.refused`, `sale.prepaid_undelivered`, `sale.settle_failed`, `sweep.held`, `sweep.refused`, `transfer.fee_over_ceiling`, `transfer.found_after_close`, `transfer.held_before_create`, `transfer.left_open`, `transfer.payee_unconfirmed`, `transfer.refused`, `transfer.retry_stopped`, `transfer.row_conflict`, `upstream.in_doubt`, `upstream.refused`, `velocity.tripped`; audit events matching `refus`, `\.held$`, `hold`, `blocked`, `declin`, `quarantin`, `tripped`, `too_late`, `fraud_suspected`, `injection_flagged` |
+| PC-11 | Refusals and holds recorded | Every refusal, hold, block and escalation is an audit row with its reason, before anything moves; the CFO's dashboard lists them. | `src/dashboard/snapshot.ts`, `src/audit/pack.ts`, `src/policy/blocked.ts`, `docs/fraud-and-injection.md` | audit events `approval.too_late`, `card.charge_declined`, `card.charge_reversed`, `claude.rejected`, `dispute.escalated`, `document.injection_flagged`, `execution.blocked`, `invoice.escalated`, `invoice.fraud_suspected`, `passkey.enrol_refused`, `passkey.refused`, `proposal.expired`, `proposal.failed`, `proposal.needs_reapproval`, `proposal.rejected`, `reconcile.difference`, `refund.held`, `refund.refused`, `sale.prepaid_undelivered`, `sale.settle_failed`, `sweep.held`, `sweep.refused`, `transfer.fee_over_ceiling`, `transfer.found_after_close`, `transfer.held_before_create`, `transfer.left_open`, `transfer.payee_unconfirmed`, `transfer.refused`, `transfer.retry_stopped`, `transfer.row_conflict`, `upstream.in_doubt`, `upstream.refused`, `velocity.tripped`; audit events matching `refus`, `[._]held$`, `hold`, `blocked`, `declin`, `quarantin`, `tripped`, `too_late`, `fraud_suspected`, `injection_flagged` |
 | PC-12 | Rationale record per payment | For every supplier or invoice payment executed or refused, a structured why: the account that funded it, the rail, the policy rule and version it was allowed under, who approved which terms hash, and the transfer. | `src/payouts/rationale.ts`, `docs/payables.md` | audit events `payment.rationale` |
 | PC-13 | Anomaly, fraud and payee-change holds | A payment far outside what its payee normally receives goes to the CFO; an invoice whose bank details changed, a look-alike payee or instructions planted in a document are flagged and change nothing; new bank details count only after a check outside the system and the CFO's approval. | `src/policy/anomaly.ts`, `src/policy/fraud.ts`, `src/policy/injection.ts`, `src/policy/payeeChange.ts`, `docs/fraud-and-injection.md` | audit events `payment.anomaly_held`, `invoice.fraud_suspected`, `document.injection_flagged`, `ap.account_changed`, `payee.change_requested`, `payee.change_verified`, `payee.changed` |
-| PC-14 | Webhook signatures checked twice | An Airwallex webhook is recorded only after the relay and then the runner, with its own copy of the secret, check its HMAC; a webhook only records what Airwallex decided and can never move money; a disagreement with the ledger raises an alarm. | `src/policy/cardHooks.ts`, `src/policy/airwallexEvents.ts`, `docs/security/SECURITY-MAPPING.md` | audit events `airwallex.disagrees`; table `airwallex_events` rows by `received_at` (`event_id`, `object`, `agrees`, and each row's SHA-256) |
+| PC-14 | Webhook signatures checked twice | An Airwallex webhook is recorded only after the relay and then the runner, with its own copy of the secret, check its HMAC; a webhook only records what Airwallex decided and can never move money; a disagreement with the ledger raises an alarm; a signature the runner refuses is an audit row (source and reason, never the body). | `src/policy/cardHooks.ts`, `src/policy/airwallexEvents.ts`, `docs/security/SECURITY-MAPPING.md` | audit events `airwallex.disagrees`, `airwallex.webhook_refused`; table `airwallex_events` rows by `received_at` (`event_id`, `object`, `agrees`, and each row's SHA-256) |
 | PC-15 | Reconciliation with the rails | The runner reconciles the ledger with Airwallex and the chain every hour; a difference is recorded and raised. | `src/finance/reconcile.ts`, `docs/reconcile-books.md` | audit events matching `reconcil`, `\.difference$`, `\.agreed$`, `disagrees` |
 | PC-16 | Each AI reading logged | Every model reading is an audit row with the model, the request id, a hash of the input, the checked output and the token use; a fallback to the plain parser, a rejected reading and a spend cap are logged too. | `src/claude/reader.ts`, `docs/agent-evals.md` | audit events `claude.read`, `claude.fallback`, `claude.rejected`, `claude.capped` |
 | PC-17 | Secrets handling | A key-management policy for every secret the code reads (NIST SP 800-57 Part 1 stages); scoped Airwallex keys per role; secrets redacted from every text that leaves the runner, the audit log included. | `src/lib/redact.ts`, `src/airwallex/keyScopes.ts`, `docs/security/key-management.md` | documented only: `docs/security/key-management.md`, `src/lib/redact.ts`, `src/airwallex/keyScopes.ts` |
 | PC-18 | Data classification | Every table the code creates is classified (Secret, Restricted, Internal, Public) with its personal, financial and credential columns named, and each level's encryption, integrity, retention, access, logging and export rules. | `docs/security/data-classification.md` | documented only: `docs/security/data-classification.md` |
 | PC-19 | Testing: evals, red team, tamper matrix, fuzzing, chaos | Evals of the agents' readings in CI; a red team whose every attack must fail; every changed copy of signed terms refused; fuzzing of parsers and verifiers; chaos for money movement; a formal model of the payment states. | `src/evals/cases.ts`, `src/redteamApi`, `src/fuzz`, `src/chaos`, `docs/agent-evals.md`, `docs/redteam/coverage.md`, `docs/evidence/tamper-matrix.md`, `docs/evidence/fuzzing.md`, `docs/evidence/chaos-money.md` | documented only: `docs/agent-evals.md`, `docs/redteam/coverage.md`, `docs/evidence/tamper-matrix.md`, `docs/evidence/fuzzing.md`, `docs/evidence/chaos-money.md`, `src/evals/cases.ts`, `src/redteamApi`, `src/fuzz`, `src/chaos` |
-| PC-20 | Incident runbook | A runbook for incidents, the emergency stop, a leaked key, outages and recovery, saying which steps were exercised live. | `docs/runbook.md` | documented only: `docs/runbook.md` |
+| PC-20 | Incident runbook | A runbook for incidents, the emergency stop, a leaked key, outages and recovery, saying which steps were exercised live. | `docs/runbook.md`, `docs/compliance/incident-response.md` | documented only: `docs/runbook.md`, `docs/compliance/incident-response.md` |
 | PC-21 | Code change control | Changes go through pull requests and CI (tests, type checks, Semgrep, gitleaks, OSV-Scanner, CodeQL); Actions pinned by SHA; releases signed with Sigstore provenance. | `.github/workflows/ci.yml`, `.github/CODEOWNERS`, `.github/dependabot.yml`, `docs/releasing.md`, `docs/security/owner-actions.md` | documented only: `docs/releasing.md`, `docs/security/owner-actions.md`, `.github/workflows/ci.yml`, `.github/CODEOWNERS`, `.github/dependabot.yml` |
 | PC-22 | Transparency to the people who use it | Each proposal shows which agent proposed it and why; the dashboard says the agents are AI and a person decides; simulated parts are labelled; who is responsible for what is written down. | `src/dashboard/page.html`, `docs/how-it-works.md`, `docs/compliance.md` | documented only: `docs/how-it-works.md`, `docs/compliance.md`, `src/dashboard/page.html` |
 | PC-23 | Threat model and risk analysis | A STRIDE threat model with trust zones, an assurance case, a zero-trust matrix and a write-up of what the worst-case AI could do and what stops it. | `docs/security.md`, `docs/assurance.md`, `docs/zero-trust.md`, `docs/worst-case-ai.md` | documented only: `docs/security.md`, `docs/assurance.md`, `docs/zero-trust.md`, `docs/worst-case-ai.md` |
-| PC-24 | Roles and responsibilities | Who does what among the business, Purser, Airwallex and Alta, and the roles of the people who approve. | `docs/security/roles.md`, `docs/who-does-what.md`, `docs/compliance.md` | documented only: `docs/security/roles.md`, `docs/who-does-what.md`, `docs/compliance.md` |
+| PC-24 | Roles and responsibilities | Who does what among the business, Purser, Airwallex and Alta, and the roles of the people who approve. | `docs/security/roles.md`, `docs/who-does-what.md`, `docs/compliance.md`, `docs/compliance/ai-policy.md` | documented only: `docs/security/roles.md`, `docs/who-does-what.md`, `docs/compliance.md`, `docs/compliance/ai-policy.md` |
 | PC-25 | Passkey enrolment and revocation | An approver's passkey counts only after enrolment in a window the runner opened and a fingerprint confirmed on the runner; a replaced passkey is revoked; Face ID stays on the phone and only the public key is stored. | `src/passkey/ledger.ts`, `src/passkey/process.ts`, `docs/phone-approval.md` | audit events `passkey.enrolment_opened`, `passkey.pending`, `passkey.enrolled`, `passkey.revoked`, `passkey.enrol_refused`, `passkey.enrol_conflict`; table `passkeys` rows by `enrolled_at` (`credential_id`, `status`, and each row's SHA-256) |
+| PC-26 | Automation-bias signal on the approval page | With each passkey approval the phone's approval page reports whether the person opened Details (the agent's reasons, the review, the exact terms) before signing; once the signature is verified the runner records it just before the approval. It is what the page said, not signed, and it gates nothing; the evidence shows approvals signed with the rationale viewed as n/m. | `src/approve/client.ts`, `src/passkey/process.ts`, `docs/compliance/instructions-for-use.md`, `docs/compliance/ai-policy.md` | audit events `approval.rationale_viewed`, `approval.rationale_not_viewed` |
+| PC-27 | AI policy and AI impact assessment | The organisation's AI policy (no model output moves money, human oversight, acceptable use of Claude agents, roles, review cadence) and an impact assessment per agent and feature: intended use, affected parties, risks scored likelihood × impact, mitigations mapped to controls with their tests and records, residual risk, owners and a review date. | `docs/compliance/ai-policy.md`, `docs/compliance/ai-impact-assessment.md` | documented only: `docs/compliance/ai-policy.md`, `docs/compliance/ai-impact-assessment.md` |
+| PC-28 | Instructions for use for deployers | What Purser does and does not do, its limits, the human oversight it needs, how to stop it, how logs are collected, and its accuracy and robustness declared only as the eval and red-team records measured them, with their scope. | `docs/compliance/instructions-for-use.md` | documented only: `docs/compliance/instructions-for-use.md` |
+| PC-29 | Incident classification, response and reporting | Severity classes with criteria tied to Purser's audit events, a runbook from detection to closure, a communication plan with named roles, and a reporting template; reporting to an authority is the deployer's duty and is not done in the sandbox. | `docs/compliance/incident-response.md`, `docs/runbook.md` | documented only: `docs/compliance/incident-response.md`, `docs/runbook.md` |
+| PC-30 | ICT third-party register and exit plans | A machine-readable register of every outside service the code calls (function, data by level, criticality, location, contract, substitution), checked against the code's hosts by a test; an exit plan per critical or important provider; what a production contract must include. | `src/compliance/thirdParties.ts`, `docs/compliance/third-parties.json`, `docs/compliance/third-parties.md`, `docs/compliance/exit-plans.md` | documented only: `docs/compliance/third-parties.json`, `docs/compliance/third-parties.md`, `docs/compliance/exit-plans.md`, `src/compliance/thirdParties.ts` |
+| PC-31 | Retention defaults and the retention check | A retention period per kind of record on the runner's ledger (the books seven years, short-lived records a day) and npm run retention -- --check, which reports the rows past their period and never deletes. | `src/compliance/retention.ts`, `src/cli/retention.ts`, `docs/compliance/retention.md`, `docs/privacy/retention.md` | documented only: `docs/compliance/retention.md`, `docs/privacy/retention.md`, `src/compliance/retention.ts`, `src/cli/retention.ts` |
+| PC-32 | Supply chain: SBOM, signed releases, dependency and secret scanning | A CycloneDX SBOM with VEX statements; releases built by the release workflow with Sigstore-signed SLSA provenance; OSV-Scanner, dependency review, Dependabot, gitleaks and the OpenSSF Scorecard on the repository; Actions pinned by SHA. | `.github/workflows/release.yml`, `.github/workflows/osv-scanner.yml`, `.github/workflows/dependency-review.yml`, `.github/workflows/scorecard.yml`, `.github/dependabot.yml`, `docs/security/sbom.cdx.json`, `docs/releasing.md`, `docs/security/openssf-silver.md` | documented only: `docs/security/sbom.cdx.json`, `docs/releasing.md`, `docs/security/openssf-silver.md`, `.github/workflows/release.yml`, `.github/workflows/osv-scanner.yml`, `.github/workflows/dependency-review.yml`, `.github/workflows/scorecard.yml`, `.github/dependabot.yml` |
+| PC-33 | Application security verification | An OWASP ASVS 4.0.3 Level 2 self-assessment with every failing requirement listed; DAST with OWASP ZAP; a private vulnerability disclosure route with a response time. | `.github/workflows/dast-zap.yml`, `docs/security/asvs-l2.md`, `SECURITY.md` | documented only: `docs/security/asvs-l2.md`, `SECURITY.md`, `.github/workflows/dast-zap.yml` |
+| PC-34 | eIDAS evidence export, time-stamp and QES adapter | Behind a flag that is off by default: each approval exported as JAdES-layout evidence (ETSI TS 119 182-1) with an offline verifier, an optional RFC 3161 time-stamp, and a Cloud Signature Consortium API v2 adapter for a remote qualified signature; tested against a mock TSA and a mock CSC server. | `src/eidas/jades.ts`, `src/eidas/tsa.ts`, `src/eidas/csc.ts`, `test/eidas-evidence.test.ts`, `docs/legal/eidas-qes.md` | documented only: `docs/legal/eidas-qes.md`, `src/eidas/jades.ts`, `src/eidas/tsa.ts`, `src/eidas/csc.ts`, `test/eidas-evidence.test.ts` |
+| PC-35 | GDPR records and data subjects' rights | A record of processing activities checked against the data classification, a DPIA for the agents, transfers per provider from the third-party register, and the routes Purser Cloud has for access, export and erasure (GET /v1/me, POST /v1/export/staged, POST /v1/users/{id}/erase, POST /v1/offboarding). | `src/compliance/gdpr.ts`, `cloud/src/privacy.ts`, `cloud/src/exports.ts`, `docs/compliance/gdpr.md`, `docs/privacy/data-inventory.md`, `docs/privacy/retention.md` | documented only: `docs/compliance/gdpr.md`, `docs/privacy/data-inventory.md`, `docs/privacy/retention.md`, `src/compliance/gdpr.ts`, `cloud/src/privacy.ts`, `cloud/src/exports.ts` |
+| PC-36 | EU AI Act classification and transparency to users | Each agent and feature classified against Art. 5 and Annex III, with the reasoning; people told when they deal with AI: Ask Purser labels each answer by whether Claude wrote it, the approval page names the agent that proposed, the dashboard says the agents are AI. | `cloud/src/ask/page.ts`, `src/dashboard/page.html`, `docs/compliance/ai-act-classification.md` | documented only: `docs/compliance/ai-act-classification.md`, `cloud/src/ask/page.ts`, `src/dashboard/page.html` |
 
 ## EU AI Act, Regulation (EU) 2024/1689
 
-14 requirements: 8 with evidence in the ledger, 3 documented, 3 gaps.
+20 requirements: 9 with evidence in the ledger, 8 documented, 3 gaps.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
-| Art. 9(2) | A risk management system run as a continuous process: identify, estimate and evaluate the known and foreseeable risks. | PC-23, PC-19 | documented | no risk register kept as a continuous process with owners and reviews |
+| Art. 4 | Providers and deployers take measures to ensure a sufficient level of AI literacy of the people who operate and use the AI systems. | PC-28, PC-27 | **gap** | the instructions for use and the AI policy say what an approver must know, but no training or literacy measure is recorded for anyone |
+| Art. 5(1) | No prohibited AI practice (manipulation, exploiting vulnerabilities, social scoring, and the others Art. 5 lists). | PC-36 | documented |  |
+| Art. 6(2) | Classify the system: high-risk if its use is one of those Annex III lists. | PC-36 | documented | Purser's own reading, not legal advice and not reviewed by a lawyer; a deployer's own use (say, scoring people) could change it |
+| Art. 9(2) | A risk management system run as a continuous process: identify, estimate and evaluate the known and foreseeable risks. | PC-27, PC-23, PC-19 | documented | the risk register (ai-impact-assessment.md) has owners and a review date, but its first review is due 26 May 2027: it has not yet run as a continuous process |
 | Art. 9(2)(d) | Adopt targeted risk management measures for the risks identified. | PC-11, PC-13, PC-06, PC-01 | evidence in ledger |  |
 | Art. 9(6) | Test the system to find the most appropriate risk management measures. | PC-19 | documented |  |
-| Art. 12(1) | Automatically record events (logs) over the lifetime of the system. | PC-10, PC-16, PC-01 | evidence in ledger | how long logs are kept is not set (a retention policy is the business's, and open) |
+| Art. 12(1) | Automatically record events (logs) over the lifetime of the system. | PC-10, PC-16, PC-01, PC-31 | evidence in ledger | the retention periods are defaults the deployer confirms; the check reports rows past their period and deletes nothing, and removing an expired ledger whole is a procedure, not built |
 | Art. 12(2) | Logs that let one identify risky situations, support post-market monitoring and monitor the system's operation. | PC-11, PC-13, PC-15, PC-10 | evidence in ledger |  |
 | Art. 13(1) | Operation transparent enough for deployers to interpret the output and use it appropriately. | PC-12, PC-22 | evidence in ledger |  |
-| Art. 13(3) | Instructions for use with the provider's identity, the system's capabilities and limits, its declared accuracy, the human oversight measures and how logs are collected. | PC-22 | **gap** | no instructions-for-use document with the contents Art. 13(3) lists; the docs describe the system but are not that document |
-| Art. 14(4)(b) | Help the people overseeing it stay aware of automation bias (over-relying on the output). | PC-12 | **gap** | nothing measures or counters automation bias: whether the approver opened the rationale before signing is not recorded |
+| Art. 13(3) | Instructions for use with the provider's identity, the system's capabilities and limits, its declared accuracy, the human oversight measures and how logs are collected. | PC-28, PC-22 | documented | written for the sandbox: a deployer adapts it before production; no deployer has reviewed it yet |
+| Art. 14(4)(b) | Help the people overseeing it stay aware of automation bias (over-relying on the output). | PC-26, PC-12, PC-27 | evidence in ledger | the signal is what the phone's approval page reports, not signed; approvals in Purser Cloud's console or the CLI report nothing; it measures, it does not yet prompt the approver |
 | Art. 14(4)(d) | A person can decide not to use the output, or disregard, override or reverse it. | PC-01, PC-02, PC-04 | evidence in ledger |  |
 | Art. 14(4)(e) | A person can intervene or interrupt the system with a stop button or similar procedure that halts it in a safe state. | PC-06, PC-20 | evidence in ledger |  |
 | Art. 15(1) | An appropriate level of accuracy, robustness and cybersecurity, consistent over the lifecycle. | PC-19, PC-23 | documented |  |
-| Art. 15(3) | Accuracy levels and metrics declared in the instructions for use. | PC-19 | **gap** | eval results are published, but no accuracy level is declared as a commitment to deployers |
+| Art. 15(3) | Accuracy levels and metrics declared in the instructions for use. | PC-28, PC-19 | documented | declared only as the eval records measured them, per agent, model and case set, on test cases; no level is promised beyond those records |
 | Art. 15(4) | Resilient to errors, faults and inconsistencies, with fail-safe measures. | PC-02, PC-11, PC-15 | evidence in ledger |  |
+| Art. 50(1) | People are informed that they are interacting with an AI system, unless that is obvious. | PC-36, PC-22 | documented | held by labels on the pages (test-checked), not by a record per conversation |
+| Art. 11(1) | Technical documentation, drawn up before the system is placed on the market and kept up to date, with the contents Annex IV lists. | PC-22, PC-28, PC-23 | **gap** | the contents are spread over docs/ (architecture, threat model, evals, instructions for use); no single document follows Annex IV |
+| Art. 17(1) | A quality management system, documented in written policies, procedures and instructions. | PC-21, PC-27 | **gap** | no quality management system: one maintainer, CI and the change rules; the procedures Art. 17(1) lists (design control, data management, post-market monitoring, accountability) are not written as one |
 | Art. 15(5) | Resilient against unauthorised attempts to alter its use, outputs or performance (for example manipulated inputs). | PC-13, PC-08, PC-14, PC-19 | evidence in ledger |  |
 
 ## ISO/IEC 42001:2023, Annex A reference controls
 
-13 requirements: 5 with evidence in the ledger, 4 documented, 4 gaps.
+14 requirements: 5 with evidence in the ledger, 8 documented, 1 gap.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
-| A.2.2 | A documented AI policy for the organisation. | PC-24 | **gap** | no AI policy of the organisation running Purser (the CFO policy limits the agents; it is not an AI policy) |
+| A.2.2 | A documented AI policy for the organisation. | PC-27, PC-24 | documented | the policy of the project as it runs today (one maintainer, sandbox); a deploying organisation adopts and adapts it |
 | A.3.2 | AI roles and responsibilities defined and allocated. | PC-24, PC-07 | documented |  |
-| A.5.2 | A process to assess the impact of AI systems on individuals, groups and society. | PC-23 | **gap** | no AI system impact assessment; the threat model and worst-case write-up cover harm to the business, not to individuals or society |
+| A.4.6 | Document the human resources, and their competences, used for the AI system's life cycle. | PC-24, PC-27 | **gap** | the roles are named, but no one's competences or training are recorded |
+| A.5.2 | A process to assess the impact of AI systems on individuals, groups and society. | PC-27, PC-23 | documented | assessed by the maintainer alone; no affected party (a supplier, an approver) was consulted |
 | A.6.2.4 | Verification and validation of the AI system. | PC-19 | documented |  |
 | A.6.2.6 | Operation and monitoring of the AI system. | PC-15, PC-11, PC-13 | evidence in ledger |  |
 | A.6.2.8 | Recording of event logs of the AI system. | PC-10, PC-16, PC-01 | evidence in ledger |  |
 | A.7.5 | Record the provenance of the data used by the AI system. | PC-16 | evidence in ledger | covers the documents a model read (their hash per reading); Purser trains no model |
 | A.8.2 | System documentation and information for users. | PC-22, PC-12 | documented |  |
-| A.8.4 | A plan for communicating incidents to users and interested parties. | PC-20 | **gap** | the runbook says what to do, not whom to tell or how; no named people |
+| A.8.4 | A plan for communicating incidents to users and interested parties. | PC-29, PC-20 | documented | one person holds the incident roles today (the maintainer), with no deputy |
 | A.9.2 | Processes for the responsible use of the AI system. | PC-01, PC-03, PC-05 | evidence in ledger |  |
 | A.9.4 | The AI system is used only as intended. | PC-07, PC-09, PC-11 | evidence in ledger |  |
 | A.10.2 | Responsibilities allocated between the organisation, its partners, suppliers and customers. | PC-24 | documented |  |
-| A.10.3 | A process so that suppliers' services fit the organisation's approach to responsible AI. | PC-15 | **gap** | no assessment or register of the suppliers (Anthropic, Airwallex, Alta); reconciliation checks their records, not the suppliers |
+| A.10.3 | A process so that suppliers' services fit the organisation's approach to responsible AI. | PC-30, PC-27, PC-15 | documented | the register and the AI policy's supplier rules rest on the suppliers' public documents; no supplier was assessed beyond them |
 
 ## SOC 2, AICPA Trust Services Criteria (2017, points of focus revised 2022): CC6, CC7, CC8
 
-11 requirements: 8 with evidence in the ledger, 2 documented, 1 gap.
+11 requirements: 8 with evidence in the ledger, 3 documented, 0 gaps.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
@@ -100,7 +138,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | CC6.6 | Logical access measures against threats from outside the system's boundaries. | PC-08, PC-14, PC-13 | evidence in ledger |  |
 | CC7.1 | Detect changes to configurations that introduce vulnerabilities, and newly discovered vulnerabilities. | PC-03, PC-21 | evidence in ledger |  |
 | CC7.2 | Monitor system components and their operation for anomalies that indicate malicious acts or errors. | PC-13, PC-15, PC-11 | evidence in ledger |  |
-| CC7.3 | Evaluate security events to decide whether they are incidents. | PC-11, PC-20 | **gap** | events are recorded, but no procedure decides which are incidents, and no one is named to decide |
+| CC7.3 | Evaluate security events to decide whether they are incidents. | PC-29, PC-11, PC-20 | documented | the classification is a person's decision and is not yet recorded in the ledger |
 | CC7.4 | Respond to identified security incidents with a defined incident response programme. | PC-06, PC-20 | evidence in ledger |  |
 | CC7.5 | Recover from identified security incidents. | PC-20 | documented | no recorded restore test |
 | CC8.1 (configuration: the CFO policy) | Changes are authorised, documented, tested and approved before they are implemented. | PC-04, PC-03, PC-05 | evidence in ledger |  |
@@ -108,53 +146,183 @@ Each row below maps one requirement of a framework to the Purser controls that a
 
 ## DORA, Regulation (EU) 2022/2554
 
-16 requirements: 7 with evidence in the ledger, 4 documented, 5 gaps.
+17 requirements: 7 with evidence in the ledger, 8 documented, 2 gaps.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
-| Art. 6(1) | A sound, comprehensive and well-documented ICT risk management framework. | PC-23, PC-20 | documented | no management body and no yearly review of the framework |
+| Art. 6(1) | A sound, comprehensive and well-documented ICT risk management framework. | PC-23, PC-20, PC-27 | documented | no management body; the review the AI policy sets has not run yet |
 | Art. 8(1) | Identify, classify and document ICT-supported functions, information assets and their dependencies. | PC-18, PC-23 | documented |  |
 | Art. 9(4)(c) | Limit logical access to what legitimate, approved functions need, with sound administration of access rights. | PC-07, PC-09, PC-05 | evidence in ledger |  |
 | Art. 9(4)(d) | Strong authentication and protection of cryptographic keys. | PC-01, PC-08, PC-25, PC-17 | evidence in ledger |  |
 | Art. 9(4)(e) | Documented ICT change management: changes recorded, tested, assessed and approved in a controlled way. | PC-04, PC-03, PC-21 | evidence in ledger | for the CFO policy; software changes are documented only (see SOC 2 CC8.1) |
 | Art. 10(1) | Promptly detect anomalous activities. | PC-13, PC-15, PC-11 | evidence in ledger |  |
 | Art. 11(2)(c) | Activate, without delay, plans that contain an ICT-related incident and prevent further damage. | PC-06, PC-20 | evidence in ledger |  |
-| Art. 17(1) | An ICT-related incident management process to detect, manage and notify incidents. | PC-20, PC-11 | documented | no named people for the procedure |
-| Art. 17(2) | Record ICT-related incidents and significant cyber threats. | PC-11, PC-10, PC-15 | evidence in ledger | the events are recorded; which of them are incidents is not decided (Art. 18(1)) |
-| Art. 18(1) | Classify ICT-related incidents by the criteria the regulation sets. | PC-11 | **gap** | no incident classification scheme |
-| Art. 19(1) | Report major ICT-related incidents to the competent authority. | PC-20 | **gap** | no reporting to an authority (Purser is not a financial entity) |
+| Art. 12(1) | Backup policies and procedures, and restoration and recovery procedures and methods. | PC-20, PC-10 | **gap** | no backup policy for the runner's ledger and no recorded restore test (the hash chains would show a restore that lost or changed a row) |
+| Art. 17(1) | An ICT-related incident management process to detect, manage and notify incidents. | PC-29, PC-20, PC-11 | documented | the roles are named, but one person holds them today |
+| Art. 17(2) | Record ICT-related incidents and significant cyber threats. | PC-11, PC-10, PC-15, PC-14 | evidence in ledger | the events are recorded; an incident's classification and record (incident-response.md's template) are kept outside the ledger |
+| Art. 18(1) | Classify ICT-related incidents by the criteria the regulation sets. | PC-29, PC-11 | documented | Purser's own classes, with the regulation's criteria named; the thresholds of the regulatory technical standards are not applied (Purser is not a financial entity) |
+| Art. 19(1) | Report major ICT-related incidents to the competent authority. | PC-29, PC-20 | documented | a template and a procedure only: reporting is the deploying financial entity's duty, and nothing is reported from the sandbox |
 | Art. 24(1) | A sound and comprehensive digital operational resilience testing programme. | PC-19 | documented | no threat-led penetration test by an independent tester (Arts. 26, 27) |
-| Art. 28(1) | Manage ICT third-party risk as part of the ICT risk management framework. | PC-15, PC-14 | evidence in ledger | monitors the providers' records only (reconciliation, webhooks checked against the ledger) |
-| Art. 28(3) | A register of information on all contractual arrangements with ICT third-party service providers. | PC-24 | **gap** | no register of information |
-| Art. 28(8) | Exit strategies for ICT services supporting critical or important functions. | PC-20 | **gap** | no exit plan per provider |
-| Art. 30(1) | The rights and obligations with each ICT third-party service provider set out in writing. | PC-24 | **gap** | sandbox terms only; no contracts with providers |
+| Art. 28(1) | Manage ICT third-party risk as part of the ICT risk management framework. | PC-15, PC-14, PC-30 | evidence in ledger | the ledger evidence is of the providers' records (reconciliation, webhooks checked against the ledger); the register and exit plans are documents |
+| Art. 28(3) | A register of information on all contractual arrangements with ICT third-party service providers. | PC-30, PC-24 | documented | Purser's own register, not the implementing technical standards' template; it records no contractual arrangement because there is none yet |
+| Art. 28(8) | Exit strategies for ICT services supporting critical or important functions. | PC-30, PC-20 | documented | written, none exercised |
+| Art. 30(1) | The rights and obligations with each ICT third-party service provider set out in writing. | PC-30, PC-24 | **gap** | no contract yet: test and developer accounts on the providers' standard terms; exit-plans.md lists what a production contract must include |
+
+## PSD2 SCA, Directive (EU) 2015/2366 Art. 97 and the RTS on strong customer authentication, Delegated Regulation (EU) 2018/389
+
+10 requirements: 6 with evidence in the ledger, 4 documented, 0 gaps.
+
+| Clause | Requirement, in plain words | Purser controls | Status | Missing |
+|---|---|---|---|---|
+| PSD2 Art. 97(1) | The payment service provider applies strong customer authentication when the payer initiates an electronic payment. | PC-30, PC-01 | documented | Purser is not a PSP: this SCA is Airwallex's, for its own logins and payments; Purser's passkey approval comes before it and does not replace it |
+| RTS Art. 4(1) | Authentication based on two or more elements (knowledge, possession, inherence) that generates an authentication code. | PC-01, PC-25 | evidence in ledger | the passkey (possession) is unlocked by Face ID (inherence) or the phone's passcode (knowledge); a synced passkey can live on more than one of the person's devices, and whether that still counts as possession is for a PSP and its supervisor to assess |
+| RTS Art. 4(2) | The authentication code cannot be forged, and no new code can be derived from one generated before. | PC-01, PC-02 | evidence in ledger |  |
+| RTS Art. 4(3)(b) | No more than five failed authentication attempts in a row before the action is blocked. | PC-25, PC-11 | documented | failed passkey signatures are counted and alerted (src/passkey/failures.ts) and the relay slows an address that keeps failing; the passkey is not blocked after five, the phone's own Face ID lock applies |
+| RTS Art. 5(1)(a) | Dynamic linking: the payer is made aware of the amount and the payee being authenticated. | PC-01, PC-22 | documented | the approval page draws the amount and payee from the hashed terms it checks itself (test-checked); what it showed is not logged per approval |
+| RTS Art. 5(1)(b) | Dynamic linking: the authentication code is specific to the amount and the payee. | PC-01, PC-02 | evidence in ledger |  |
+| RTS Art. 5(1)(d) | Dynamic linking: any change to the amount or the payee invalidates the authentication code. | PC-02, PC-19 | evidence in ledger |  |
+| RTS Art. 9(1) | The elements are independent: the breach of one does not compromise the others. | PC-25, PC-17 | documented | both elements sit on one phone; their separation rests on the phone's secure hardware (Art. 9(2), (3)), which Purser has not assessed |
+| RTS Art. 22(1) | The confidentiality and integrity of the personalised security credentials are ensured, in every phase. | PC-25, PC-17 | evidence in ledger |  |
+| RTS Art. 27 | Credentials can be destroyed, deactivated or revoked securely. | PC-25, PC-07 | evidence in ledger |  |
+
+## GDPR, Regulation (EU) 2016/679
+
+13 requirements: 2 with evidence in the ledger, 9 documented, 2 gaps.
+
+| Clause | Requirement, in plain words | Purser controls | Status | Missing |
+|---|---|---|---|---|
+| Art. 5(1)(c) | Data minimisation: personal data adequate, relevant and limited to what is necessary. | PC-18, PC-35, PC-16 | documented |  |
+| Art. 5(1)(e) | Storage limitation: kept no longer than necessary. | PC-31, PC-35 | documented | Purser Cloud deletes on its schedule; the runner's check only reports rows past their period |
+| Art. 15 (access) | The data subject's right of access to their personal data. | PC-35 | documented | a user reads their own account (GET /v1/me) and an owner exports the company's data; a person who is not a user (a supplier, a customer) is answered by the controller by hand from that export |
+| Art. 17 | The right to erasure, within the limits of Art. 17(3). | PC-35, PC-31 | documented | Purser Cloud erases a person at once and keeps the books (Art. 17(3)(b)); the runner's ledger has no erasure tool, its hash chains are kept or deleted whole |
+| Art. 20 | The right to data portability, in a structured, commonly used, machine-readable format. | PC-35 | documented | the company's export (JSON and CSV) is per company, not per person |
+| Art. 22 | No decision based solely on automated processing with legal or similarly significant effects on a person, without the safeguards Art. 22 sets. | PC-01, PC-03, PC-36 | evidence in ledger | code pays a supplier's invoice alone within the limit the CFO signed; a refusal or hold always goes to a person; no decision about a natural person's credit or rights is made |
+| Art. 25 | Data protection by design and by default. | PC-18, PC-17, PC-35 | documented |  |
+| Art. 28 | Processing on the controller's behalf only under a contract with the terms Art. 28(3) lists, and subprocessors under the same terms. | PC-30, PC-35 | **gap** | no data processing agreement with any deploying business or any subprocessor: test accounts only |
+| Art. 30 | A record of processing activities. | PC-35, PC-18 | documented | drawn up for the controller to adopt; the controller's name and contact are blanks until a business deploys Purser |
+| Art. 32 | Security of processing appropriate to the risk, including pseudonymisation, encryption, integrity and resilience. | PC-17, PC-10, PC-01, PC-18 | evidence in ledger | the runner's SQLite file is not encrypted at rest by Purser (an encrypted volume is the owner's) |
+| Art. 33 | Notify a personal data breach to the supervisory authority within 72 hours where feasible. | PC-29 | documented | the controller's duty: incident-response.md has the procedure and template; nothing has been notified (sandbox, test data) |
+| Art. 35 | A data protection impact assessment where processing is likely to result in a high risk. | PC-35, PC-27 | documented | done voluntarily by the maintainer (AI is new technology); no data protection officer or data subject consulted |
+| Art. 44 | Transfers to a third country only under Chapter V (adequacy, appropriate safeguards). | PC-30, PC-35 | **gap** | Anthropic, Resend and Twilio are in the United States; no transfer mechanism (EU-US Data Privacy Framework, Standard Contractual Clauses) is recorded for any of them |
+
+## eIDAS, Regulation (EU) No 910/2014 as amended by Regulation (EU) 2024/1183
+
+4 requirements: 1 with evidence in the ledger, 2 documented, 1 gap.
+
+| Clause | Requirement, in plain words | Purser controls | Status | Missing |
+|---|---|---|---|---|
+| Art. 3(10) | An electronic signature: data in electronic form attached to other data, used by the signatory to sign. | PC-01, PC-25 | evidence in ledger |  |
+| Art. 26 | An advanced electronic signature: uniquely linked to and capable of identifying the signatory, under their sole control, and linked to the data so any later change is detectable. | PC-01, PC-25, PC-34 | documented | the link to the data holds (a signature over the terms hash; one changed byte fails, exported as JAdES and verified offline); whether the passkey identifies the CFO enough for Art. 26 is a legal assessment that has not been made |
+| Art. 25(2) | A qualified electronic signature, with the legal effect of a handwritten signature. | PC-34 | **gap** | no qualified signature has been made: the CSC adapter is tested against a mock server only; there is no QTSP contract and no qualified signing credential |
+| Art. 42(1) | A qualified electronic time stamp: bound to the data, from an accurate time source, signed by a qualified trust service provider. | PC-34 | documented | RFC 3161 time-stamps are built and tested against a mock TSA, and two tokens from public TSAs were checked offline on 19 Nov; no qualified TSA was used and the EU Trusted List is not checked |
+
+## NIS2, Directive (EU) 2022/2555, Art. 21(2) cybersecurity risk-management measures
+
+10 requirements: 3 with evidence in the ledger, 5 documented, 2 gaps.
+
+| Clause | Requirement, in plain words | Purser controls | Status | Missing |
+|---|---|---|---|---|
+| Art. 21(2)(a) | Policies on risk analysis and information system security. | PC-23, PC-27, PC-18 | documented |  |
+| Art. 21(2)(b) | Incident handling: detect, analyse, contain and respond to incidents. | PC-29, PC-06, PC-11 | evidence in ledger | the decision that an event is an incident is not recorded in the ledger |
+| Art. 21(2)(c) | Business continuity, such as backup management and disaster recovery, and crisis management. | PC-20, PC-30 | **gap** | the runbook covers recovery steps and the exit plans the providers, but there is no backup policy for the runner's ledger and no recorded restore test |
+| Art. 21(2)(d) | Supply chain security, including the relationships with direct suppliers and service providers. | PC-30, PC-32 | documented |  |
+| Art. 21(2)(e) | Security in acquisition, development and maintenance, including vulnerability handling and disclosure. | PC-21, PC-32, PC-33 | documented |  |
+| Art. 21(2)(f) | Policies and procedures to assess the effectiveness of the cybersecurity measures. | PC-19, PC-33 | documented | self-assessed and tested in CI; no independent assessment or penetration test |
+| Art. 21(2)(g) | Basic cyber hygiene practices and cybersecurity training. | PC-27 | **gap** | no training programme and no record of anyone's training |
+| Art. 21(2)(h) | Policies and procedures on the use of cryptography and, where appropriate, encryption. | PC-17, PC-01 | documented |  |
+| Art. 21(2)(i) | Human resources security, access control policies and asset management. | PC-07, PC-05, PC-18 | evidence in ledger |  |
+| Art. 21(2)(j) | Multi-factor or continuous authentication, secured communications, and secured emergency communication. | PC-01, PC-25, PC-08 | evidence in ledger | no separate emergency communication channel is set up |
+
+## ISO/IEC 27001:2022, Annex A controls
+
+19 requirements: 7 with evidence in the ledger, 9 documented, 3 gaps.
+
+| Clause | Requirement, in plain words | Purser controls | Status | Missing |
+|---|---|---|---|---|
+| A.5.1 | Policies for information security, approved and communicated. | PC-27, PC-23, PC-33 | documented | written by the maintainer; no management approval process beyond the one maintainer |
+| A.5.15 | Access control rules, by business and information security requirements. | PC-07, PC-05, PC-09 | evidence in ledger |  |
+| A.5.17 | Authentication information allocated and managed. | PC-25, PC-17 | evidence in ledger |  |
+| A.5.19 | Information security in supplier relationships. | PC-30 | documented |  |
+| A.5.23 | Information security for the use of cloud services. | PC-30, PC-18 | documented | on the providers' standard terms; no cloud agreement reviewed |
+| A.5.24 | Information security incident management planning and preparation. | PC-29, PC-20 | documented |  |
+| A.5.28 | Collection and preservation of evidence. | PC-10 | evidence in ledger |  |
+| A.5.34 | Privacy and protection of personal data. | PC-35, PC-18 | documented |  |
+| A.6.3 | Information security awareness, education and training. | PC-27 | **gap** | no training programme and no record of anyone's training |
+| A.7.1 | Physical security perimeters. | PC-30 | **gap** | no premises of its own: the runner runs on its owner's machine and Purser Cloud in Cloudflare's data centres, whose physical security Purser has not assessed |
+| A.8.5 | Secure authentication. | PC-01, PC-08, PC-25 | evidence in ledger |  |
+| A.8.8 | Management of technical vulnerabilities. | PC-32, PC-33 | documented |  |
+| A.8.13 | Information backup, kept and tested. | PC-20 | **gap** | no backup policy for the runner's ledger and no recorded restore test |
+| A.8.15 | Logging: logs that record activities, exceptions and faults, produced, kept, protected and analysed. | PC-10, PC-16, PC-31 | evidence in ledger |  |
+| A.8.16 | Monitoring of networks, systems and applications for anomalous behaviour. | PC-11, PC-13, PC-15, PC-14 | evidence in ledger |  |
+| A.8.24 | Rules for the effective use of cryptography, including key management. | PC-17 | documented |  |
+| A.8.25 | A secure development life cycle. | PC-21, PC-33, PC-32 | documented | one maintainer: most changes have no second human reviewer |
+| A.8.29 | Security testing in development and acceptance. | PC-19, PC-33 | documented |  |
+| A.8.32 | Changes to information processing facilities and systems are subject to change management procedures. | PC-04, PC-21 | evidence in ledger | the CFO policy's changes leave records; software changes are documented only |
 
 ## Gaps in one list
 
-- EU AI Act Art. 13(3): no instructions-for-use document with the contents Art. 13(3) lists; the docs describe the system but are not that document.
-- EU AI Act Art. 14(4)(b): nothing measures or counters automation bias: whether the approver opened the rationale before signing is not recorded.
-- EU AI Act Art. 15(3): eval results are published, but no accuracy level is declared as a commitment to deployers.
-- ISO/IEC 42001:2023 A.2.2: no AI policy of the organisation running Purser (the CFO policy limits the agents; it is not an AI policy).
-- ISO/IEC 42001:2023 A.5.2: no AI system impact assessment; the threat model and worst-case write-up cover harm to the business, not to individuals or society.
-- ISO/IEC 42001:2023 A.8.4: the runbook says what to do, not whom to tell or how; no named people.
-- ISO/IEC 42001:2023 A.10.3: no assessment or register of the suppliers (Anthropic, Airwallex, Alta); reconciliation checks their records, not the suppliers.
-- SOC 2 CC7.3: events are recorded, but no procedure decides which are incidents, and no one is named to decide.
-- DORA Art. 18(1): no incident classification scheme.
-- DORA Art. 19(1): no reporting to an authority (Purser is not a financial entity).
-- DORA Art. 28(3): no register of information.
-- DORA Art. 28(8): no exit plan per provider.
-- DORA Art. 30(1): sandbox terms only; no contracts with providers.
+- EU AI Act Art. 4: the instructions for use and the AI policy say what an approver must know, but no training or literacy measure is recorded for anyone.
+- EU AI Act Art. 11(1): the contents are spread over docs/ (architecture, threat model, evals, instructions for use); no single document follows Annex IV.
+- EU AI Act Art. 17(1): no quality management system: one maintainer, CI and the change rules; the procedures Art. 17(1) lists (design control, data management, post-market monitoring, accountability) are not written as one.
+- ISO/IEC 42001:2023 A.4.6: the roles are named, but no one's competences or training are recorded.
+- DORA Art. 12(1): no backup policy for the runner's ledger and no recorded restore test (the hash chains would show a restore that lost or changed a row).
+- DORA Art. 30(1): no contract yet: test and developer accounts on the providers' standard terms; exit-plans.md lists what a production contract must include.
+- GDPR Art. 28: no data processing agreement with any deploying business or any subprocessor: test accounts only.
+- GDPR Art. 44: Anthropic, Resend and Twilio are in the United States; no transfer mechanism (EU-US Data Privacy Framework, Standard Contractual Clauses) is recorded for any of them.
+- eIDAS Art. 25(2): no qualified signature has been made: the CSC adapter is tested against a mock server only; there is no QTSP contract and no qualified signing credential.
+- NIS2 Art. 21(2)(c): the runbook covers recovery steps and the exit plans the providers, but there is no backup policy for the runner's ledger and no recorded restore test.
+- NIS2 Art. 21(2)(g): no training programme and no record of anyone's training.
+- ISO/IEC 27001:2022 A.6.3: no training programme and no record of anyone's training.
+- ISO/IEC 27001:2022 A.7.1: no premises of its own: the runner runs on its owner's machine and Purser Cloud in Cloudflare's data centres, whose physical security Purser has not assessed.
+- ISO/IEC 27001:2022 A.8.13: no backup policy for the runner's ledger and no recorded restore test.
 
 And the parts still open in rows that are mapped:
 
-- EU AI Act Art. 9(2): no risk register kept as a continuous process with owners and reviews.
-- EU AI Act Art. 12(1): how long logs are kept is not set (a retention policy is the business's, and open).
+- EU AI Act Art. 6(2): Purser's own reading, not legal advice and not reviewed by a lawyer; a deployer's own use (say, scoring people) could change it.
+- EU AI Act Art. 9(2): the risk register (ai-impact-assessment.md) has owners and a review date, but its first review is due 26 May 2027: it has not yet run as a continuous process.
+- EU AI Act Art. 12(1): the retention periods are defaults the deployer confirms; the check reports rows past their period and deletes nothing, and removing an expired ledger whole is a procedure, not built.
+- EU AI Act Art. 13(3): written for the sandbox: a deployer adapts it before production; no deployer has reviewed it yet.
+- EU AI Act Art. 14(4)(b): the signal is what the phone's approval page reports, not signed; approvals in Purser Cloud's console or the CLI report nothing; it measures, it does not yet prompt the approver.
+- EU AI Act Art. 15(3): declared only as the eval records measured them, per agent, model and case set, on test cases; no level is promised beyond those records.
+- EU AI Act Art. 50(1): held by labels on the pages (test-checked), not by a record per conversation.
+- ISO/IEC 42001:2023 A.2.2: the policy of the project as it runs today (one maintainer, sandbox); a deploying organisation adopts and adapts it.
+- ISO/IEC 42001:2023 A.5.2: assessed by the maintainer alone; no affected party (a supplier, an approver) was consulted.
 - ISO/IEC 42001:2023 A.7.5: covers the documents a model read (their hash per reading); Purser trains no model.
+- ISO/IEC 42001:2023 A.8.4: one person holds the incident roles today (the maintainer), with no deputy.
+- ISO/IEC 42001:2023 A.10.3: the register and the AI policy's supplier rules rest on the suppliers' public documents; no supplier was assessed beyond them.
+- SOC 2 CC7.3: the classification is a person's decision and is not yet recorded in the ledger.
 - SOC 2 CC7.5: no recorded restore test.
 - SOC 2 CC8.1 (software): one maintainer: most changes have no second human reviewer; no branch ruleset or signed commits yet.
-- DORA Art. 6(1): no management body and no yearly review of the framework.
+- DORA Art. 6(1): no management body; the review the AI policy sets has not run yet.
 - DORA Art. 9(4)(e): for the CFO policy; software changes are documented only (see SOC 2 CC8.1).
-- DORA Art. 17(1): no named people for the procedure.
-- DORA Art. 17(2): the events are recorded; which of them are incidents is not decided (Art. 18(1)).
+- DORA Art. 17(1): the roles are named, but one person holds them today.
+- DORA Art. 17(2): the events are recorded; an incident's classification and record (incident-response.md's template) are kept outside the ledger.
+- DORA Art. 18(1): Purser's own classes, with the regulation's criteria named; the thresholds of the regulatory technical standards are not applied (Purser is not a financial entity).
+- DORA Art. 19(1): a template and a procedure only: reporting is the deploying financial entity's duty, and nothing is reported from the sandbox.
 - DORA Art. 24(1): no threat-led penetration test by an independent tester (Arts. 26, 27).
-- DORA Art. 28(1): monitors the providers' records only (reconciliation, webhooks checked against the ledger).
+- DORA Art. 28(1): the ledger evidence is of the providers' records (reconciliation, webhooks checked against the ledger); the register and exit plans are documents.
+- DORA Art. 28(3): Purser's own register, not the implementing technical standards' template; it records no contractual arrangement because there is none yet.
+- DORA Art. 28(8): written, none exercised.
+- PSD2 SCA PSD2 Art. 97(1): Purser is not a PSP: this SCA is Airwallex's, for its own logins and payments; Purser's passkey approval comes before it and does not replace it.
+- PSD2 SCA RTS Art. 4(1): the passkey (possession) is unlocked by Face ID (inherence) or the phone's passcode (knowledge); a synced passkey can live on more than one of the person's devices, and whether that still counts as possession is for a PSP and its supervisor to assess.
+- PSD2 SCA RTS Art. 4(3)(b): failed passkey signatures are counted and alerted (src/passkey/failures.ts) and the relay slows an address that keeps failing; the passkey is not blocked after five, the phone's own Face ID lock applies.
+- PSD2 SCA RTS Art. 5(1)(a): the approval page draws the amount and payee from the hashed terms it checks itself (test-checked); what it showed is not logged per approval.
+- PSD2 SCA RTS Art. 9(1): both elements sit on one phone; their separation rests on the phone's secure hardware (Art. 9(2), (3)), which Purser has not assessed.
+- GDPR Art. 5(1)(e): Purser Cloud deletes on its schedule; the runner's check only reports rows past their period.
+- GDPR Art. 15 (access): a user reads their own account (GET /v1/me) and an owner exports the company's data; a person who is not a user (a supplier, a customer) is answered by the controller by hand from that export.
+- GDPR Art. 17: Purser Cloud erases a person at once and keeps the books (Art. 17(3)(b)); the runner's ledger has no erasure tool, its hash chains are kept or deleted whole.
+- GDPR Art. 20: the company's export (JSON and CSV) is per company, not per person.
+- GDPR Art. 22: code pays a supplier's invoice alone within the limit the CFO signed; a refusal or hold always goes to a person; no decision about a natural person's credit or rights is made.
+- GDPR Art. 30: drawn up for the controller to adopt; the controller's name and contact are blanks until a business deploys Purser.
+- GDPR Art. 32: the runner's SQLite file is not encrypted at rest by Purser (an encrypted volume is the owner's).
+- GDPR Art. 33: the controller's duty: incident-response.md has the procedure and template; nothing has been notified (sandbox, test data).
+- GDPR Art. 35: done voluntarily by the maintainer (AI is new technology); no data protection officer or data subject consulted.
+- eIDAS Art. 26: the link to the data holds (a signature over the terms hash; one changed byte fails, exported as JAdES and verified offline); whether the passkey identifies the CFO enough for Art. 26 is a legal assessment that has not been made.
+- eIDAS Art. 42(1): RFC 3161 time-stamps are built and tested against a mock TSA, and two tokens from public TSAs were checked offline on 19 Nov; no qualified TSA was used and the EU Trusted List is not checked.
+- NIS2 Art. 21(2)(b): the decision that an event is an incident is not recorded in the ledger.
+- NIS2 Art. 21(2)(f): self-assessed and tested in CI; no independent assessment or penetration test.
+- NIS2 Art. 21(2)(j): no separate emergency communication channel is set up.
+- ISO/IEC 27001:2022 A.5.1: written by the maintainer; no management approval process beyond the one maintainer.
+- ISO/IEC 27001:2022 A.5.23: on the providers' standard terms; no cloud agreement reviewed.
+- ISO/IEC 27001:2022 A.8.25: one maintainer: most changes have no second human reviewer.
+- ISO/IEC 27001:2022 A.8.32: the CFO policy's changes leave records; software changes are documented only.

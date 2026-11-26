@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Moneybird
+
+**Purser's first accounting link for small companies: each booked or paid supplier invoice lands in Moneybird.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Run live once, in a Moneybird sandbox administration with test data, 12 November](https://img.shields.io/badge/run_live-once_%C2%B7_sandbox_administration_%C2%B7_12_Nov-10b981?style=flat-square&labelColor=1f2937)](runs/2026-11-12-moneybird-sandbox.md)&nbsp;[![Every purchase invoice read back; no difference with Purser's ledger, to the cent](https://img.shields.io/badge/read_back-no_difference%2C_to_the_cent-10b981?style=flat-square&labelColor=1f2937)](runs/2026-11-12-moneybird-sandbox.md)&nbsp;[![A second sync sent nothing](https://img.shields.io/badge/a_second_sync-sent_nothing-8b5cf6?style=flat-square&labelColor=1f2937)](#how-it-behaves)&nbsp;[![Not done: a real company's administration, OAuth for customers](https://img.shields.io/badge/a_real_company%2C_OAuth-not_done-f59e0b?style=flat-square&labelColor=1f2937)](#going-live-max)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[What it sends](#what-it-sends) · [How it behaves](#how-it-behaves) · [Going live](#going-live-max) · [The run of 12 Nov](runs/2026-11-12-moneybird-sandbox.md) · [ERP connectors](erp.md)
+
+</div>
 
 Purser's first accounting link for small companies. When Purser has booked or paid a supplier invoice, the
 invoice lands in the company's Moneybird administration, together with its supplier, the PDF, the VAT, the ledger
@@ -9,6 +21,24 @@ account and the payment.
 payment, a journal entry and a correction, read every purchase invoice back, and found no difference with its own
 ledger to the cent. A second sync sent nothing. Not done: a real company's administration, OAuth for customers (the
 run used the owner's personal API token), other currencies than EUR, and VAT other than 21% and 9%.**
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Purser
+  participant M as Moneybird API v2
+  rect rgba(139, 92, 246, 0.14)
+    P->>M: POST contacts, the supplier
+    P->>M: POST purchase_invoices, the lines and VAT
+    P->>M: POST the PDF as an attachment
+    P->>M: POST payments, the Airwallex transfer id
+    P->>M: POST general_journal_documents
+  end
+  rect rgba(16, 185, 129, 0.14)
+    P->>M: GET each purchase invoice
+    M-->>P: its state and payments, matched to the cent
+  end
+```
 
 ## What it sends
 

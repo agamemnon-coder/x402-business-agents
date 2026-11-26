@@ -56,7 +56,9 @@ const TURNS: AgentAnswer[] = [
 let calls = 0;
 const stub = (async () => {
   const a = TURNS[calls++ % TURNS.length]!;
-  await new Promise((r) => setTimeout(r, 300));
+  // 1 s a turn (26 Nov): long enough that a slow machine, whose frames can take a few hundred ms in software
+  // rendering, still sees each side's typing indicator while its call runs.
+  await new Promise((r) => setTimeout(r, 1_000));
   return new Response(JSON.stringify({ content: [{ type: "text", text: JSON.stringify(a) }], usage: { input_tokens: 800, output_tokens: 70 } }), { status: 200 });
 }) as typeof fetch;
 env.negotiateClaude = negotiateClaudeOf(env.sql, "on", "stub-key-not-a-secret", stub);

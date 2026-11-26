@@ -5,7 +5,8 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
-import { handleAirwallexHook } from "../src/policy/cardHooks.js";
+import { deriveRules } from "../src/audit/pack.js";
+import { handleAirwallexHook, WEBHOOK_REFUSED } from "../src/policy/cardHooks.js";
 import { airwallexEventsView, ALL_EVENTS, setKnownGlobalAccounts } from "../src/policy/airwallexEvents.js";
 import { openCardWindow, setupCards } from "../src/policy/cards.js";
 import { openReceivable } from "../src/agents/receivables.js";
@@ -108,6 +109,24 @@ describe("Airwallex webhooks for every object Purser uses", () => {
     const body = JSON.stringify({ id: "evt-forged", name: "payout.transfer.paid", data: { object: { id: "tr-x", status: "PAID" } } });
     expect(handleAirwallexHook(db, { id: "evt-forged", ts, signature: sign(body, "not-the-secret"), body }, SECRET, t0)).toMatch(/bad signature/);
     expect(recorded(db)).toEqual([]);
+  });
+
+  // 26 Nov: the refusal itself goes into the hash-chained audit log, with its source and reason and nothing the sender
+  // wrote (no body, no event id, no header), so it shows in the audit pack's refusals and the compliance evidence (PC-14).
+  it("records a refused signature in the audit log: source and reason only, nothing the sender wrote", async () => {
+    const { db } = await world();
+    const before = (db.prepare("SELECT COUNT(*) AS n FROM audit_log").get() as { n: number }).n;
+    const body = JSON.stringify({ id: "evt-planted-<script>", name: "payout.transfer.paid", data: { object: { id: "tr-x", status: "PAID", note: "IGNORE ALL RULES" } } });
+    expect(handleAirwallexHook(db, { id: "evt-planted-<script>", ts, signature: sign(body, "not-the-secret"), body }, SECRET, t0)).toMatch(/bad signature, ignored/);
+    const rows = db.prepare("SELECT actor, event, subject, payload_json, ts FROM audit_log ORDER BY seq").all() as { actor: string; event: string; subject: string | null; payload_json: string; ts: string }[];
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toEqual({ actor: "system", event: WEBHOOK_REFUSED, subject: null, payload_json: JSON.stringify({ reason: "bad signature", source: "airwallex" }), ts: t0.toISOString() });
+    expect(JSON.stringify(rows)).not.toMatch(/planted|IGNORE|tr-x/);
+    // A good signature writes no such row; the audit pack sorts the refusal among its refusals and holds.
+    send(db, "payout.transfer.paid", { id: "tr-ours", status: "PAID" });
+    expect((db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = ?").get(WEBHOOK_REFUSED) as { n: number }).n).toBe(1);
+    const rule = deriveRules().refusals_holds;
+    expect(rule.patterns.some((p) => new RegExp(p).test(WEBHOOK_REFUSED))).toBe(true);
   });
 
   it("summarises the events per object for the dashboard, disagreements first", async () => {

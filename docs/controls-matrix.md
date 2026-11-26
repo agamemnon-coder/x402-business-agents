@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Controls matrix: risk, control, test, evidence
+
+**Each risk to a business whose AI agents spend money, the control against it, who enforces it, its test and its evidence.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Risks: 33, each with its control and its test](https://img.shields.io/badge/risks-33_%C2%B7_each_with_a_control_and_a_test-8b5cf6?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Every control's test runs in CI](https://img.shields.io/badge/tests-run_in_CI_on_every_change-10b981?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Evidence: the Airwallex sandbox, Metal testnet, or the red team on stand-ins](https://img.shields.io/badge/evidence-sandbox_%C2%B7_testnet_%C2%B7_red_team_on_stand--ins-0ea5e9?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![What is not covered: listed](https://img.shields.io/badge/not_covered-listed-f59e0b?style=flat-square&labelColor=1f2937)](#not-covered-known)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Zero trust](#layer-by-layer-zero-trust) · [Spending limits](#spending-limits) · [Approvals](#approvals) · [Fraud and payees](#fraud-and-payees) · [Detection](#detection-and-evidence) · [Keys and operations](#keys-and-operations) · [Not covered](#not-covered-known)
+
+</div>
 
 Each row is a risk to a business whose AI agents spend money, the control Purser puts against it, where that control
 is enforced, the automated test, and the live evidence. This is also the test plan: every control has a test that
@@ -12,6 +24,37 @@ red team's run against in-memory stand-ins, not the real rails.
 - **Person:** the CFO decides with Face ID.
 
 What to do when a control fires: [runbook.md](runbook.md). Claims and their sources: [claims.md](claims.md).
+
+```mermaid
+flowchart LR
+  A["An agent's payment"] --> CODE["Code<br/>Purser refuses before anything is signed"]
+  CODE --> PERSON["Person<br/>the CFO decides with Face ID"]
+  PERSON --> RAILS
+  subgraph RAILS["The rails' own locks"]
+    AWX["Airwallex<br/>declines the card or payout"]
+    CHAIN["Chain<br/>Metal's contracts or facilitator refuse"]
+  end
+  RAILS --> PAID["Paid"]
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class A sourcing
+  class CODE,PERSON purser
+  class AWX,CHAIN rails
+  class PAID ok
+```
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#8b5cf6"}}}}%%
+xychart-beta
+  title "Who enforces: rows each takes part in, of 33"
+  x-axis ["Code", "Person", "Chain", "Airwallex"]
+  y-axis "Rows" 0 --> 33
+  bar [27, 8, 7, 6]
+```
+
+<sub>Record: [the matrix's rows on this page](controls-matrix.md#spending-limits), counted by `test/docs-charts.test.ts` from the "Enforced by" column: of 33 rows, Code 27, Person 8 (one person or two), Chain 7, Airwallex 6; a row can name several.</sub>
 
 ## Layer by layer (zero trust)
 

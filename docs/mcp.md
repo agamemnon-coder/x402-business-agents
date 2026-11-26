@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser's MCP server
+
+**Connect any MCP client to Purser Cloud: every tool, resource, prompt and error code; read and propose only.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![MCP 2026-07-28, and 2025-11-25 back to 2024-11-05](https://img.shields.io/badge/MCP-2026--07--28_%C2%B7_back_to_2024--11--05-6366f1?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![Tools: 15 read, 2 for a token made to propose](https://img.shields.io/badge/tools-15_read_%C2%B7_2_propose-8b5cf6?style=flat-square&labelColor=1f2937)](#tools)&nbsp;[![Approve or pay over MCP: never, for any token](https://img.shields.io/badge/approve_or_pay_over_MCP-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#the-safety-model)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, or a bearer token](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE-0ea5e9?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![MCP Registry: server.json describes it; not published](https://img.shields.io/badge/MCP_Registry-described%2C_not_published-f59e0b?style=flat-square&labelColor=1f2937)](#the-mcp-registry)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Connect](#connect) · [Tools](#tools) · [Resources and prompts](#resources-and-prompts) · [Errors](#errors) · [Safety model](#the-safety-model) · [A proposal](#how-a-proposal-reaches-the-cfo) · [Registry](#the-mcp-registry) · [Tests](#the-tests-that-hold-this-page)
+
+</div>
 
 The reference for any MCP client (Claude, other assistants, agent frameworks): how to connect, every tool with its
 annotations, the resources and prompts, the error codes, and the safety model. **Read and propose only.** No tool
@@ -9,6 +21,39 @@ the Alta (formerly Metal) testnet.
 Per-client steps (ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf), OAuth and token security:
 [connect-claude.md](connect-claude.md). The code: [`cloud/src/claude/mcp.ts`](../cloud/src/claude/mcp.ts) and
 [`cloud/src/claude/resources.ts`](../cloud/src/claude/resources.ts).
+
+```mermaid
+flowchart LR
+  subgraph CL["Your AI"]
+    AI["Any MCP client<br/>Claude, ChatGPT, Cursor, VS Code"]
+  end
+  subgraph PC["Purser Cloud · the hosted test cloud"]
+    MCP["/mcp<br/>Streamable HTTP, OAuth 2.1"]
+    TOK{"The token's scope"}
+    RD["15 read tools<br/>resources, prompts"]
+    PR["propose_invoice_payment<br/>payment_proposal"]
+    NO["not_available_over_mcp<br/>approve, pay, change a limit, write"]
+    BK[("The company's books")]
+    Q["The proposal waits<br/>in Purser Cloud"]
+  end
+  CFO["The CFO's passkey<br/>Face ID over the exact terms"]
+  AI --> MCP --> TOK
+  TOK -- "reads" --> RD --> BK
+  TOK -- "made to propose" --> PR --> Q
+  TOK -. "any token" .-> NO
+  Q --> CFO
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  class AI sourcing
+  class MCP,TOK,PR purser
+  class RD,BK ok
+  class NO stop
+  class Q wait
+  class CFO purser
+```
 
 ## What this page describes, and what ran live
 
@@ -190,6 +235,28 @@ What stops a payment beyond this server (Purser's checks in code, the CFO's pass
 3. The CFO reads the terms in Purser Cloud and approves them with the passkey, rejects them, or lets them expire.
    `payment_proposal` shows where it stands.
 4. Only an approved proposal is paid. The signature covers the exact terms: one changed cent and the approval no longer matches the terms.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant AI as Your AI
+  participant M as Purser /mcp
+  participant C as Purser Cloud
+  participant P as CFO's passkey
+  rect rgba(139, 92, 246, 0.14)
+    AI->>M: propose_invoice_payment (an invoice id)
+    M->>C: checked as the Pay button checks it
+    C-->>AI: proposal id, terms, terms_sha256, paid false
+  end
+  rect rgba(245, 158, 11, 0.14)
+    C->>P: the CFO reads the exact terms
+    P-->>C: approve, reject, or let expire
+  end
+  rect rgba(16, 185, 129, 0.14)
+    AI->>M: payment_proposal
+    M-->>AI: waiting, approved and paid, refused or expired
+  end
+```
 
 The AI's part ends at step 1. It should tell its user that the CFO approves; the server's instructions say so too.
 

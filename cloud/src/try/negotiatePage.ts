@@ -17,6 +17,7 @@ import { SIGN_JS } from "../tryPage.js";
 import { VERIFY_YOURSELF } from "../tryCopy.js";
 import { TOKENS } from "../../../src/redesign/ui.js";
 import { NEG_COPY, NEG_CSS, negKitJs } from "./negotiateKit.js";
+import { sceneOf } from "../../../src/negotiate/negotiate.js";
 import { BOT_SOLVER_JS } from "./botCheck.js";
 
 export const NEGOTIATE_PATH = "/try/negotiate";
@@ -29,17 +30,21 @@ export const NEGOTIATE_COPY = {
   title: "Purser · agents negotiate",
   band: "Test money · test passkey · simulated bank · nothing real moves",
   head: "Two agents negotiate. Code holds the limits. You sign the deal.",
-  lede: "Purser's Sourcing agent (Claude) negotiates an early-payment discount with the supplier's agent (a simulated supplier, played by Claude). Every turn passes the CFO's rails in code before it counts. Then you sign the agreed terms with your passkey, exactly as on /try.",
+  lede: "Purser's Sourcing agent (Claude) negotiates an early-payment discount with the supplier's agent (a simulated supplier, played by Claude). Every offer is signed and hashed, and passes the CFO's limits in code before it counts. Then you sign the exact terms with your passkey, as on /try.",
+  simTag: "Simulated supplier, played by Claude",
   invoiceHead: "The invoice",
-  invoiceLine: "Bergtex Textil GmbH · EUR 1,850.00 · net 30",
+  invoice: [["Supplier", "Bergtex Textil GmbH"], ["Amount", "EUR 1,850.00"], ["Terms", "Net 30"], ["Pay to", "The account on file"]],
   invoiceNote: "A seeded test supplier in your test company, with a published test IBAN.",
-  railsHead: "The CFO's rails (code, not a prompt)",
+  railsHead: "The CFO's limits (code, not a prompt)",
+  railsSub: "Rails: never crossed",
+  policySub: "Policy: outside it, the CFO decides",
   rails: {
     max_amount: "Pays at most EUR {max}",
     pay_by_window: "Pays between {from} and {to}",
     invoice_only: "Nothing beyond the invoice {no}",
     payee_unchanged: "Only to the account on file (ending {last4})",
   },
+  policy: ["Asks for at most 3% off", "Accepts only 1% off or more", "Pays no sooner than 2 days from today"],
   start: "Start the negotiation",
   starting: "Starting… Purser's agent is thinking",
   talking: "The agents are negotiating…",
@@ -51,7 +56,7 @@ export const NEGOTIATE_COPY = {
   gone: "Your test company has ended; starting a new one.",
   nothingToSign: "A recording has nothing to sign. Start again to watch the agents live.",
   sign: "Sign the agreed terms with your passkey",
-  makeKey: "Make your test passkey",
+  signEsc: "Sign these terms yourself, with your passkey",
   steps: {
     file: "The agreed invoice is filed in your test company",
     propose: "Purser proposes the payment: canonical JSON, SHA-256, the passkey's challenge",
@@ -71,48 +76,40 @@ export const NEGOTIATE_COPY = {
   noPasskey: "This browser can't make a passkey here. Open this page in Safari or Chrome to sign.",
   cancelled: "The passkey was not used. Nothing was signed or paid.",
   failed: "Something went wrong. Nothing was paid.",
-  limit: "Purser's demo is busy or paused right now. Please try again later.",
 } as const;
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+// 26 Nov (Max: "the page looked simple"): Purser's look, dark first: a violet glow behind the head, the agents' hues,
+// the colour system of ./negotiateKit.ts. A card's first heading sits at the card's own padding (15 Nov, Max, 1440 px).
 const CSS = `${TOKENS.replace("url(assets/inter.woff2", "url(/assets/inter.woff2")}
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-main { max-width: 680px; margin: 0 auto; padding: 0 var(--gut, 16px) 64px; overflow-x: clip; }
-h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; margin: 20px 0 12px; }
-h2 { font-size: 18px; margin: 28px 0 10px; }
-h1:focus, h2:focus { outline: none; }
-p { margin: 0 0 12px; }
-.lede, .muted { color: var(--muted); }
-.band { display: inline-flex; gap: 6px; align-items: center; margin: 12px 0 0; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 13px; }
-.band::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 16px; margin: 0 0 12px; }
-/* 15 Nov (Max, 1440 px): a card's first heading sits at the card's own padding, as on its sides. */
-.card > h2:first-child { margin-top: 0; }
-.rails { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.rails li { display: flex; gap: 8px; align-items: baseline; font-size: 15px; }
-.rails li::before { content: "■"; color: var(--accent); font-size: 10px; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 18px; border-radius: 999px; font: 650 15px/1.2 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
-.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn:disabled { opacity: .55; cursor: progress; }
-.btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-ol.steps li.stop { color: var(--text); border-left: 3px solid var(--bad); padding-left: 8px; }
-ol.steps li.stop::marker { color: var(--bad); }
-.note { font-size: 14px; color: var(--muted); }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; }
-pre.mono { white-space: pre-wrap; background: var(--sunken); padding: 10px; border-radius: 10px; margin: 8px 0 0; }
-dl.deal { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0 0 10px; }
-dl.deal dt { color: var(--muted); }
-dl.deal dd { margin: 0; overflow-wrap: anywhere; }
-ol.steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
-ol.steps li.done::marker { color: var(--ok); }
-ol.steps li.bad::marker { color: var(--bad); }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+*{box-sizing:border-box}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%;scroll-padding-top:84px}
+body{margin:0;color:var(--text);font:400 16px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;background:radial-gradient(70% 560px at 80% -120px,color-mix(in srgb,var(--accent) 26%,transparent),transparent 72%) no-repeat,radial-gradient(45% 420px at 0 300px,color-mix(in srgb,var(--n-p) 12%,transparent),transparent 70%) no-repeat,var(--bg)}
+main{max-width:1200px;margin:0 auto;padding:0 var(--gut,16px) 64px;overflow-x:clip}
+.hero{max-width:820px;padding:30px 0 6px}
+h1{font-size:clamp(31px,4.4vw,50px);line-height:1.05;letter-spacing:-.035em;font-weight:760;margin:16px 0 14px;text-wrap:balance}
+h1 span{background:var(--grad-text,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:17px;margin:0 0 10px}h1:focus,h2:focus,h3:focus{outline:none}p{margin:0 0 12px}
+.lede,.note{color:var(--muted)}.lede{font-size:clamp(16px,1.4vw,18px)}.note{font-size:14px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.tag{--c:var(--n-wait);display:inline-flex;gap:7px;align-items:center;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:600;border:1px solid color-mix(in srgb,var(--c) 40%,transparent);background:color-mix(in srgb,var(--c) 12%,transparent);color:color-mix(in srgb,var(--c) 82%,var(--text))}
+.tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}.tag.s{--c:var(--n-s)}
+.setup{display:grid;gap:12px;margin:18px 0 0}
+.card{border:1px solid var(--border);border-radius:18px;background:linear-gradient(170deg,color-mix(in srgb,var(--accent) 6%,var(--surface)),var(--surface));padding:16px;box-shadow:var(--shadow)}.card>h2:first-child{margin-top:0}
+dl.inv{display:grid;grid-template-columns:max-content 1fr;gap:5px 16px;margin:0 0 10px}dl.inv dt{color:var(--muted)}dl.inv dd{margin:0;font-weight:600}
+.lims{display:grid;gap:12px}.lims h3{margin:0 0 7px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rails{list-style:none;margin:0;padding:0;display:grid;gap:6px}.rails li{display:flex;gap:9px;align-items:baseline;font-size:14.5px}
+.rails li::before{content:"";flex:none;width:8px;height:8px;border-radius:2px;background:var(--c,var(--n-bad))}.rails.pol li{--c:var(--accent)}
+@media (min-width:560px){.lims{grid-template-columns:1fr 1fr}}@media (min-width:860px){.setup{grid-template-columns:minmax(0,5fr) minmax(0,8fr)}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:0 20px;border-radius:99px;font:650 15px/1.2 Inter,system-ui,sans-serif;text-decoration:none;border:1px solid var(--glass-line,var(--border));background:var(--glass,var(--surface));color:var(--text);cursor:pointer}
+.btn.primary{background:var(--btn-bg,var(--accent));color:#fff;border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 32px -12px var(--glow)}
+.btn:disabled{opacity:.55;cursor:progress}.btn:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}#talk:not(:empty){margin-top:22px}
+.mono{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:13px;overflow-wrap:anywhere}
+ol.steps{margin:12px 0 0;padding-left:22px;display:grid;gap:6px}ol.steps li.done::marker{color:var(--n-ok)}ol.steps li.bad::marker,ol.steps li.stop::marker{color:var(--n-bad)}
+ol.steps li.stop{border-left:3px solid var(--n-bad);padding-left:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 ${NEG_CSS}
 `;
 
@@ -122,16 +119,10 @@ __SIGN__
 __SOLVER__
 __NEG__
 const {fromB64u,registrationOf,signedOf}=signKit;
-const $=(id)=>document.getElementById(id);
-const el=(tag,cls,kids)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(kids!==undefined&&kids!==null)for(const k of [].concat(kids))if(k!==null&&k!==undefined&&k!==false)n.append(typeof k==='string'?document.createTextNode(k):k);return n};
-const fill=(s,o)=>String(s).replace(/\{(\w+)\}/g,(m,k)=>o[k]===undefined?m:String(o[k]));
+const $=(id)=>document.getElementById(id);const {el,fill,eur}=NEG;
 const say=(s)=>{$('say').textContent=s};
-const eur=(s)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(s));if(!m)return String(s);return 'EUR '+m[1].replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+m[2]};
 
-// The company: /try's own in this tab (its key), else one this page started (its own key). Read only from storage;
-// written back only to the key it came from (a renewed session).
 const KEYS=['purser.try','purser.negotiate'];
-// After Start again (or a company that ended), /try's company in this tab is not used again: a fresh one is started.
 const FRESH=()=>{try{return sessionStorage.getItem('purser.negotiate.fresh')==='1'}catch(e){return false}};
 let S=null,FROM=null;
 for(const k of KEYS){if(k==='purser.try'&&FRESH())continue;try{const o=JSON.parse(sessionStorage.getItem(k)||'null');if(o&&o.session&&o.visitor_token&&o.tenant){S=o;FROM=k;break}}catch(e){}}
@@ -155,7 +146,6 @@ async function api(method,path,body){
   if(r.status!==401||!S)return r;
   return (await renew())?call(method,path,body):r;
 }
-// A company of the visitor's own: /try's, or a new one through /try's start route (its bot check and its limits).
 async function company(){
   if(S&&S.expires_at&&Date.parse(S.expires_at)>Date.now()+60000)return {ok:true};
   if(S&&await renew())return {ok:true};
@@ -173,16 +163,11 @@ async function company(){
 }
 
 let N=null;
-const rails=(b)=>{
-  const R=C.rails;const last4=String(b.payee_iban||'').slice(-4);
-  return el('ul','rails',[el('li','',fill(R.max_amount,{max:NEG.eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
-};
 const busy=(btn,words)=>{btn.disabled=true;btn.hidden=false;btn.replaceChildren(el('span','negspin'),document.createTextNode(' '+words))};
 const errBox=(words)=>el('p','neg-err',words);
 function againRow(){
   const b=el('button','btn',C.again);b.type='button';b.id='again';
   b.addEventListener('click',()=>{
-    // A clean slate: this tab's negotiate company forgotten, /try's not reused, the page's state cleared.
     try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
     S=null;FROM=null;N=null;F.inv=null;F.p=null;F.eng=null;F.cred=null;
     $('deal').replaceChildren();$('end').replaceChildren();$('talk').replaceChildren();$('more').replaceChildren();
@@ -190,7 +175,6 @@ function againRow(){
   });
   return el('div','row',[b]);
 }
-// The recording, played at once, when the live path turned the visitor away; nothing to sign in it.
 async function fallback(words,why){
   const talk=$('talk');const box=el('div','');talk.replaceChildren(errBox(words),box);
   await NEG.recorded({box,why,say});
@@ -209,7 +193,6 @@ async function negotiate(btn){
   busy(btn,C.talking);say(C.talking);
   let res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
   if(!res.ok&&(res.status===410||res.status===401)){
-    // The company this tab held has ended: a new one, once.
     try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
     S=null;FROM=null;say(C.gone);okc=await company();
     if(okc.ok)res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
@@ -220,16 +203,16 @@ async function negotiate(btn){
     if(res.status===503)return fallback(C.pausedRecorded,'paused');
     talk.prepend(errBox(res.message||C.failed));$('more').replaceChildren(againRow());return;
   }
-  N=res.n;$('rails').replaceChildren(rails(N.bounds));deal();
+  N=res.n;deal();
 }
 function deal(){
-  const go=el('button','btn primary',C.sign);go.type='button';go.id='sign';
-  const {card,heading}=NEG.agreed(N,[go]);
+  const go=N.outcome==='no_deal'?null:el('button','btn primary',N.outcome==='escalated'?C.signEsc:C.sign);if(go){go.type='button';go.id='sign'}
+  const {card,heading}=NEG.agreed(N,go?[go]:[]);
   const steps=el('ol','steps');steps.id='steps';
   const out=el('div','');out.id='out';out.setAttribute('role','status');
   $('deal').replaceChildren(card,steps,out);heading.focus();
   $('more').replaceChildren(againRow());
-  go.addEventListener('click',()=>sign(go));
+  if(go)go.addEventListener('click',()=>sign(go));
 }
 
 const step=(text,state)=>{const li=el('li',state||'',text);$('steps').append(li);return li};
@@ -237,7 +220,6 @@ const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
 const cancelled=(e)=>e&&typeof e.name==='string'&&/^(NotAllowedError|AbortError|InvalidStateError|SecurityError|NotSupportedError)$/.test(e.name);
 async function withTimeout(fn){const ac=new AbortController();const t=setTimeout(()=>ac.abort(),30000);try{return await fn(ac.signal)}finally{clearTimeout(t)}}
 const words=(j,fb)=>j&&typeof j.message==='string'&&j.message?j.message:j&&typeof j.error==='string'&&j.error?j.error:fb;
-// What the flow has done so far, so a cancelled passkey picks up where it stopped.
 const F={inv:null,p:null,eng:null,cred:null};
 
 async function sign(go){
@@ -268,7 +250,6 @@ async function sign(go){
       const fin=await api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)});
       if(fin.status!==200||typeof fin.json.credential_id!=='string'){out.append(el('p','note',words(fin.json,C.failed)));go.disabled=false;return}
       F.eng=Object.assign({},F.eng,{passkey:{credential_id:fin.json.credential_id}});
-      // Safari keeps one prompt to a tap: the signature is the next tap.
       go.textContent=C.sign;go.disabled=false;say(C.sign);return;
     }
     say(C.waiting);
@@ -280,7 +261,6 @@ async function sign(go){
     const t=await api('GET','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/terms');
     if(t.status!==200||!t.json.terms){out.append(el('p','note',words(t.json,C.failed)));return}
     const terms=t.json.terms;
-    // One cent more, with the same signature: the one pay route answers, both layers.
     const m=/^(\d+)\.(\d{2})$/.exec(String(terms.amount));const v=m?Number(m[1])*100+Number(m[2])+1:1;
     const cent=Math.floor(v/100)+'.'+String(v%100).padStart(2,'0');
     const bad=await api('POST','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/pay',signKit.payBody(terms,Object.assign({},terms,{amount:cent}),cred));
@@ -300,7 +280,7 @@ function done(proof,terms){
   const end=$('end');const h=el('h2','',C.paidHead);h.tabIndex=-1;
   const row=el('div','row');
   if(proof){const b=el('button','btn primary',C.download);b.type='button';b.addEventListener('click',()=>download(CFG.proofFile,proof));row.append(b)}
-  const d=el('button','btn',C.downloadDeal);d.type='button';d.addEventListener('click',()=>download('purser-negotiation.json',{note:'A negotiation on Purser\'s demo: test money, a simulated supplier played by Claude.',mode:N.mode,label:N.label,reason:N.reason,turns:N.turns,agreement:N.agreement,canonical:N.canonical,sha256:N.sha256,signed_terms:terms,terms_sha256:F.p&&F.p.terms_sha256}));row.append(d);
+  const d=el('button','btn',C.downloadDeal);d.type='button';d.addEventListener('click',()=>download('purser-negotiation.json',{note:'A negotiation on Purser\'s demo: test money, a simulated supplier played by Claude.',mode:N.mode,label:N.label,reason:N.reason,id:N.id,keys:N.keys,policy:N.policy,turns:N.turns,outcome:N.outcome,escalation:N.escalation,agreement:N.agreement,canonical:N.canonical,sha256:N.sha256,transcript_sha256:N.transcript_sha256,saving:N.saving,signed_terms:terms,terms_sha256:F.p&&F.p.terms_sha256}));row.append(d);
   const v=el('a','btn',C.verify);v.href=CFG.verify;v.rel='noopener';row.append(v);
   const back=el('a','btn',C.back);back.href='/try';row.append(back);
   end.replaceChildren(h,row);h.focus();say(C.paidHead);
@@ -313,7 +293,9 @@ export interface NegotiatePageCfg { rpId: string; verify: string }
 
 export function negotiatePage(n: string, cfg: NegotiatePageCfg): string {
   const C = NEGOTIATE_COPY;
-  const script = SCRIPT.replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ ...cfg, proofFile: VERIFY_YOURSELF.file }))
+  // The rails with the seeded scene's own figures, as the negotiation will check them (today, as the route's today).
+  const today = new Date().toISOString().slice(0, 10), sc = sceneOf(today);
+  const script =SCRIPT.replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ ...cfg, proofFile: VERIFY_YOURSELF.file }))
     .replace("__SIGN__", () => SIGN_JS).replace("__SOLVER__", () => BOT_SOLVER_JS).replace("__NEG__", () => negKitJs());
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}
@@ -324,12 +306,13 @@ export function negotiatePage(n: string, cfg: NegotiatePageCfg): string {
 <style nonce="${n}">${CSS}${SITE_HEADER_CSS}</style></head><body>
 ${siteHeader("try")}
 <main id="main">
-<p class="band">${esc(C.band)}</p>
-<h1>${esc(C.head)}</h1>
+<section class="hero"><p class="tags"><span class="tag">${esc(C.band)}</span><span class="tag s">${esc(C.simTag)}</span></p>
+<h1>${esc(C.head).replace("You sign the deal.", "<span>You sign the deal.</span>")}</h1>
 <p class="lede">${esc(C.lede)}</p>
-<section class="card" aria-labelledby="invh"><h2 id="invh">${esc(C.invoiceHead)}</h2><p><b>${esc(C.invoiceLine)}</b></p><p class="note">${esc(C.invoiceNote)}</p></section>
-<section class="card" aria-labelledby="railsh"><h2 id="railsh">${esc(C.railsHead)}</h2><div id="rails"><ul class="rails"><li>${esc(C.rails.max_amount.replace("{max}", "1,850.00"))}</li><li>${esc(C.rails.pay_by_window.replace("{from}", "today").replace("{to}", "the due date"))}</li><li>${esc(C.rails.invoice_only.replace(" {no}", ""))}</li><li>${esc(C.rails.payee_unchanged.replace(" (ending {last4})", ""))}</li></ul></div></section>
-<div class="row"><button class="btn primary" id="go" type="button">${esc(C.start)}</button></div>
+<div class="row"><button class="btn primary" id="go" type="button">${esc(C.start)}</button></div></section>
+<div class="setup"><section class="card" aria-labelledby="invh"><h2 id="invh">${esc(C.invoiceHead)}</h2><dl class="inv">${C.invoice.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl><p class="note">${esc(C.invoiceNote)}</p></section>
+<section class="card" aria-labelledby="railsh"><h2 id="railsh">${esc(C.railsHead)}</h2><div class="lims"><div><h3>${esc(C.railsSub)}</h3><ul class="rails"><li>${esc(C.rails.max_amount.replace("{max}", "1,850.00"))}</li><li>${esc(C.rails.pay_by_window.replace("{from}", today).replace("{to}", sc.due_date))}</li><li>${esc(C.rails.invoice_only.replace("{no}", sc.invoice_no))}</li><li>${esc(C.rails.payee_unchanged.replace("{last4}", sc.supplier.iban.slice(-4)))}</li></ul></div>
+<div><h3>${esc(C.policySub)}</h3><ul class="rails pol">${C.policy.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div></div></section></div>
 <section id="talk" aria-live="polite"></section>
 <section id="deal"></section>
 <section id="end"></section>

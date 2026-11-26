@@ -16,7 +16,7 @@ export const COMPLIANCE_MAX_BYTES = 64 * 1024;
 const STAMP = z.string().max(40).regex(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
 const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const N = z.number().int().min(0).max(10_000_000);
-const FW = z.enum(["eu-ai-act", "iso-42001", "soc2", "dora"]);
+const FW = z.enum(["eu-ai-act", "iso-42001", "soc2", "dora", "psd2-sca", "gdpr", "eidas", "nis2", "iso-27001"]);
 
 export const ComplianceSnapshot = z.object({
   generated_at: STAMP,

@@ -1,8 +1,16 @@
-<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/assets/brand/purser-mark-dark.svg"><img src="../../docs/assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/assets/brand/purser-mark-dark.svg"><img src="../../docs/assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Metal Dispute desk (example)
 
-Refund decisions for disputed x402 payments on Alta (formerly Metal), one payment at a time, from evidence the seller holds.
+**Refund decisions for disputed x402 payments on Alta (formerly Metal), one payment at a time, from evidence the seller holds.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![npm dependencies: none](https://img.shields.io/badge/npm_dependencies-none-10b981?style=flat-square&labelColor=1f2937)](#requirements-and-tests)&nbsp;[![One copy: a parity test with Purser](https://img.shields.io/badge/copies-one_%C2%B7_parity--tested_with_Purser-8b5cf6?style=flat-square&labelColor=1f2937)](#what-it-is)&nbsp;[![Node 22 or later, ESM, TypeScript](https://img.shields.io/badge/Node-22%2B_%C2%B7_ESM_%C2%B7_TypeScript-3178c6?style=flat-square&labelColor=1f2937)](#requirements-and-tests)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](https://docs.metalntwx.com)&nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-2563eb?style=flat-square&labelColor=1f2937)](../../LICENSE)&nbsp;[![Test money only: test dollars (USDZ)](https://img.shields.io/badge/money-test_dollars_%28USDZ%29-f59e0b?style=flat-square&labelColor=1f2937)](#what-it-does-not-prove)
+
+[What it is](#what-it-is) · [What it decides from](#what-it-decides-from) · [The rules](#the-rules) · [Usage](#usage) · [The chain check](#the-chain-check-mandatecheck) · [What it does not prove](#what-it-does-not-prove) · [Tests](#requirements-and-tests)
+
+</div>
 
 | At a glance | Record |
 |---|---|
@@ -37,6 +45,29 @@ For each disputed payment, the seller assembles an `EvidencePack` of plain data.
 ## The rules
 
 Rules are checked in order. The first two apply to every payment, whatever the claim.
+
+```mermaid
+flowchart TD
+  S["A disputed payment<br/>and its EvidencePack"] --> Q1{"A signed order the<br/>chain check accepted?"}
+  Q1 -- no --> F1["Refund in full<br/>the payment cannot be proven ordered"]
+  Q1 -- yes --> Q2{"Order already used<br/>for an earlier sale?"}
+  Q2 -- yes --> F2["Refund in full<br/>a replay"]
+  Q2 -- no --> C["The claim's row<br/>in the table below"]
+  C -- "no refund" --> NONE["Nothing refunded"]
+  F1 & F2 --> CAP
+  C -- "a refund" --> CAP["Never more than charged minus refunded<br/>always to the account that paid"]
+  CAP --> R{"routeRefundBatch<br/>within the per-refund and<br/>per-dispute limits?"}
+  R -- yes --> AUTO["Paid automatically"]
+  R -- no --> HUMAN["A person approves first"]
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  class Q1,Q2,C,R,HUMAN purser
+  class F1,F2,CAP rails
+  class AUTO ok
+  class NONE stop
+```
 
 | Situation | Decision |
 |---|---|

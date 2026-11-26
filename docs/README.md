@@ -1,8 +1,16 @@
-<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Purser documentation
 
-Every Purser document, grouped by what you need it for; test money only throughout.
+**Every Purser document, grouped by what you need it for; test money only throughout.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Coverage: from badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-16a34a?style=flat-square&labelColor=1f2937)](evidence/coverage.md)&nbsp;[![Dafny: from badges/dafny.json](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square&labelColor=1f2937)](evidence/formal-proofs.md)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper%20matrix-894%2F894%20refused-16a34a?style=flat-square&labelColor=1f2937)](evidence/tamper-matrix.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Start here](#start-here) · [Contents](#contents) · [Product](#product) · [Security & compliance](#security--compliance) · [Evidence & runs](#evidence--runs) · [Operations](#operations) · [Contributing](#contributing) · [History](#history)
+
+</div>
 
 | At a glance | Record |
 |---|---|
@@ -11,9 +19,9 @@ Every Purser document, grouped by what you need it for; test money only througho
 | **262 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-20.md](evidence/verification-2026-11-20.md) |
 | **48 of 48** red-team attacks stopped, 0 caught afterwards (full re-run of 20 Nov, a test world, not held out) | [redteam/rerun-2026-11-20.md](redteam/rerun-2026-11-20.md) |
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Coverage: from badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-16a34a?style=flat-square&labelColor=1f2937)](evidence/coverage.md)&nbsp;[![Dafny: from badges/dafny.json](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square&labelColor=1f2937)](evidence/formal-proofs.md)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper%20matrix-894%2F894%20refused-16a34a?style=flat-square&labelColor=1f2937)](evidence/tamper-matrix.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
-
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/money-path-dark.svg"><img src="assets/anim/money-path-light.svg" alt="Animated: one payment's path. An AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control (Airwallex, Alta); then the books. Each step can stop the payment. Test money only." width="100%"></picture>
 
 ## Start here
 
@@ -42,6 +50,12 @@ flowchart LR
   T --> PAGES["The README, these docs<br/>and /proof"]
   REC --> CL["claims.md<br/>every claim and its source"]
   REC --> V["Checked offline<br/>npm run verify-approval,<br/>verify-bundle, verify-all"]
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class RUN rails
+  class REC purser
+  class T,V ok
 ```
 
 The rails are the Airwallex sandbox and the Alta (formerly Metal) testnet. Alta renamed itself on 14 November; records
@@ -75,6 +89,14 @@ flowchart LR
   OPS["Operations<br/>install, run-it,<br/>runbook, releasing"]
   CON["Contributing<br/>CONTRIBUTING, GOVERNANCE,<br/>SECURITY, decisions"]
   START["Start here<br/>the five files above"] --> PROD & SEC & EV & OPS & CON
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class START,P1,P2,P3,P4 purser
+  class P5 rails
+  class S1,S2,S3 stop
+  class E1,E2,E3 ok
 ```
 
 | | Section | What is in it |
@@ -130,6 +152,7 @@ the longer list.
 
 - [cloud.md](cloud.md): Purser Cloud, its API and what the hosted test cloud is.
 - [payables.md](payables.md): the invoice inbox. [ledger.md](ledger.md): Purser's own books. [reconcile-books.md](reconcile-books.md): Purser's books next to the outside books.
+- [receivables.md](receivables.md): money in: customer invoices with an Airwallex payment link, matching with tolerance, aged debtors and reminder drafts. [treasury.md](treasury.md): the Treasury advisor: a 13-week cash forecast and FX advice, a conversion only after the passkey.
 - [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md): the document vault and the ERP connectors.
 - [real-customers.md](real-customers.md): each company's own money account and books; behind flags that are off by default.
 - [tokenize.md](tokenize.md): invoice tokens on Alta, a prototype; its run of 12 November is [runs/2026-11-12-tokenize.md](runs/2026-11-12-tokenize.md), its record template [tokenize-run-template.md](tokenize-run-template.md).

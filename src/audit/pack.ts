@@ -47,7 +47,8 @@ export function deriveRules(): Record<Derived, DeriveRule> {
     decisions: { events: [...MONEY_EVENTS].sort(), patterns: ["^proposal\\.", "^approval\\.", "^execution\\.", "^hub\\.gate"] },
     approvals: { events: [...APPROVAL_EVENTS].sort(), patterns: [] },
     policy_changes: { events: ["setting.changed"], patterns: ["^policy\\."] },
-    refusals_holds: { events: [...REFUSAL_EVENTS].sort(), patterns: ["refus", "\\.held$", "hold", "blocked", "declin", "quarantin", "tripped", "too_late", "fraud_suspected", "injection_flagged"] },
+    // "[._]held$": a hold named either way, `sweep.held` or `payment.anomaly_held` (26 Nov: `\.held$` missed the second).
+    refusals_holds: { events: [...REFUSAL_EVENTS].sort(), patterns: ["refus", "[._]held$", "hold", "blocked", "declin", "quarantin", "tripped", "too_late", "fraud_suspected", "injection_flagged"] },
     reconciliation: { events: [], patterns: ["reconcil", "\\.difference$", "\\.agreed$", "disagrees"] },
   };
 }

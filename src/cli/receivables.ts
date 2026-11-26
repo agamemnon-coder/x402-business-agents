@@ -3,11 +3,13 @@
 //         Global Accounts (one exact in EUR, one exact in GBP, one short, one with no invoice), then polls and matches.
 //   poll: reads the Global Accounts' deposits since the first open invoice and matches the ones not yet recorded.
 //   customer-pays [short]: one retailer pays one new invoice (D22, the autonomous world), then the poll.
+//   issue | match | aging | dunning | review: customer invoices booked on issue, with a payment link (docs/receivables.md).
 // Read-only towards Airwallex except the sandbox's own simulation endpoint and, once, creating a GBP Global Account.
 // The ledger is KIT11_DB.
 
 import { randomUUID } from "node:crypto";
-import { openReceivable, matchReceipt, receivablesView } from "../agents/receivables.js";
+import { openReceivable, receivablesView } from "../agents/receivables.js";
+import { routeDeposit } from "../receivables/ar.js";
 import { setKnownGlobalAccounts } from "../policy/airwallexEvents.js";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
 import { openDb } from "../db/open.js";
@@ -16,6 +18,12 @@ import { redactSecrets } from "../lib/redact.js";
 
 type GA = { id: string; status: string; country_code?: string; supported_features?: { currency: string }[]; required_features?: { currency: string }[] };
 type AwxDeposit = { id: string; amount: number | string; currency: string; reference?: string | null; status: string; global_account_id?: string; payer_name?: string | null; created_at?: string };
+
+// Customer invoices with payment links, matching with tolerance, ageing and reminder drafts (src/cli/receivablesAr.ts).
+if (["issue", "match", "aging", "dunning", "review"].includes(process.argv[2] ?? "")) {
+  const { runAr } = await import("./receivablesAr.js");
+  process.exit(await runAr(process.argv[2]!, process.argv.slice(3)));
+}
 
 const cfg = fromEnv();
 if (!cfg) {
@@ -94,7 +102,7 @@ async function pollOnce(): Promise<void> {
       // In the autonomous world one retailer pays one invoice: match only that deposit, so other test worlds on the
       // same sandbox (their own deposits) do not show up here as unmatched money.
       if (wanted && d.id !== wanted) continue;
-      const m = matchReceipt(db, {
+      const m = routeDeposit(db, {
         deposit_id: d.id, global_account_id: d.global_account_id ?? null, currency: d.currency, amount_cents: toCents(Number(d.amount).toFixed(2)),
         reference: d.reference ?? null, payer: d.payer_name ?? null, received_at: d.created_at ?? new Date().toISOString(),
       });

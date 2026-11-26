@@ -186,7 +186,9 @@ describe("the README's own words elsewhere: the package, the business pages, the
     // (test/readme-headers.test.ts); since 26 Nov (owner: every Markdown file like the README) a row of badges under At a
     // glance (test/docs-look.test.ts).
     const before = index.slice(0, index.indexOf(firstList)).trim().split("\n").filter(Boolean)
-      .filter((l) => !l.startsWith("<a href=\"../README.md\"><picture>") && !l.startsWith("|") && !l.startsWith("<picture>") && !l.startsWith("[![") && l !== "## Start here");
+      .filter((l) => !l.startsWith("<a href=\"../README.md\"><picture>") && !l.startsWith("|") && !l.startsWith("<picture>") && !l.startsWith("[![") && l !== "## Start here")
+      // Since 26 Nov (owner: "lets do also more with the MD's") the header is centred, with a row of jump links.
+      .filter((l) => l !== "<div align=\"center\">" && l !== "</div>" && !/^\[[^\]]+\]\(#[^)]+\)(?: · |$)/.test(l));
     expect(before).toHaveLength(3);
     expect(before[2]).toBe("Read these five first, in this order:");
     const links = [...firstList.matchAll(/^\d+\. \[[^\]]+\]\(([^)]+)\): \S/gm)].map((m) => m[1]!);

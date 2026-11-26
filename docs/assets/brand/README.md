@@ -1,8 +1,16 @@
-<a href="../../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="purser-mark-dark.svg"><img src="purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="purser-mark-dark.svg"><img src="purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Brand assets
 
-Purser's mark and the "Built on Airwallex" badge: what each file is, where it is used, and what checks it.
+**Purser's mark and the "Built on Airwallex" badge: what each file is, where it is used, and what checks it.**
+
+[![One mark: the site header's own](https://img.shields.io/badge/mark-one_%C2%B7_the_site_header%27s_own-8b5cf6?style=flat-square&labelColor=1f2937)](#pursers-mark)&nbsp;[![The mark for the light and the dark theme](https://img.shields.io/badge/themes-light_%C2%B7_dark-0ea5e9?style=flat-square&labelColor=1f2937)](#pursers-mark)&nbsp;[![Checked by test/brand-mark.test.ts](https://img.shields.io/badge/checked_by-test%2Fbrand--mark.test.ts-10b981?style=flat-square&labelColor=1f2937)](../../../test/brand-mark.test.ts)&nbsp;[![Built on Airwallex: the official logo, unaltered](https://img.shields.io/badge/Built_on-Airwallex_%C2%B7_logo_unaltered-ff6b35?style=flat-square&labelColor=1f2937)](#built-on-airwallex-14-nov-2026)&nbsp;[![No partnership or endorsement implied](https://img.shields.io/badge/partnership-none_implied-f59e0b?style=flat-square&labelColor=1f2937)](../logos/SOURCES.md)
+
+[Purser's mark](#pursers-mark) · [Built on Airwallex](#built-on-airwallex-14-nov-2026) · [Logo sources](../logos/SOURCES.md) · [Back to the README](../../../README.md)
+
+</div>
 
 | At a glance | Record |
 |---|---|
@@ -16,6 +24,10 @@ feather, 16 of 30 units wide, centred on a dark rounded square (`#0b1220`, corne
 uses it; `test/brand-mark.test.ts` checks it against the header's own paths and proportions. The social preview
 (`docs/assets/social-preview.svg`) carries the same mark. `purser-mark-dark.svg` is the same mark in reverse (a light square, a dark
 feather), for the dark theme of the READMEs' headers.
+
+| `purser-mark.svg` (light theme) | `purser-mark-dark.svg` (dark theme) |
+|:---:|:---:|
+| <img src="purser-mark.svg" alt="Purser's mark: a white feather on a dark rounded square" width="96" height="96"> | <img src="purser-mark-dark.svg" alt="Purser's mark in reverse: a dark feather on a light rounded square" width="96" height="96"> |
 
 ## Built on Airwallex (14 Nov 2026)
 

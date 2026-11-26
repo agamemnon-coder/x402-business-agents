@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Connect any AI to Purser
+
+**Use your own AI assistant with your company's Purser: it reads your books and may propose a payment; it can never approve or pay.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tried live: the Claude iOS app, 13 November](https://img.shields.io/badge/tried_live-the_Claude_iOS_app_%C2%B7_13_Nov-d97757?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![The other clients: listed from their own documentation, not tried live](https://img.shields.io/badge/other_clients-from_their_own_docs-f59e0b?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![Your AI can never approve or pay](https://img.shields.io/badge/approve_or_pay-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#what-your-ai-can-do)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, CIMD or DCR](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE_%C2%B7_CIMD_%C2%B7_DCR-0ea5e9?style=flat-square&labelColor=1f2937)](#oauth-details)&nbsp;[![The demo company's public token: purser-demo-read-only](https://img.shields.io/badge/demo_token-purser--demo--read--only-8b5cf6?style=flat-square&labelColor=1f2937)](#three-steps)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Three steps](#three-steps) · [Claude](#claude) · [ChatGPT](#chatgpt) · [Cursor](#cursor) · [VS Code](#vs-code-github-copilot-agent-mode) · [Gemini CLI](#gemini-cli) · [Windsurf](#windsurf-now-devin-desktop) · [Verified](#which-clients-were-verified-and-how) · [Security](#security) · [OAuth](#oauth-details)
+
+</div>
 
 Use your own AI assistant with your company's Purser: Claude (claude.ai, the Claude apps, Claude Code), ChatGPT, Cursor,
 VS Code's agent mode, Gemini CLI, Windsurf, or any client that speaks the Model Context Protocol (MCP) to a remote server. It reads
@@ -28,6 +40,27 @@ MCP SDK's own client).
 2. **Add Purser to your AI**, as its section below shows: the `/mcp` address, and either the token as an
    `Authorization: Bearer` header or the client's own sign-in.
 3. **Sign in** where the client asks: Purser's consent page takes your token, or *Use the demo company*.
+
+```mermaid
+flowchart LR
+  subgraph S1["1 · Purser Cloud"]
+    TOK["Make a connector token<br/>an owner, with a passkey;<br/>shown once"]
+  end
+  subgraph S2["2 · Your AI"]
+    ADD["Add the /mcp address<br/>a Bearer header, or the client's sign-in"]
+  end
+  subgraph S3["3 · Sign in"]
+    CON["Purser's consent page<br/>your token, or the demo company"]
+  end
+  TOK --> ADD --> CON --> ASK["Ask: what needs my Face ID?"]
+  ASK --> FID["Every payment:<br/>the CFO's Face ID in Purser Cloud"]
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class TOK,CON,FID purser
+  class ADD sourcing
+  class ASK ok
+```
 
 Then ask: "what needs my Face ID?", "show me this quarter's VAT", "explain the Lagerhaus payment" or "what did my agents
 decide this week?". Purser also offers five ready-made prompts (below).
@@ -113,6 +146,16 @@ Windsurf's MCP documentation now lives in Devin's docs. In `~/.config/devin/mcp_
 | VS Code / Copilot | From VS Code's MCP configuration reference and its install-link guide |
 | Gemini CLI | From the Gemini CLI MCP docs (`httpUrl`, `gemini mcp add`) |
 | Windsurf / Devin | From Devin's docs (Cascade MCP, `serverUrl`) |
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#f59e0b", "pie2": "#10b981"}}}%%
+pie showData
+  title How each client was checked
+  "From its own documentation" : 6
+  "Run" : 3
+```
+
+<sub>Record: [the table above](connect-claude.md#which-clients-were-verified-and-how), counted by `test/docs-charts.test.ts`: 9 clients; 3 run (one of them, the Claude iOS app, against a deployed cloud), 6 from their own documentation.</sub>
 
 The protocol itself, both eras, is checked in `test/mcp-upgrade.test.ts` against the 2026-07-28 specification.
 

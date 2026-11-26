@@ -243,6 +243,30 @@ describe("the approval page: one proposal", () => {
     expect(textOf(app())).toContain("Paid 2 refunds.");
   });
 
+  // Automation bias (EU AI Act Art. 14(4)(b), 26 Nov): the approval says whether Details was opened before signing.
+  // Additive: the passkey signs the same terms hash either way, and a rejection carries no such field.
+  it("sends whether Details was opened before Approve, and the same terms hash either way", async () => {
+    const p = await proposal(refundTerms(), { review: { model: "claude-opus-5-5", recommendation: "approve", text: "The two sales were charged twice." } });
+    const run = async (openDetails: boolean) => {
+      await open({ page: "approve" }, () => {
+        relay("/api/approvals", { status: 200, body: approvals({ proposals: [p] }) });
+        relay("/api/assertions", { status: 202, body: { ticket: "T-9" } });
+        relay("/api/tickets/T-9", { status: 200, body: { status: "approved" } });
+      });
+      if (openDetails) {
+        const d = app().querySelector("details.more")!;
+        d.open = true;
+        d.dispatch("toggle");
+      }
+      await settle(900);
+      await press(byId("approve"), 3000);
+      expect(challengeHex(0)).toBe(p.terms_sha256);
+      return calls.find((c) => c.path === "/api/assertions")!.body as Record<string, unknown>;
+    };
+    expect(await run(true)).toMatchObject({ decision: "APPROVED", terms_sha256: p.terms_sha256, rationale_viewed: true });
+    expect(await run(false)).toMatchObject({ decision: "APPROVED", terms_sha256: p.terms_sha256, rationale_viewed: false });
+  });
+
   it("Reject signs the rejection hash, never the terms hash", async () => {
     const p = await proposal(refundTerms());
     await open({ page: "approve" }, () => {
@@ -254,6 +278,7 @@ describe("the approval page: one proposal", () => {
     await press(byId("reject"));
     expect(challengeHex(0)).toBe(await rejectionHash(p.terms_sha256));
     expect((calls.find((c) => c.path === "/api/assertions")!.body as { decision: string }).decision).toBe("REJECTED");
+    expect(calls.find((c) => c.path === "/api/assertions")!.body).not.toHaveProperty("rationale_viewed");
     expect(textOf(app())).toContain("Rejected with your passkey. Nothing will be paid.");
   });
 

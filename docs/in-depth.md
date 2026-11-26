@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser in depth
+
+**The README's first screen in full: every run with its ids, where each judging criterion is proven, and what is real and what is mock.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C_last_full_run-10239_passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Visa via Airi: sandbox](https://img.shields.io/badge/Visa_via_Airi-sandbox-1a1f71?style=flat-square&labelColor=1f2937)](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov)&nbsp;[![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937)](t0.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[What ran live](#what-ran-live-one-id-per-rail) · [Live or simulated](#whats-live-whats-simulated-run-by-run) · [Judging criteria](#where-each-judging-criterion-is-proven) · [How a payment flows](#how-a-payment-flows) · [The main run](#the-main-run-3-november) · [awx-1](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money) · [Airi](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov) · [Try it](#try-it-step-by-step) · [Real or mock](#what-is-real-what-is-mock)
+
+</div>
 
 Back to the [README](../README.md). The README's first screen in full: what ran live with one id per rail, where each
 judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the Kit 11 runs with
@@ -60,7 +72,19 @@ flowchart LR
   X -- "match" --> L
   L --> B["Purser's books<br/>hash-chained audit log"]
   B --> T["T:0 general ledger<br/>(sandbox)"]
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class A sourcing
+  class P,F,X purser
+  class L rails
+  class N stop
+  class B,T ok
 ```
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/money-path-dark.svg"><img src="assets/anim/money-path-light.svg" alt="Animated: one payment's path. An AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control (Airwallex, Alta); then the books. Each step can stop the payment. Test money only." width="100%"></picture>
 
 ## See it
 
@@ -195,6 +219,26 @@ on the fourth attempt that day, the second in its world (the attempts before it 
 [/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run),
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run) and [/proof](https://kit11.max-31b.workers.dev/proof#airi-run).
 
+```mermaid
+flowchart LR
+  AG["The Sourcing agent<br/>a purchase"] --> M{"Merchant allowed<br/>by the CFO?"}
+  M -- "no" --> R["Refused by Purser<br/>before any call to Airi<br/>EUR 5.00"]
+  M -- "yes" --> L{"Within Purser's limit<br/>EUR 20.00?"}
+  L -- "yes, EUR 12.00" --> AI["Airi: a single-use<br/>Visa credential"]
+  L -- "no, EUR 45.00" --> F["The CFO's Face ID<br/>on the exact terms"] --> AI
+  AI --> CH["The cardholder's passkey<br/>in Airi"] --> OK["PaymentIntent SUCCEEDED"]
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class AG sourcing
+  class M,L,F purser
+  class R stop
+  class AI,CH rails
+  class OK ok
+```
+
 <details><summary>The three purchases, and the control test (vic-2)</summary>
 
 - **✓ Within the limit:** EUR 12.00 (Purser's limit: EUR 20.00). Within Purser's limit, no Purser approval is needed. Airi
@@ -225,6 +269,8 @@ phone, three times; 0 Airi and 0 Airwallex calls in the whole test, so nothing w
 ## Try it, step by step
 
 On [/try/sign](https://kit11.max-31b.workers.dev/try/sign), in a test world of your own; nothing real moves.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/one-cent-dark.svg"><img src="assets/anim/one-cent-light.svg" alt="Animated: one changed cent breaks the signature. EUR 1,850.00 to Bergtex Textil GmbH hashes to f168e40f…ec5d, which the CFO's passkey signed: paid. The same signature sent with EUR 1,850.01 hashes to aa4e2b59…0aca: refused. The /try samples of 15 Nov 2026, test money." width="100%"></picture>
 
 <details><summary>The seven steps</summary>
 

@@ -1,8 +1,31 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Data classification and protection levels
+
+**Every table Purser creates, by protection level, with the requirements each level carries and where they apply.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![209 tables, each once, by protection level](https://img.shields.io/badge/tables-209_%C2%B7_each_once%2C_by_level-8b5cf6?style=flat-square&labelColor=1f2937)](#inventory)&nbsp;[![Secret: 19 tables](https://img.shields.io/badge/Secret-19_tables-f43f5e?style=flat-square&labelColor=1f2937)](#secret)&nbsp;[![Restricted: 134 tables](https://img.shields.io/badge/Restricted-134_tables-f59e0b?style=flat-square&labelColor=1f2937)](#restricted)&nbsp;[![Internal: 56 tables](https://img.shields.io/badge/Internal-56_tables-0ea5e9?style=flat-square&labelColor=1f2937)](#internal)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Levels](#levels-and-their-requirements) · [Secret](#secret) · [Restricted](#restricted) · [Internal](#internal) · [Public](#public) · [Inventory](#inventory) · [Key management](key-management.md)
+
+</div>
 
 Every table Purser creates, by protection level, with the requirements each level carries and where the architecture applies them. ASVS 4.0.3 V1.8.2 (`docs/security/asvs-l2.md`); V1.8.1 lists the assets. Written on 20 November 2026 by Claude (an AI model) for the maintainer. `test/data-classification.test.ts` reads every `CREATE TABLE` in the D1 migrations, the runner's schema and the Workers' and runner's code, and fails when a table has no row here, when a column that holds personal or financial data or a credential is not named in its row, or when such a table is rated below Restricted. Purser moves test money only; the requirements are written for real data, and where one is not met yet it says so and names the open ASVS row.
 
 ## Levels and their requirements
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#f59e0b", "pie2": "#0ea5e9", "pie3": "#f43f5e"}}}%%
+pie showData
+  title The tables by protection level
+  "Restricted" : 134
+  "Internal" : 56
+  "Secret" : 19
+```
+
+<sub>Record: [the inventory below](data-classification.md#inventory), counted by `test/docs-charts.test.ts`: 209 tables, each named once; Restricted 134, Internal 56, Secret 19; none Public.</sub>
 
 ### Secret
 
@@ -69,6 +92,7 @@ Each table once. Columns: those that hold personal or financial data or a creden
 | `ap_invoices`, `ap_codings`, `ap_scan_readings`, `ap_duplicate_clearances`, `ap_sink_events` | Restricted | `bic`, `iban_last4`, `note`, `subtotal`, `tax`, `total`, `transcription`, `vendor` | Accounts payable: readings, codings, findings, duplicates; runner SQLite, engine DO |
 | `beneficiaries`, `payee_adds`, `payee_changes`, `payee_name_checks` | Restricted | `beneficiary_id`, `bic`, `iban`, `iban_last4`, `iban_sha256`, `name`, `new_bic`, `new_iban`, `resolved_name`, `vendor` | Payees and bank details (IBAN, BIC, names) and their checks; runner SQLite, engine DO |
 | `proposals`, `executions`, `batch_lines`, `transfers`, `fx_quotes`, `fx_conversions`, `platform_fees`, `holds`, `payout_reservations`, `velocity_events`, `obligations`, `money_steps`, `awx_batches`, `awx_payouts_v2`, `awx_fx_notes`, `awx_payout_notes`, `awx_notes`, `airwallex_events`, `receipts`, `receivables`, `refunds`, `sweeps` | Restricted | `amount`, `amount_cents`, `applied_cents`, `buy_amount`, `cents`, `customer`, `global_account_id`, `name`, `note`, `paid_cents`, `payer`, `sell_amount`, `terms_json`, `to_address` | Payments in flight: proposals, executions, transfers, FX, fees, holds, reservations; runner SQLite, engine DO, relay DO |
+| `ar_invoices`, `ar_payments`, `ar_review`, `ar_dunning` | Restricted | `amount_cents`, `applied_cents`, `contact_email`, `customer`, `draft`, `link_url`, `net_cents`, `paid_cents`, `payer`, `reference`, `suspense_cents`, `written_off_cents` | Receivables (src/receivables/ar.ts): invoices to customers with their payment links, the payments matched to them, the review queue and the reminder drafts (never sent by Purser); the contact address is for the drafts only and never logged; runner SQLite, engine DO |
 | `cards`, `card_transactions`, `agent_cards`, `card_actions`, `card_reads`, `card_edge_runs`, `task_cards`, `external_agents`, `agent_token_uses` | Restricted | `amount_cents`, `body_json`, `card_id`, `cardholder_id`, `display_name`, `last4`, `merchant`, `monthly_cents`, `nickname`, `per_tx_cents` | Agent cards and their transactions, and the uses of the agents' payment tokens; runner SQLite, D1 (cloud) |
 | `sales`, `sale_settlements`, `sale_settlements_v2`, `upstream_purchases`, `x402_payments`, `mandates`, `airi_purchases`, `icc_purchases`, `clearing_ops` | Restricted | `amount`, `body_json`, `budget_cents`, `cap_cents`, `cents`, `description`, `party`, `payer`, `price_cents`, `terms_json` | Sales, purchases and mandates of agents (x402, AIRI, ICC); runner SQLite, relay DO |
 | `metal_accounts`, `chain_credits`, `quarantines`, `tokenize_txs` | Restricted | `address`, `amount_base_units`, `amount_units`, `from_addr`, `from_address`, `raw`, `to_address` | On-chain money (testnet): wallets, credits, quarantines, tokenisation; runner SQLite |

@@ -1,8 +1,33 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Key management policy
+
+**How Purser makes, keeps, uses, rotates and destroys its keys and other secrets, following NIST SP 800-57's life cycle.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The key life cycle of NIST SP 800-57 Part 1, Rev. 5](https://img.shields.io/badge/life_cycle-NIST_SP_800--57_Part_1%2C_Rev._5-8b5cf6?style=flat-square&labelColor=1f2937)](#key-management-policy)&nbsp;[![test/key-management-policy.test.ts fails when the code reads a secret this page does not list](https://img.shields.io/badge/every_secret_the_code_reads-listed%2C_or_the_test_fails-10b981?style=flat-square&labelColor=1f2937)](../../test/key-management-policy.test.ts)&nbsp;[![A company's API keys: Purser stores only their SHA-256](https://img.shields.io/badge/API_keys-stored_as_SHA--256_only-0ea5e9?style=flat-square&labelColor=1f2937)](#roles)&nbsp;[![No agent ever sets, reads back or rotates a secret](https://img.shields.io/badge/an_agent-never_sets_or_reads_a_secret-f43f5e?style=flat-square&labelColor=1f2937)](#roles)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Roles](#roles) · [Generation](#generation) · [Storage](#storage-and-distribution) · [Use](#use) · [Rotation](#rotation) · [Compromise](#compromise) · [Destruction](#destruction) · [Algorithms](#algorithms) · [Inventory](#inventory)
+
+</div>
 
 How Purser makes, keeps, uses, rotates and destroys its cryptographic keys and other secrets. It follows the key life cycle of **NIST SP 800-57 Part 1** (Rev. 5, Recommendation for Key Management): pre-operational (generation, registration), operational (storage, distribution, use), post-operational (rotation, revocation) and destruction. ASVS 4.0.3 V1.6.1 (`docs/security/asvs-l2.md`). Written on 20 November 2026 by Claude (an AI model) for the maintainer; `test/key-management-policy.test.ts` fails when the code reads a secret this page does not list.
 
 Purser moves test money only (the Airwallex sandbox, Alta testnet). This policy is written for that, and says where a deployment with real money must do more.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> PreOperational: generation, registration
+  PreOperational --> Operational: storage, distribution
+  Operational --> Operational: use
+  Operational --> PostOperational: rotation, or expiry
+  Operational --> Compromised: a suspected leak
+  Compromised --> PostOperational: revoked first, investigated after
+  PostOperational --> Destroyed: deleted; a row keeps the hash and dates
+  Destroyed --> [*]
+```
 
 ## Roles
 

@@ -1,8 +1,47 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser's own books
+
+**A stored general ledger fed from every movement of money Purser makes: balanced, append-only and hash-chained.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every entry balanced per currency, or refused](https://img.shields.io/badge/entries-balanced_or_refused-10b981?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![The ledger: append-only, hash-chained](https://img.shields.io/badge/ledger-append--only_%C2%B7_hash--chained-8b5cf6?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![Signed terms are booked only as signed](https://img.shields.io/badge/signed_terms-booked_only_as_signed-8b5cf6?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![VAT: an overview for a person to check and file](https://img.shields.io/badge/VAT-an_overview%2C_not_a_filing-f59e0b?style=flat-square&labelColor=1f2937)](#not-yet)&nbsp;[![Realised FX: not wired into the feed yet](https://img.shields.io/badge/realised_FX-not_wired_in_yet-f59e0b?style=flat-square&labelColor=1f2937)](#fx-differences-and-token-financing)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Run it](#run-it) · [What holds](#what-holds) · [FX and token financing](#fx-differences-and-token-financing) · [For other parts](#for-other-parts-of-purser) · [Not yet](#not-yet)
+
+</div>
 
 Purser keeps the books itself: a stored general ledger, fed from every movement of money Purser makes, with VAT,
 reports, closing and stock. Design: [docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md](archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md).
 Test money only, like the rest of Purser.
+
+```mermaid
+flowchart LR
+  subgraph IN["Every movement Purser makes"]
+    M["Sales, purchases, refunds, card spend,<br/>invoice payments, fees, conversions,<br/>sweeps, clearing, receipts"]
+  end
+  subgraph L["The ledger · npm run ledger -- sync"]
+    LOCK{"Signed terms?<br/>re-hashed against<br/>what the CFO signed"}
+    BAL{"Debits = credits<br/>per currency?"}
+    POST[("Posted once<br/>each hash covers the previous")]
+  end
+  REP["Trial balance, P&L, balance sheet,<br/>VAT overview, ageing, cash, stock"]
+  X["Refused<br/>nothing posted"]
+  M --> LOCK
+  LOCK -- "the hash matches" --> BAL
+  LOCK -- "one cent changed" --> X
+  BAL -- "yes" --> POST --> REP
+  BAL -- "no" --> X
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  class M rails
+  class LOCK,BAL purser
+  class POST,REP ok
+  class X stop
+```
 
 ## Run it
 
@@ -46,6 +85,8 @@ once; run it as often as you like.
 - **An entry can name its approval and its rail.** `approval_sha256` (the CFO's Face ID hash) and `rail_ref` (an
   Airwallex transfer or conversion id, or a transaction hash) sit next to `doc_sha256`. Both are nullable columns added
   on 12 November; an entry carries them in its hash only when they are set, so every earlier entry hashes as before.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/hash-chain-dark.svg"><img src="assets/anim/hash-chain-light.svg" alt="Animated: the books as a hash chain. Entries 3 to 6 of the /try payment, each hash over the previous one; change one entry and every hash after it breaks. Test money." width="100%"></picture>
 
 ## FX differences and token financing
 

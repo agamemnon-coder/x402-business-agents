@@ -8,7 +8,7 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { openDb, type DB } from "../src/db/open.js";
 import { rejectionSha256, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
-import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
+import { processAssertion, processRegistration, RATIONALE_NOT_VIEWED, RATIONALE_VIEWED, type InboxItem } from "../src/passkey/process.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
@@ -140,5 +140,42 @@ describe("a submission that names no proposal the runner has", () => {
     const hash = propose(db, "P-0001");
     expect(await approve(db, "P-0404", hash, signed(auth, hash))).toMatchObject({ status: "refused", proposalId: null, message: "no proposal P-0404" });
     expect(await processAssertion(db, { ticket: "x", kind: "assertion", proposal_id: "P-0001", body: "{not json", received_at: t0.toISOString() }, t0)).toEqual({ status: "refused", proposalId: null, message: "malformed submission" });
+  });
+});
+
+// Automation bias (EU AI Act Art. 14(4)(b), 26 Nov): the approval page reports whether Details was opened before
+// signing; once the signature is verified the runner records it just before the approval, in the same transaction.
+// It decides nothing: the same signature approves the same proposal with the field true, false or absent.
+describe("the approval page's automation-bias signal (rationale_viewed)", () => {
+  const events = (db: DB) => (db.prepare("SELECT event, subject, payload_json FROM audit_log WHERE event LIKE 'approval.rationale%' OR event IN ('proposal.approved', 'proposal.rejected') ORDER BY seq").all() as { event: string; subject: string; payload_json: string }[]);
+  const send = (db: DB, id: string, hash: string, credential: AuthenticationResponseJSON, extra: Record<string, unknown>) => processAssertion(db, item({ proposal_id: id, terms_sha256: hash, credential, ...extra }, id), t0);
+
+  it("records viewed or not viewed just before proposal.approved; absent, nothing; a rejection, nothing", async () => {
+    const { db, auth } = await enrolled();
+    const h1 = propose(db, "P-0001");
+    const h2 = propose(db, "P-0002");
+    const h3 = propose(db, "P-0003");
+    const h4 = propose(db, "P-0004");
+    expect(await send(db, "P-0001", h1, signed(auth, h1), { rationale_viewed: true })).toMatchObject({ status: "approved" });
+    expect(await send(db, "P-0002", h2, signed(auth, h2), { rationale_viewed: false })).toMatchObject({ status: "approved" });
+    expect(await send(db, "P-0003", h3, signed(auth, h3), {})).toMatchObject({ status: "approved" });
+    expect(await send(db, "P-0004", h4, signed(auth, rejectionSha256(h4)), { decision: "REJECTED", rationale_viewed: true })).toMatchObject({ status: "rejected" });
+    expect(events(db).map((e) => `${e.event} ${e.subject}`)).toEqual([
+      `${RATIONALE_VIEWED} P-0001`, "proposal.approved P-0001",
+      `${RATIONALE_NOT_VIEWED} P-0002`, "proposal.approved P-0002",
+      "proposal.approved P-0003",
+      "proposal.rejected P-0004",
+    ]);
+    expect(JSON.parse(events(db)[0]!.payload_json)).toEqual({ terms_sha256: h1, credential: auth.credentialId.slice(0, 8), reported_by: "the approval page, not signed" });
+  });
+
+  it("records nothing for a signature that does not verify, and refuses a field that is not true or false", async () => {
+    const { db, auth } = await enrolled();
+    const h1 = propose(db, "P-0001");
+    const h2 = propose(db, "P-0002");
+    expect(await send(db, "P-0001", h1, signed(auth, h2), { rationale_viewed: true })).toMatchObject({ status: "refused" });
+    expect(await send(db, "P-0001", h1, signed(auth, h1), { rationale_viewed: "yes" })).toEqual({ status: "refused", proposalId: null, message: "malformed submission" });
+    expect(events(db)).toEqual([]);
+    expect(statusOf(db, "P-0001")).toBe("PENDING_APPROVAL");
   });
 });

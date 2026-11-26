@@ -5,7 +5,7 @@
 // workflow badge names a workflow that exists, and no badge asks shields.io to fetch a file from the repository at view
 // time (24 Nov: it could no longer reach raw.githubusercontent.com). Every relative link, image and anchor resolves, the
 // root pages included (test/data-consistency.test.ts covers README.md and docs/ only for Markdown links, not HTML).
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,9 +14,10 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
-export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md"];
-/** Pages that carry the house-style badges but keep a header of their own (docs/README.md: test/readme-headers.test.ts). */
-const BADGED = [...STYLED, "docs/README.md"];
+export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md", "docs/treasury.md", "docs/receivables.md",
+  "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md", "docs/agent-api.md", "docs/mcp.md", "docs/ledger.md", "docs/cfo-policy.md", "docs/controls.md", "docs/controls-matrix.md", "docs/fraud-and-injection.md", "docs/hardening.md", "docs/enterprise.md", "docs/go-live.md", "docs/install.md", "docs/connections.md", "docs/connect-claude.md", "docs/ask-purser.md", "docs/autopilot.md", "docs/cards-and-clearing.md", "docs/agentos.md", "docs/kit11.md", "docs/decisions.md", "docs/in-depth.md", "docs/idea-vs-build.md", "docs/assurance.md", "docs/engine-events.md", "docs/erp.md", "docs/moneybird.md", "docs/accessibility.md", "docs/gallery.md", "docs/learning.md", "docs/finance-value.md", "docs/security/openssf-gold.md", "docs/security/SECURITY-MAPPING.md", "docs/security/agent-permissions.md", "docs/security/agent-identity.md", "docs/security/key-management.md", "docs/security/data-classification.md", "docs/security/asvs-l2.md"];
+/** Pages that carry the house-style badges (the judge-facing READMEs' header is test/readme-headers.test.ts's). */
+const BADGED = [...new Set([...STYLED, "docs/README.md"])];
 
 const withoutFences = (md: string) => md.replace(/^(```|~~~)[\s\S]*?^\1/gm, "");
 const withoutCode = (md: string) => withoutFences(md).replace(/`[^`\n]*`/g, "``");
@@ -70,15 +71,17 @@ function recordFigures(): Map<string, string> {
   return out;
 }
 
-const DIAGRAMS = /^(flowchart (LR|TB|TD|RL|BT)|sequenceDiagram|stateDiagram-v2|timeline|gantt|graph (LR|TB|TD))\s*$/;
+const DIAGRAMS = /^(flowchart (LR|TB|TD|RL|BT)|sequenceDiagram|stateDiagram-v2|timeline|gantt|graph (LR|TB|TD)|xychart-beta( horizontal)?|pie( showData)?( title .+)?|quadrantChart)\s*$/;
+/** The Mermaid charts that plot figures (26 Nov 2026, the owner: "graphs", from committed records only). */
+const CHARTS = /^(xychart-beta|pie)\b/;
 
 describe("the Markdown pages in the README's house style", () => {
   for (const f of STYLED) it(`${f}: opens with the centred header: the mark, one title, one bold line, badges`, () => {
     const md = read(f);
     const head = md.slice(0, md.indexOf("</div>"));
     expect(md.startsWith('<div align="center">\n\n')).toBe(true);
-    const up = f.startsWith("docs/") ? "" : "docs/";
-    expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up}assets/brand/purser-mark-dark.svg"><img src="${up}assets/brand/purser-mark.svg" alt="Purser"`);
+    const rel = posix.relative(posix.dirname(f), "docs/assets/brand"), up = rel ? `${rel}/` : "";
+    expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up}purser-mark-dark.svg"><img src="${up}purser-mark.svg" alt="Purser"`);
     expect(head.match(/^# \S.*$/gm) ?? []).toHaveLength(1);
     expect(md.match(/^# /gm) ?? []).toHaveLength(1);
     expect(head).toMatch(/^\*\*[^*\n]+\*\*$/m);
@@ -117,7 +120,8 @@ describe("the Markdown pages in the README's house style", () => {
 
   for (const f of BADGED) it(`${f}: each Mermaid block names a diagram type GitHub draws, with balanced brackets and quotes`, () => {
     for (const m of read(f).matchAll(/^```mermaid\n([\s\S]*?)^```$/gm)) {
-      const lines = m[1]!.split("\n").filter((l) => l.trim());
+      // A leading "%%{init: …}%%" line sets the chart's colours; the diagram's type comes after it.
+      const lines = m[1]!.split("\n").filter((l) => l.trim() && !/^\s*%%/.test(l));
       expect({ f, first: lines[0]!.trim(), known: DIAGRAMS.test(lines[0]!.trim()) }).toEqual({ f, first: lines[0]!.trim(), known: true });
       for (const l of lines) {
         const plain = l.replace(/"[^"]*"/g, '""');
@@ -125,6 +129,30 @@ describe("the Markdown pages in the README's house style", () => {
         for (const [o, c] of [["[", "]"], ["(", ")"], ["{", "}"]] as const)
           expect({ f, l, [o]: plain.split(o).length - plain.split(c).length }).toEqual({ f, l, [o]: 0 });
       }
+    }
+  });
+
+  // A chart plots figures, so the line under it names the committed record they come from (26 Nov 2026, the owner:
+  // "graphs", real data only): "<sub>Record: [file](path) …</sub>", and the file exists.
+  for (const f of BADGED) it(`${f}: each Mermaid chart cites the record its figures come from`, () => {
+    const md = read(f);
+    for (const m of md.matchAll(/^```mermaid\n([\s\S]*?)^```$/gm)) {
+      if (!CHARTS.test(m[1]!.replace(/^\s*%%.*$/gm, "").trim())) continue;
+      const after = md.slice(m.index! + m[0].length).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+      const cite = /^<sub>Record: .*?\]\(([^)#\s]+)[^)]*\)/.exec(after);
+      expect({ f, chart: m[1]!.split("\n")[0], cite: after.slice(0, 60), cited: !!cite }).toEqual({ f, chart: m[1]!.split("\n")[0], cite: after.slice(0, 60), cited: true });
+      expect({ f, record: cite![1], there: exists(posix.join(posix.dirname(f), cite![1]!)) }).toEqual({ f, record: cite![1], there: true });
+    }
+  });
+
+  // GitHub shows an SVG as an image: it strips scripts, so an animation is CSS inside the file; each one small.
+  for (const f of BADGED) it(`${f}: every SVG it shows exists, is under 30 KB and has no script`, () => {
+    for (const t of targets(read(f)).filter((x) => /\.svg(#.*)?$/.test(x) && !/^[a-z][a-z0-9+.-]*:/i.test(x))) {
+      const p = posix.join(posix.dirname(f), decodeURIComponent(t.split("#")[0]!));
+      expect({ f, p, there: exists(p) }).toEqual({ f, p, there: true });
+      const svg = read(p);
+      expect({ p, small: statSync(`${ROOT}${p}`).size < 30 * 1024 }).toEqual({ p, small: true });
+      expect({ p, script: /<script|\son[a-z]+=|javascript:/i.test(svg) }).toEqual({ p, script: false });
     }
   });
 });

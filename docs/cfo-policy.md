@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # The CFO policy
+
+**The limits the agents work within, set by the CFO and changed only with the CFO's Face ID.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every policy change signed with the CFO's Face ID](https://img.shields.io/badge/every_change-signed_with_Face_ID-8b5cf6?style=flat-square&labelColor=1f2937)](#cfo-policy)&nbsp;[![Tightening: on the phone, applied at once](https://img.shields.io/badge/tighten-on_the_phone-10b981?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Loosening: a proposal from the runner, never the phone page](https://img.shields.io/badge/loosen-a_proposal%2C_never_the_phone-f59e0b?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Four eyes is off by default](https://img.shields.io/badge/four_eyes-off_by_default-6366f1?style=flat-square&labelColor=1f2937)](#four-eyes-two-people-above-a-threshold)&nbsp;[![Emergency stop: all agents, one Face ID](https://img.shields.io/badge/emergency_stop-all_agents_%C2%B7_one_Face_ID-f43f5e?style=flat-square&labelColor=1f2937)](#emergency-stop-and-changed-bank-details)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[CFO policy](#cfo-policy) · [Simulator](#what-would-have-happened-the-policy-simulator) · [Agents page](#the-agents-page) · [In plain words](#the-cfo-policy-in-plain-words) · [Two people](#four-eyes-two-people-above-a-threshold) · [Emergency stop](#emergency-stop-and-changed-bank-details)
+
+</div>
 
 Moved from the project README. Back to the [README](../README.md).
 
@@ -12,6 +24,32 @@ are issued without Face ID", `approval.task_card_eur`, 300.00 EUR to start; see 
 supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
 sweeps refuse before the pull, and an invoice to a blocked payee escalates. The mandates stay the hard outer wall;
 the policy can only be stricter.
+
+```mermaid
+flowchart LR
+  subgraph W["The hard outer wall"]
+    MD["The on-chain mandates<br/>Alta testnet"]
+    CARD["The card limits<br/>at Airwallex"]
+  end
+  subgraph P["The CFO policy · can only be stricter"]
+    CAP["A limit per payment<br/>for each agent"]
+    REF["Refunds above which<br/>a person approves"]
+    FL["EUR and USD<br/>reserve floors"]
+    PAY["Allowed payees"]
+    TC["Task cards up to 300.00 EUR<br/>without Face ID, to start"]
+  end
+  AG["An agent's payment"] --> P
+  P -- "within the policy" --> W
+  P -- "over a limit" --> X["Refused or escalated<br/>before anything is signed"]
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  class AG sourcing
+  class CAP,REF,FL,PAY,TC purser
+  class MD,CARD rails
+  class X stop
+```
 
 A change is a `policy_change` proposal that names the value it replaces. On the phone (`/policy` on the relay) the
 CFO writes the change, sees it on the same confirm screen and signs it with Face ID; the runner checks it against the
@@ -43,6 +81,20 @@ panel, all read from the same CFO policy the agents are held to (`src/agents/pro
   and its speed limit (payments a minute, amounts an hour);
 - what it does on its own, and what waits for the CFO's Face ID, with the policy's current numbers;
 - its settings, as the policy editor shows them.
+
+```mermaid
+flowchart LR
+  CH["A change to a setting"] --> T{"Tighter or looser?"}
+  T -- "tighter: a lower limit, stop an agent" --> PH["On the phone<br/>/policy?agent=id"] --> FID1["Face ID"] --> NOW["Applied at once"]
+  T -- "looser: a higher limit, start again" --> RUN["A proposal from the runner<br/>npm run policy -- set"] --> FID2["Face ID"] --> NOW
+  PH -. "the phone page never loosens" .-> RUN
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  class T,FID1,FID2 purser
+  class PH,NOW ok
+  class RUN wait
+```
 
 Changing a setting follows the policy's rules, unchanged: **tightening** (a lower limit, stopping the agent) is done
 on the phone, opened for that agent (`/policy?agent=<id>`, or `&stop=on` to stop it), signed with Face ID and applied
@@ -81,6 +133,18 @@ it is set, these proposals need the Face ID of **two different people**, each wi
 - an outside agent's card with a monthly limit above it;
 - a supplier's new bank details, at any amount.
 
+```mermaid
+stateDiagram-v2
+  [*] --> Waiting: a proposal above the threshold
+  Waiting --> OneOfTwo: the first person's Face ID
+  OneOfTwo --> OneOfTwo: the same person again, does not count
+  OneOfTwo --> Approved: a second, different person's Face ID
+  Waiting --> Stopped: one person rejects
+  OneOfTwo --> Stopped: one person rejects
+  Approved --> [*]
+  Stopped --> [*]
+```
+
 The rules:
 
 - The first approval is kept, and the proposal waits. The phone shows "1 of 2" and who has signed so far.
@@ -109,6 +173,8 @@ proposal and Face ID.
   - Pulling it tightens the policy, so the phone may do it. Lifting it loosens the policy, so it needs a proposal and
     Face ID.
   - While it is on, the dashboard shows a red band saying who pulled it, when and why.
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/emergency-stop-dark.svg"><img src="assets/anim/emergency-stop-light.svg" alt="Animated: the emergency stop. One Face ID sets freeze; every agent payment is refused and every agent card is set INACTIVE at Airwallex, so a charge declines CARD_INACTIVE. Tested against stand-ins; CARD_INACTIVE checked live on a single card; the full stop has not been pulled live end to end." width="100%"></picture>
+
 - **A supplier's new bank details** (`npm run payee`). Changed bank details are how invoice fraud works, so a new IBAN
   is paid only after three separate steps:
   1. a request, which changes nothing;

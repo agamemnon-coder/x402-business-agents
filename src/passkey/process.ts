@@ -44,6 +44,8 @@ const AssertionBody = z.object({
   decision: z.enum(["APPROVED", "REJECTED", "REMOVE_LINE"]).default("APPROVED"),
   /** REMOVE_LINE only: the line taken out of the batch (the passkey signs batchRemovalSha256(batch hash, line)). */
   line: z.string().regex(/^P-\d{4,}$/).optional(),
+  /** The approval page's automation-bias signal (26 Nov): whether "Details" was opened before signing. Not signed. */
+  rationale_viewed: z.boolean().optional(),
   credential: z.object({
     ...CREDENTIAL,
     response: z.object({
@@ -81,6 +83,17 @@ export interface AssertionOutcome {
 }
 
 const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
+
+/**
+ * Automation bias (EU AI Act Art. 14(4)(b), 26 Nov): with a passkey approval the approval page reports whether the
+ * person opened "Details" (the agent's reasons, the review, the exact terms) before signing (src/approve/client.ts
+ * watchRationale). Once the signature is verified, and in the same transaction as the decision, the runner records it
+ * as one of these two rows just before `proposal.approved` (or `proposal.cosigned`). It is what the page said, not
+ * signed and not checked: a signal for the compliance evidence (PC-26), never a condition. A submission that does not
+ * say (an older page, a rejection) records neither.
+ */
+export const RATIONALE_VIEWED = "approval.rationale_viewed";
+export const RATIONALE_NOT_VIEWED = "approval.rationale_not_viewed";
 
 /** A passkey approval: verified against the proposal's own hash, then decide() with method passkey. */
 export async function processAssertion(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
@@ -170,6 +183,10 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
           { terms_sha256: p.terms_sha256, approver, method: "passkey", expires_at: p.expires_at, passkey: { credential_id: pk.credential_id, assertion_sha256: sha } }, now);
         result = "EXPIRED";
       } else {
+        if (body.rationale_viewed !== undefined) {
+          audit(db, "human", body.rationale_viewed ? RATIONALE_VIEWED : RATIONALE_NOT_VIEWED, p.proposal_id,
+            { terms_sha256: p.terms_sha256, credential: pk.credential_id.slice(0, 8), reported_by: "the approval page, not signed" }, now);
+        }
         const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: signedHash, passkey }, now);
         result = r === "APPROVED" ? "APPROVED" : r === "PENDING_APPROVAL" ? "COSIGNED" : "EXPIRED";
       }

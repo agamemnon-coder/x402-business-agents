@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # The engine's events, for the page (lane B)
+
+**The events the engine writes for the hands-on demo's page, how to read them, and the rules for the words shown.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The source of truth: src/engine/events.ts; the code wins](https://img.shields.io/badge/source_of_truth-src%2Fengine%2Fevents.ts-8b5cf6?style=flat-square&labelColor=1f2937)](../src/engine/events.ts)&nbsp;[![Polling: at most 2 reads a second per company](https://img.shields.io/badge/polling-at_most_2_reads_a_second-0ea5e9?style=flat-square&labelColor=1f2937)](#how-to-read-them)&nbsp;[![Every text field masked: IBANs and long digit runs show the last four; keys removed](https://img.shields.io/badge/text_fields-masked-10b981?style=flat-square&labelColor=1f2937)](#how-to-read-them)&nbsp;[![Money moves on the engine's simulated bank: test money](https://img.shields.io/badge/money-simulated_bank_%C2%B7_test_money-f59e0b?style=flat-square&labelColor=1f2937)](#rules-for-the-words-on-the-page)
+
+[How to read them](#how-to-read-them) · [The agents' events](#the-agents-events) · [The payables chain](#the-payables-chains-events-already-written-today) · [Rules for the words](#rules-for-the-words-on-the-page)
+
+</div>
 
 Written for the hands-on demo's page on 12 November 2026. The source of truth is `src/engine/events.ts` (the allowlist) and its tests
 `test/engine-events.test.ts`; if this note and the code differ, the code wins and this note is fixed.
@@ -10,6 +22,21 @@ with `after=next`. An item is:
 
 ```ts
 interface EngineEvent { seq: number; ts: string; actor: string; event: string; subject: string | null; fields: Record<string, string | number | boolean | null> }
+```
+
+```mermaid
+sequenceDiagram
+  participant Pg as The page
+  participant E as GET /v1/engine/events
+  loop every 1,000 ms while a request is in flight
+    Pg->>E: after=seq, limit 1 to 200
+    alt within 2 reads a second
+      E-->>Pg: items, next
+    else past it
+      E-->>Pg: 429 slow_down, retry_ms
+      Note over Pg: wait retry_ms, ask again
+    end
+  end
 ```
 
 - `actor` is who wrote the row: an agent (`checker`, `payer`), the reader, code, or the approver.

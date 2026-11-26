@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="226" viewBox="0 0 760 226" role="img" aria-label="The books as a hash chain: entries 3, 4, 5, 6 of the /try payment, each hash over the previous one; change one entry and every hash after it breaks. Test money only.">
+<title>The books as a hash chain: entries 3, 4, 5, 6 of the /try payment, each hash over the previous one; change one entry and every hash after it breaks. Test money only.</title>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.bg{fill:#ffffff}.card{fill:#f6f8fa;stroke:#d1d9e0}.ink{fill:#1f2328}.muted{fill:#59636e}.line{stroke:#d1d9e0;fill:none}.rose{fill:#be123c}
+.t{font-size:15px;font-weight:600}.l{font-size:13px;font-weight:600}.s{font-size:11.5px}.m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.e{animation:e 9s ease-out infinite}
+@keyframes e{0%{opacity:0;transform:translateY(8px)}8%,100%{opacity:1;transform:translateY(0)}}
+.x{opacity:0;animation:x 9s linear infinite}
+@keyframes x{0%,62%{opacity:0}68%,94%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<rect class="bg" width="760" height="226" rx="10"/>
+<text class="ink t" x="18" y="30">The books as a hash chain</text>
+<path class="line" d="M182 122h20" stroke-width="2"/>
+<path class="line" d="M366 122h20" stroke-width="2"/>
+<path class="line" d="M550 122h20" stroke-width="2"/>
+<g class="e" style="animation-delay:0.0s"><rect class="card" x="18" y="50" width="164" height="86" rx="9" stroke-width="1.5"/>
+<rect x="18" y="50" width="164" height="6" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="30" y="76">Entry 3</text>
+<text class="muted s" x="30" y="93">Convert USD to EUR</text>
+<text class="muted m" x="30" y="111">prev a22ddea3…50ea</text>
+<text class="ink m" x="30" y="127">hash 2909eb74…9606</text></g>
+<g class="e" style="animation-delay:1.2s"><rect class="card" x="202" y="50" width="164" height="86" rx="9" stroke-width="1.5"/>
+<rect x="202" y="50" width="164" height="6" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="214" y="76">Entry 4</text>
+<text class="muted s" x="214" y="93">Convert USD to EUR</text>
+<text class="muted m" x="214" y="111">prev 2909eb74…9606</text>
+<text class="ink m" x="214" y="127">hash 658fddcb…b0b9</text></g>
+<g class="e" style="animation-delay:2.4s"><rect class="card" x="386" y="50" width="164" height="86" rx="9" stroke-width="1.5"/>
+<rect x="386" y="50" width="164" height="6" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="398" y="76">Entry 5</text>
+<text class="muted s" x="398" y="93">Invoice BTX-2026-21 · B…</text>
+<text class="muted m" x="398" y="111">prev 658fddcb…b0b9</text>
+<text class="ink m" x="398" y="127">hash 43900a20…188c</text></g>
+<g class="e" style="animation-delay:3.6s"><rect class="card" x="570" y="50" width="164" height="86" rx="9" stroke-width="1.5"/>
+<rect x="570" y="50" width="164" height="6" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="582" y="76">Entry 6</text>
+<text class="muted s" x="582" y="93">Transfer fee, invoice B…</text>
+<text class="muted m" x="582" y="111">prev 43900a20…188c</text>
+<text class="ink m" x="582" y="127">hash 887b72c4…ea80</text></g>
+<g class="x"><rect x="202" y="50" width="164" height="86" rx="9" fill="none" stroke="#f43f5e" stroke-width="2.5"/><text x="284" y="156" text-anchor="middle" class="l rose">edited</text>
+<rect x="386" y="50" width="164" height="86" rx="9" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-dasharray="5 4"/><text x="468" y="156" text-anchor="middle" class="s rose">hash no longer matches</text>
+<rect x="570" y="50" width="164" height="86" rx="9" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-dasharray="5 4"/><text x="652" y="156" text-anchor="middle" class="s rose">hash no longer matches</text><text class="l rose" x="18" y="184">Change one entry and every hash after it breaks.</text></g>
+<text class="muted s" x="18" y="212">The /try payment's ledger entries, 15 Nov 2026 (docs/proof/try-paid.json); each hash covers the previous one. Test money only.</text>
+</svg>

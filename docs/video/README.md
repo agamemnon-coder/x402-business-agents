@@ -1,8 +1,16 @@
-<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # The premiere: edit guide
 
-How Purser's premiere films (v5 to v10) are made: scenes, clips, voice-over, music and where each figure comes from.
+**How Purser's premiere films (v5 to v10) are made: scenes, clips, voice-over, music and where each figure comes from.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![YouTube: Purser, under the hood (3:29)](https://img.shields.io/badge/film-Purser%2C_under_the_hood_%C2%B7_3%3A29-ff0000?style=flat-square&labelColor=1f2937&logo=youtube&logoColor=white)](https://youtu.be/PNLuqhRzVfE)&nbsp;[![Trailer: 1:30](https://img.shields.io/badge/trailer-1%3A30-ff0000?style=flat-square&labelColor=1f2937)](https://youtu.be/n3HLVGROJc4)&nbsp;[![Film v10: 4:58, 13 November](https://img.shields.io/badge/film_v10-4%3A58_%C2%B7_13_Nov-8b5cf6?style=flat-square&labelColor=1f2937)](#film-v10-13-nov-enterprise-hand-in)&nbsp;[![Every on-screen figure read from its run's record by code](https://img.shields.io/badge/figures_on_screen-read_from_records_by_code-10b981?style=flat-square&labelColor=1f2937)](../runs/2026-11-03-main-run.md)&nbsp;[![Voice-over and music: AI-generated (ElevenLabs)](https://img.shields.io/badge/voice_and_music-AI--generated_%28ElevenLabs%29-6366f1?style=flat-square&labelColor=1f2937)](#music)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Film v10](#film-v10-13-nov-enterprise-hand-in) · [Film v8](#film-v8-7-november-night-358-every-scene-long-enough-to-read) · [Film v7](#film-v7-7-november-evening-slower-to-read-the-second-airi-run-new-music) · [Since v5](#what-changed-since-v5) · [The files](#the-files) · [Clips](#which-clip-goes-where) · [Music](#music) · [Cutting it](#cutting-it) · [Before you upload](#before-you-upload)
+
+</div>
 
 | At a glance | Record |
 |---|---|
@@ -26,6 +34,15 @@ Studio, written from the same times. The script with every picture, line and sou
 
 Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
 [premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
+
+```mermaid
+timeline
+  title The premiere films, as this page lists them
+  5 Nov 2026 : Film v5, 2 min 42 s : the main run only, kept as it was
+  7 Nov 2026, evening : Film v7, 2 min 59 s : slower to read, the second Airi run, new music
+  7 Nov 2026, night : Film v8, 3 min 58 s : every scene long enough to read
+  13 Nov 2026 : Film v10, 4 min 58 s : the enterprise hand-in
+```
 
 ## Film v10 (13 Nov): enterprise hand-in
 
