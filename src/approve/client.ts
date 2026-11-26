@@ -222,6 +222,8 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   }
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  // Segregation of duties for the policy itself (src/policy/policySod.ts): off, or a higher amount, loosens.
+  if (c.key === "approval.policy_sod_eur") return from !== null && (to === null || to > from);
   // A second key for high-risk payments (src/policy/secondKey.ts): off, or a higher amount, loosens.
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
@@ -425,7 +427,9 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient: "nobody: no money moves",
       rows: [...changes.map((c) => [str(c.label), `${shown(c.from)} → ${shown(c.to)}`] as [string, string]), ["Reason", str(t.reason)]],
       short: "this policy change",
-      warnings: changes.filter((c) => policyLoosens({ key: str(c.key), from: str(c.from), to: str(c.to) })).map((c) => `This loosens ${str(c.label)}`),
+      // Switching segregation of duties off is said in so many words, not as one more setting that loosens.
+      warnings: changes.filter((c) => policyLoosens({ key: str(c.key), from: str(c.from), to: str(c.to) })).map((c) => (str(c.key) === "approval.policy_sod_eur" && str(c.to) === ""
+        ? "Turns off segregation of duties: one person alone could then loosen the CFO policy" : `This loosens ${str(c.label)}`)),
       amountLabel: "New value",
       label: "Policy change",
       big: one ? shown(one.to) : String(changes.length),
