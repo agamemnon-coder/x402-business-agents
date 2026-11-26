@@ -1,8 +1,18 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # How it works in 5 files
 
-Moved from the [README](../README.md) on 15 November, to keep it short.
+**The code in 5 files, one payment end to end, and the worst case the policy allows.**
 
-<details><summary><b>The code in 5 files, one payment end to end, and the worst case the policy allows</b></summary>
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper%20matrix-894%2F894%20refused-16a34a?style=flat-square&labelColor=1f2937)](evidence/tamper-matrix.md)&nbsp;[![Dafny: from badges/dafny.json](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square&labelColor=1f2937)](evidence/formal-proofs.md)&nbsp;[![Approval: passkey over SHA-256 of the terms](https://img.shields.io/badge/approval-passkey_over_SHA--256_of_the_terms-7c3aed?style=flat-square&labelColor=1f2937)](#the-code-in-5-files)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[One payment, end to end](#one-payment-beyond-the-limit-end-to-end) · [The worst case](#the-worst-case-the-policy-allows) · [The code in 5 files](#the-code-in-5-files) · [Architecture](architecture.md) · [Security](security.md)
+
+</div>
+
+Moved from the [README](../README.md) on 15 November, to keep it short.
 
 Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the
 kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Alta (formerly Metal) on-chain mandate. Alta holds
@@ -13,7 +23,7 @@ beyond them, with a passkey (Face ID on iPhone) on the exact terms.
 
 ![Agent, then policy. Within the limits the agent pays under its own mandate or card limit; beyond them the CFO's passkey signs the SHA-256 of the exact terms, the executor re-checks the hash, then Airwallex or Alta. Every step goes into the hash-chained audit log.](assets/how-it-works.svg)
 
-<details><summary>One payment beyond the limit, end to end</summary>
+### One payment beyond the limit, end to end
 
 ```mermaid
 sequenceDiagram
@@ -35,9 +45,9 @@ sequenceDiagram
   Ex->>Bk: book it, append to the hash-chained log
 ```
 
-</details>
-
 Within the limits an agent pays on its own; beyond them, nothing runs without the CFO's passkey.
+
+### The worst case the policy allows
 
 <!-- worst-case -->
 **Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month.**
@@ -58,10 +68,13 @@ Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for t
 </details>
 <!-- /worst-case -->
 
+### The code in 5 files
+
+> [!TIP]
+> Each name below links to the line that defines it; a test fails if that line moves.
+
 1. **The policy.** [`reserveSpend`](../src/policy/holds.ts#L65) runs before an agent's payment is signed or charged: its identity, the CFO's stops and caps, the mandate's cap and budget, the shared 20.00 total and velocity. A refusal means nothing is signed.
 2. **The terms hash and the passkey.** [`termsHash`](../src/lib/terms.ts#L43) is the SHA-256 of a proposal's exact terms as canonical JSON; [`verifyApprovalSignature`](../src/passkey/webauthn.ts#L46) accepts a passkey's signature only if it signed that hash, with user verification (Face ID) on.
 3. **The executors' hash check.** Every executor in [src/executors/](../src/executors/) starts with [`beginExecution`](../src/policy/approvals.ts#L361), which re-hashes the stored terms and runs nothing unless they match the approved hash, before the expiry, and (since 20 November) re-verifies the stored passkey signatures behind the approval over those exact terms.
 4. **The Alta mandate layer.** [`payUnderMandate`](../src/metal/pay.ts#L34) signs an x402 payment with the agent's own mandate key only after the caller's guard passes it (Sourcing's is `reserveSpend`); on chain, Alta refuses what is over the mandate.
 5. **The audit chain.** [`audit`](../src/audit/log.ts#L38) appends each event with `row_hash = SHA-256(prev_hash ‖ JCS(row))`; the database refuses UPDATE and DELETE, and `npm run verify` re-checks the chain.
-
-</details>

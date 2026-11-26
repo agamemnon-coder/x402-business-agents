@@ -27,8 +27,9 @@ export function movedBody(file: string): string {
   return rootLinks(t.slice(i + MOVED.length).replace(/\n+$/, ""));
 }
 
-/** A moved file's title, as the README's heading had it: "# Gallery" → "## Gallery". */
-const title = (file: string) => `#${read(file).split("\n")[0]!}`;
+/** A moved file's title, as the README's heading had it: "# Gallery" → "## Gallery" (its first "# " line: since 26 Nov a
+ *  file may open with the README's centred header, test/docs-look.test.ts). */
+const title = (file: string) => `#${read(file).split("\n").find((l) => l.startsWith("# "))!}`;
 
 /** The README with every moved section's body in place of its one-line link (or of its row in the "More" table, with its heading). */
 export function readmeFull(readme = read("README.md")): string {

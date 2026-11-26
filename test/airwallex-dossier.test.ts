@@ -293,7 +293,10 @@ describe("a calm document", () => {
   // runs of record" (5,390 as built).
   // +262 on 19 Nov: "Paid invoices as bills in Airwallex Spend" (AIRWALLEX_BILLS, off by default), its row in "The runs
   // of record" and the Spend and Files rows in the key's permissions (5,652 as built).
+  // +139 on 26 Nov (Max: every Markdown file like the README): the house-style header (the bold line, the badges, the
+  // jump row) and the main run's payment as a sequence diagram, drawn from "The hash the CFO signed"; no claim added
+  // (5,790 as built).
   it("is no longer than it was before the three sections came in", () => {
-    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80 + 110 + 262);
+    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80 + 110 + 262 + 139);
   });
 });

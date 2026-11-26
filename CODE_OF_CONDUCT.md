@@ -1,5 +1,16 @@
+<div align="center">
+
+<a href="README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Contributor Covenant Code of Conduct
+
+**How everyone who takes part in Purser is expected to behave, and how a report is handled.**
+
+[![Contributor Covenant: 2.1](https://img.shields.io/badge/Contributor_Covenant-2.1-4baaaa?style=flat-square&labelColor=1f2937)](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html)&nbsp;[![Report: via GitHub issues](https://img.shields.io/badge/report-via_GitHub_issues-475569?style=flat-square&labelColor=1f2937)](#enforcement)&nbsp;[![Contributing](https://img.shields.io/badge/contributing-CONTRIBUTING.md-2563eb?style=flat-square&labelColor=1f2937)](CONTRIBUTING.md)
+
+[Our Pledge](#our-pledge) · [Our Standards](#our-standards) · [Scope](#scope) · [Enforcement](#enforcement) · [Guidelines](#enforcement-guidelines) · [Attribution](#attribution)
+
+</div>
 
 ## Our Pledge
 
@@ -44,6 +55,11 @@ All community leaders are obligated to respect the privacy and security of the r
 ## Enforcement Guidelines
 
 Community leaders will follow these Community Impact Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
+
+```mermaid
+flowchart LR
+  C1["1 · Correction"] --> C2["2 · Warning"] --> C3["3 · Temporary Ban"] --> C4["4 · Permanent Ban"]
+```
 
 ### 1. Correction
 

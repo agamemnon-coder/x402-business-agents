@@ -183,9 +183,10 @@ describe("the README's own words elsewhere: the package, the business pages, the
     const firstList = /^(?:\d+\. [^\n]*\n)+/m.exec(index)![0];
     // Nothing but the title and one line of introduction comes before the list; since 17 Nov (owner) also the header
     // every judge-facing README shares (the mark, one sentence, At a glance, one picture) and the list's own heading
-    // (test/readme-headers.test.ts).
+    // (test/readme-headers.test.ts); since 26 Nov (owner: every Markdown file like the README) a row of badges under At a
+    // glance (test/docs-look.test.ts).
     const before = index.slice(0, index.indexOf(firstList)).trim().split("\n").filter(Boolean)
-      .filter((l) => !l.startsWith("<a href=\"../README.md\"><picture>") && !l.startsWith("|") && !l.startsWith("<picture>") && l !== "## Start here");
+      .filter((l) => !l.startsWith("<a href=\"../README.md\"><picture>") && !l.startsWith("|") && !l.startsWith("<picture>") && !l.startsWith("[![") && l !== "## Start here");
     expect(before).toHaveLength(3);
     expect(before[2]).toBe("Read these five first, in this order:");
     const links = [...firstList.matchAll(/^\d+\. \[[^\]]+\]\(([^)]+)\): \S/gm)].map((m) => m[1]!);
