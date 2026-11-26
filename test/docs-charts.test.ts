@@ -197,6 +197,19 @@ describe("the docs' charts plot their records", () => {
     for (const s of ["Secret", "Restricted", "Internal"]) expect(md).toContain(`/badge/${s}-${n(s)}_tables-`);
   });
 
+  it("docs/security/asvs-l2.md: the chapters chart and badges are the summary table's", () => {
+    const md = read("docs/security/asvs-l2.md");
+    const rows = md.split("\n").filter((l) => /^\| V\d+ /.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
+    const pass = rows.map((r) => Number(r[1])), fail = rows.map((r) => Number(r[2])), na = rows.map((r) => Number(r[3]));
+    const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+    expect(md).toContain(`| **Total** | **${sum(pass)}** | **${sum(fail)}** | **${sum(na)}** |`);
+    expect(md).toContain(`  x-axis [${rows.map((r) => `"${r[0]!.split(" ")[0]}"`).join(", ")}]\n`);
+    expect(md).toContain(`  bar [${pass.join(", ")}]\n  bar [${fail.join(", ")}]\n`);
+    expect(md).toContain(`${sum(pass)} pass and ${sum(fail)} fail in all.`);
+    expect(md).toContain(`/badge/ASVS_4.0.3_Level_2-${sum(pass)}_pass_of_${sum(pass) + sum(fail)}_that_apply-`);
+    expect(md).toContain(`/badge/fail-${sum(fail)}_%C2%B7_with_the_plan-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));

@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # OWASP ASVS 4.0.3, Level 2: a self-assessment of Purser
+
+**Every ASVS 4.0.3 Level 2 requirement checked against Purser's code: pass, fail with the plan, or not applicable.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![ASVS 4.0.3 Level 2: 190 of the 212 requirements that apply pass](https://img.shields.io/badge/ASVS_4.0.3_Level_2-190_pass_of_212_that_apply-10b981?style=flat-square&labelColor=1f2937)](#summary)&nbsp;[![22 fail, each with the plan](https://img.shields.io/badge/fail-22_%C2%B7_with_the_plan-f43f5e?style=flat-square&labelColor=1f2937)](#the-failures-and-the-plan)&nbsp;[![A self-assessment, not a certification and not an audit](https://img.shields.io/badge/assessment-self_%C2%B7_not_a_certification-f59e0b?style=flat-square&labelColor=1f2937)](#owasp-asvs-403-level-2-a-self-assessment-of-purser)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Summary](#summary) · [The failures and the plan](#the-failures-and-the-plan) · [V1](#v1-architecture-design-and-threat-modelling) · [V2](#v2-authentication) · [V4](#v4-access-control) · [V6](#v6-stored-cryptography) · [V9](#v9-communication) · [V14](#v14-configuration) · [How this was made](#how-this-was-made)
+
+</div>
 
 **A self-assessment, not a certification and not an audit.** Nobody independent has verified Purser against the ASVS. It was written on 19 November 2026 by Claude (an AI model) for the maintainer, by reading this repository's code, configuration, tests and records at commit `b8fdfa1b6114` (branch `data-asvs`), with no penetration test, no TLS scan and no test against the deployed sites made for it. Updated the same day, by Claude again, on branch `asvs-fix` after the first fixes: each row that changed to Pass names where it is enforced and the test that holds it; the code is not deployed by this update. Updated again on 20 November 2026, by Claude, on branch `asvs2`: twelve more rows changed to Pass in two rounds, each with the code and the test that fails without it (listed under "Fixed since"); not deployed either. Each verdict cites where it can be checked. It is strict: where a requirement is met only in part, or only by the platform without a check recorded here, it is a **Fail**, with a fix plan. Purser moves test money only (the Airwallex sandbox, Alta testnet).
 
@@ -27,6 +39,18 @@ Scope: the two deployed Cloudflare Workers (the site, `kit11`, in `worker/`, and
 | **Total** | **190** | **22** | **47** | **259** |
 
 Of the 212 requirements that apply, 190 pass and 22 fail (163 and 49 at the first assessment; the 27 closed since are listed under "Fixed since"). Most N/A are authentication mechanisms Purser does not have (passwords, one-time passwords, out-of-band codes, lookup secrets), plus GraphQL, SOAP and LDAP.
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#10b981, #f43f5e"}}}}%%
+xychart-beta
+  title "Level 2 requirements per chapter: pass (emerald), fail (rose, in front)"
+  x-axis ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14"]
+  y-axis "Requirements" 0 --> 32
+  bar [32, 15, 17, 8, 27, 7, 12, 13, 4, 4, 7, 14, 9, 21]
+  bar [4, 3, 0, 1, 0, 5, 0, 2, 3, 0, 1, 1, 1, 1]
+```
+
+<sub>Record: [the summary table above](asvs-l2.md#summary), read by `test/docs-charts.test.ts`: per chapter V1 to V14, its Pass and Fail columns; 190 pass and 22 fail in all.</sub>
 
 ## The failures and the plan
 
