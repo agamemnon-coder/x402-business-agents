@@ -130,6 +130,7 @@ the longer list.
 
 - [cloud.md](cloud.md): Purser Cloud, its API and what the hosted test cloud is.
 - [payables.md](payables.md): the invoice inbox. [ledger.md](ledger.md): Purser's own books. [reconcile-books.md](reconcile-books.md): Purser's books next to the outside books.
+- [receivables.md](receivables.md): money in: customer invoices with an Airwallex payment link, matching with tolerance, aged debtors and reminder drafts. [treasury.md](treasury.md): the Treasury advisor: a 13-week cash forecast and FX advice, a conversion only after the passkey.
 - [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md): the document vault and the ERP connectors.
 - [real-customers.md](real-customers.md): each company's own money account and books; behind flags that are off by default.
 - [tokenize.md](tokenize.md): invoice tokens on Alta, a prototype; its run of 12 November is [runs/2026-11-12-tokenize.md](runs/2026-11-12-tokenize.md), its record template [tokenize-run-template.md](tokenize-run-template.md).

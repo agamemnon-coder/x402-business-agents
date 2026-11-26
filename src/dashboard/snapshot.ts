@@ -332,6 +332,7 @@ const KIND_TITLES: Record<string, string> = {
   task_card: "Task card",
   quarantine_release: "Held payment",
   dev_test: "Dev test (moves no money)",
+  fx_conversion: "FX conversion (Treasury advisor)",
 };
 export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
 
@@ -359,6 +360,7 @@ export function summarize(kind: string, termsJson: string): string {
     const fx = c ? `; first convert USD ${str(c.sell_amount)} to EUR ${str(c.buy_amount)} at ${str(c.client_rate)}` : "; paid from free EUR";
     return `Pay ${str(t.vendor)} EUR ${str(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"} to IBAN …${str(t.iban_last4)}${fx}; ${fee}`;
   }
+  if (kind === "fx_conversion") return `Convert at most ${str(t.sell_currency)} ${str(t.sell_max)} to ${str(t.buy_currency)} ${str(t.buy_amount)} (indicative rate ${str(t.indicative_rate)}): ${str(t.reason)}`;
   if (kind === "dev_test") return `${str(t.label)}: ${str(t.purpose)}`;
   if (kind === "payee_change") {
     const v = (t.verification ?? {}) as P;

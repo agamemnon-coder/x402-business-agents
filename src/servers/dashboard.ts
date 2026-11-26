@@ -19,6 +19,7 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
+import { treasuryView } from "../treasury/view.js";
 import { systemHealth, systemHealthPage, SYSTEM_HEALTH_CSP } from "../dashboard/health.js";
 import { agentTraces } from "../dashboard/trace.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
@@ -586,6 +587,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/api/snapshot", (_req, res) => {
     res.json(buildSnapshot(db, opts.now?.() ?? new Date()));
+  });
+  // The money loop (src/treasury/view.ts): the 13-week forecast, FX exposure and the receivables; read-only.
+  app.get("/api/treasury", (_req, res) => {
+    res.set("cache-control", "no-store").json(treasuryView(db, opts.now?.() ?? new Date()));
   });
 
   // Monitoring (B7): the alarms and numbers, as JSON (503 while an alarm stands) and as Prometheus metrics.
