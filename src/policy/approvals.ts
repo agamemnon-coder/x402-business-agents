@@ -26,6 +26,7 @@ import { aloneGate } from "./aloneGate.js";
 import { ANOMALY_HELD, anomalyReasons } from "./anomaly.js";
 import { ALONE_KINDS, approvalSignatureRefusal, POLICY_METHOD, WITHIN_LIMIT } from "./signedApproval.js";
 import { blockedApprovals, recordBlocked } from "./blocked.js";
+import { personName, samePerson } from "../lib/personName.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -202,7 +203,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     const highRisk = args.decision === "APPROVED" ? secondKeyReasons(db, p, now) : [];
     if (highRisk.length) {
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} is high-risk (${highRisk.join("; ")}): it needs your Face ID and your security key`);
-      const person = args.approver.split(" (")[0]!;
+      const person = personName(args.approver);
       const both = recordFactor(db, { proposalId: p.proposal_id, termsSha256: p.terms_sha256, person, credentialId: passkey.credential_id, factor, assertionSha256: passkey.assertion_sha256 }, now);
       if (!both) {
         audit(db, "human", "proposal.factor_signed", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, person, factor, high_risk: highRisk, of: "1 of 2 keys", passkey }, now);
@@ -218,21 +219,23 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     const sodWhy = sod.length ? { threshold_eur: sodThreshold(db), loosens: sod.map((c) => ({ key: c.key, from: c.from, to: c.to, why: c.why })) } : null;
     const rule = sodWhy ? "segregation of duties: this loosens the CFO policy above the threshold" : "four eyes";
     if (args.decision === "APPROVED" && p.kind === "policy_change") {
-      const person = approver.split(" (")[0]!;
+      // One reading of a name on both sides (src/lib/personName.ts; red team round 2, finding B: "Carla CFO " signed
+      // the loosening "Carla CFO" proposed).
+      const person = personName(approver);
       const proposer = proposerOf(p);
       // Above the threshold the proposer must be known: a person's change with nobody named (filed before the threshold
       // was set, or by hand) could be approved by whoever proposed it.
       if (sodWhy && proposer === "human") throw new Error(`${p.proposal_id} has no proven proposer, so nobody can tell its proposer from its approver (segregation of duties: this loosens the CFO policy above the threshold); propose it again naming who proposes it (--by <person>, or signed in to Purser Cloud)`);
-      if (person === proposer) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
+      if (samePerson(person, proposer)) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
     }
     if (args.decision === "APPROVED" && fourEyes(db, p, undefined, now)) {
       // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
       // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (${rule})`);
-      const person = approver.split(" (")[0]!;
-      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (${rule})`);
+      const person = personName(approver);
+      if (samePerson(person, p.created_by)) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (${rule})`);
       const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
-      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey${sodWhy ? ` (${rule})` : ""}`);
+      if (signed.some((x) => samePerson(x.person, person))) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey${sodWhy ? ` (${rule})` : ""}`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
       if (signed.length === 0) {

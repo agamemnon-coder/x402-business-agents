@@ -58,9 +58,9 @@ export interface EngineApi {
    * The CFO's rule for high-risk payments as a policy change to approve with Face ID (its keys only). `by`: the signed-in
    * person who asks, as their passkey is labelled, signed into the terms as the proposer, who then never approves it.
    */
-  proposeSecondKey(changes: { key: string; to: string }[], by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
+  proposeSecondKey(changes: { key: string; to: string }[], by?: string, byId?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   /** The CFO's emergency stop, pulled (true) or lifted (false), as a policy change that changes nothing until the CFO approves it with the passkey; `by` as for proposeSecondKey. */
-  emergencyStop(on: boolean, by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
+  emergencyStop(on: boolean, by?: string, byId?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
   /** A key in its cooling-off is refused: code cooling_off, with cooling_until. */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true; code?: "cooling_off"; cooling_until?: string }>;
