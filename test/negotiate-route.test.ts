@@ -244,6 +244,32 @@ describe("the negotiation on the visitor's own invoice, in /try", () => {
   });
 });
 
+// Red team (runner, 27 Nov, finding 2): on the page's seeded scene (no invoice named), each negotiation filed its own
+// agreed invoice, "<original>-<sha8>", so a second negotiation of the same bill left two payable invoices for it. One bill
+// is paid once: a second agreed invoice for a bill that already has one is withdrawn, and the first stays the payable one.
+describe("one bill, one agreed invoice (runner finding 2)", () => {
+  it("a second negotiation of the seeded scene's bill files nothing payable", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const n1 = (await c.req("POST", "/v1/try/negotiate", { key: s })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    const first = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n1), agreement_sha256: n1.sha256, turns: n1.turns.length, compose: n1.compose } });
+    expect(first.status, JSON.stringify(first.json)).toBe(200);
+    // Another deal on the same bill (3% within 5 days): another hash, another amount, so no copy of the first by its total.
+    script = [LIVE[0]!, { ...LIVE[0]!, message: "Agreed.", accept: true }];
+    asked.length = 0;
+    const n2 = (await c.req("POST", "/v1/try/negotiate", { key: s })).json as { sha256: string; turns: unknown[]; compose: Record<string, string>; outcome: string };
+    expect(n2.outcome).toBe("agreed");
+    expect(n2.compose.invoice_no).not.toBe(n1.compose.invoice_no);
+    expect(n2.compose.amount).not.toBe(n1.compose.amount);
+    const second = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n2), agreement_sha256: n2.sha256, turns: n2.turns.length, compose: n2.compose } });
+    expect(second.status, JSON.stringify(second.json)).toBe(409);
+    expect(second.json.code).toBe("not_recorded");
+    const list = (await c.req("GET", "/v1/engine/invoices", { key: s })).json as { items?: { invoice_no: string; payable?: boolean; status: string }[]; invoices?: { invoice_no: string; payable?: boolean; status: string }[] };
+    const mine = (list.items ?? list.invoices ?? []).filter((x) => x.invoice_no.startsWith("BTX-2026-25-"));
+    expect(mine.filter((x) => x.status !== "rejected").map((x) => x.invoice_no)).toEqual([n1.compose.invoice_no]);
+  });
+});
+
 // Security review (16 Nov): /agreed took the agreement's hash, the turns and the amount from the client, so a visitor
 // could file an "agreed" invoice for a negotiation that never took place. Only what /v1/try/negotiate answered files now.
 describe("only a negotiation that took place files", () => {

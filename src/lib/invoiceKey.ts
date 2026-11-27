@@ -1,4 +1,5 @@
 import { CONFUSABLES, skeleton } from "../policy/fraudCore.js";
+import type { DB } from "../db/open.js";
 
 /** Any dash, with the spaces around it: one "-" in an invoice number as compared. */
 const DASH = /\s*[‐-―−﹘﹣－-]\s*/g;
@@ -103,4 +104,29 @@ export function sameLedgerInvoice(a: string, aParty: LedgerParty, b: string, bPa
   if (!xv || !yv) return true;
   if (skeleton(xv) === skeleton(yv)) return true;
   return !!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256;
+}
+
+/**
+ * The bill a payment-ledger number pays when it is a negotiation's agreed invoice (src/negotiate/rails.ts agreedInvoiceNo:
+ * "<original>-<sha8>"): the original number its signed terms name, negotiation.original_invoice_no; else null. 27 Nov
+ * (red team, runner finding 2): the bill as issued and its agreed invoice are one bill, paid once.
+ */
+export function negotiatedOriginal(db: Pick<DB, "prepare">, invoiceNo: string): string | null {
+  const r = db.prepare(`SELECT json_extract(terms_json, '$.negotiation.original_invoice_no') AS o FROM proposals
+    WHERE kind IN ('invoice_payment', 'supplier_payment') AND json_extract(terms_json, '$.invoice_no') = ?
+      AND json_extract(terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1`).get(invoiceNo) as { o?: unknown } | undefined;
+  return typeof r?.o === "string" && r.o ? r.o : null;
+}
+
+/** One entry of the payment ledger as the duplicate guards compare it: its number, who it is from, and its bill's original number when it is an agreed invoice. */
+export interface LedgerBill { no: string; party: LedgerParty; original: string | null }
+
+/**
+ * Whether two ledger entries pay the same bill: the same invoice (sameLedgerInvoice), or one is a negotiation's agreed
+ * invoice of the other, or both are agreed invoices of one original (27 Nov, red team, runner finding 2).
+ */
+export function sameBill(a: LedgerBill, b: LedgerBill): boolean {
+  const xs = a.original ? [a.no, a.original] : [a.no];
+  const ys = b.original ? [b.no, b.original] : [b.no];
+  return xs.some((x) => ys.some((y) => sameLedgerInvoice(x, a.party, y, b.party)));
 }

@@ -24,8 +24,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex } from "../lib/terms.js";
-import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
-import { sameLedgerInvoice } from "../lib/invoiceKey.js";
+import { otherPayoutForBill, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { hashFirst, signedHashRefusal } from "../policy/hashFirst.js";
 import { batchLinesOf, BATCH_KIND, type BatchTerms } from "../policy/batchLines.js";
@@ -246,8 +245,7 @@ export async function executeAsOneAirwallexBatch(db: DB, rails: { batches: Batch
         if (submitted) return line;
         const why = lineRefusalNow(db, line, now());
         if (why) throw new Error(why);
-        const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(line.terms.transfer_request_id) as { invoice_no: string; status: string }[])
-          .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), line.terms.invoice_no, { ...partyOf(db, line.terms.invoice_no), vendor: line.terms.vendor }));
+        const other = otherPayoutForBill(db, line.terms);
         if (other) throw new Error(`${l.proposal_id}: invoice ${line.terms.invoice_no} already has a payout (${other.status}); nothing is sent`);
         return line;
       });

@@ -402,6 +402,13 @@ CREATE TABLE IF NOT EXISTS transfers (
 );
 -- Only one live payout per invoice can exist at any moment.
 CREATE UNIQUE INDEX IF NOT EXISTS one_live_transfer_per_invoice ON transfers(invoice_no) WHERE status NOT IN ('CANCELLED');
+-- And only one per bill (27 Nov, red team, runner finding 2): a negotiation's agreed invoice ("<original>-<sha8>", whose
+-- signed terms name the original as negotiation.original_invoice_no) and the bill as issued are one bill, paid once.
+CREATE TRIGGER IF NOT EXISTS one_live_transfer_per_bill BEFORE INSERT ON transfers
+WHEN NEW.status <> 'CANCELLED' AND EXISTS (SELECT 1 FROM transfers t WHERE t.status <> 'CANCELLED' AND t.request_id <> NEW.request_id
+  AND COALESCE((SELECT json_extract(p.terms_json, '$.negotiation.original_invoice_no') FROM proposals p WHERE json_extract(p.terms_json, '$.invoice_no') = t.invoice_no AND json_extract(p.terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1), t.invoice_no)
+    = COALESCE((SELECT json_extract(p.terms_json, '$.negotiation.original_invoice_no') FROM proposals p WHERE json_extract(p.terms_json, '$.invoice_no') = NEW.invoice_no AND json_extract(p.terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1), NEW.invoice_no))
+BEGIN SELECT RAISE(ABORT, 'one live payout per bill: this bill already has a payout, as issued or as negotiated'); END;
 
 -- Supplier payouts (src/executors/supplierPayment.ts): money an approved payment has spoken for that Airwallex's
 -- balances do not show yet (a conversion on its way, a payout not yet written). Counted by freeCents
