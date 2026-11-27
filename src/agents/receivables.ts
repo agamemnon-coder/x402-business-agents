@@ -12,8 +12,7 @@ import { publish } from "../autonomy/bus.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
-import { invoiceKey } from "./euroBill.js";
-import { referenceTokens } from "../lib/invoiceKey.js";
+import { namedInvoiceNos } from "../lib/invoiceKey.js";
 
 export type ReceiptOutcome = "MATCHED" | "SHORT" | "OVER" | "WRONG_CURRENCY" | "UNMATCHED";
 
@@ -27,17 +26,22 @@ export function openReceivable(db: DB, r: Receivable, now = new Date()): void {
     .run(r.invoice_no, r.customer, r.currency, r.amount_cents, r.due_date, now.toISOString());
 }
 
-/** The invoice a reference names: the longest invoice number found in it, compared the way duplicates are. */
-function invoiceIn(db: DB, reference: string | null): Row | undefined {
+/**
+ * The invoice a reference names, as a whole word (review of 26 Nov: "NW-R-1011" does not name NW-R-101), or why none can
+ * be chosen: one that names two or more different receivables ("NW-R-10 / NW-R-100", "NW/7, NW/7/2") is escalated and
+ * pays none of them, never the longer number (v1.5.4: the rule of src/receivables/ar.ts, src/lib/invoiceKey.ts
+ * namedInvoiceNos). A number only part of a longer one named ("NW/7" in "/INV/NW/7/2") is that one.
+ */
+function invoiceIn(db: DB, reference: string | null): { inv: Row } | { several: string[] } | undefined {
   if (!reference) return undefined;
-  // As a whole word only (review of 26 Nov): "NW-R-1011" does not name NW-R-101.
-  const words = referenceTokens(reference);
-  return (db.prepare("SELECT invoice_no, customer, currency, amount_cents, paid_cents, status FROM receivables").all() as Row[])
-    .filter((r) => words.includes(invoiceKey(r.invoice_no)))
-    .sort((a, b) => b.invoice_no.length - a.invoice_no.length)[0];
+  const all = db.prepare("SELECT invoice_no, customer, currency, amount_cents, paid_cents, status FROM receivables").all() as Row[];
+  const nos = namedInvoiceNos(reference, all.map((r) => r.invoice_no));
+  if (nos.length > 1) return { several: [...nos].sort() };
+  const inv = all.find((r) => r.invoice_no === nos[0]);
+  return inv ? { inv } : undefined;
 }
 
-/** Whether a reference names one of these invoices (the receivables module, src/receivables/ar.ts, takes the rest). */
+/** Whether a reference names one or more of these invoices (the receivables module, src/receivables/ar.ts, takes the rest). */
 export const namesReceivable = (db: DB, reference: string | null): boolean => !!invoiceIn(db, reference);
 
 /** Matches one Airwallex deposit; a deposit already recorded returns its stored result and changes nothing. */
@@ -45,10 +49,17 @@ export function matchReceipt(db: DB, d: Deposit, now = new Date(), via: "webhook
   return db.transaction(() => {
     const seen = db.prepare("SELECT outcome, invoice_no, detail FROM receipts WHERE deposit_id = ?").get(d.deposit_id) as { outcome: ReceiptOutcome; invoice_no: string | null; detail: string } | undefined;
     if (seen) return seen;
-    const inv = invoiceIn(db, d.reference);
+    const named = invoiceIn(db, d.reference);
+    const inv = named && "inv" in named ? named.inv : undefined;
     const money = (c: number, cur: string) => `${fromCents(c)} ${cur}`;
     let outcome: ReceiptOutcome, detail: string, audited: string, applied = 0;
-    if (!inv) {
+    if (named && "several" in named) {
+      // Two different receivables named: which one is paid is the CFO's call, so it waits in suspense like an unknown one.
+      outcome = "UNMATCHED";
+      const which = `names ${named.several.length} invoices (${named.several.join(", ")})`;
+      audited = `${money(d.amount_cents, d.currency)} ${which}: held in suspense until the CFO says which it pays`;
+      detail = `${money(d.amount_cents, d.currency)} from ${d.payer ?? "an unknown payer"} ${which}: held in suspense until the CFO says which it pays`;
+    } else if (!inv) {
       outcome = "UNMATCHED";
       audited = `${money(d.amount_cents, d.currency)} names no open invoice: held in suspense until the CFO identifies it`;
       detail = `${money(d.amount_cents, d.currency)} from ${d.payer ?? "an unknown payer"} names no open invoice ("${(d.reference ?? "").slice(0, 60)}"): held in suspense until the CFO identifies it`;

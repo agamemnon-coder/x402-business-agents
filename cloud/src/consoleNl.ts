@@ -369,14 +369,17 @@ export const NL_DATA_PATHS = /^\/v1\/(dashboard|agents|authority-map|connections
  * Which strings of each of those answers are Purser's own sentences, by path in the answer ([] for each item of a list).
  * Only these are translated: a name, a merchant, a vendor, a payee, an id or anyone's free text stays as it was synced,
  * even when it reads like a word of the catalogue ("Other", "Metal"). A path with "@name" holds a name with one of
- * Purser's labels after it ("Stockline (test payee)"): only that label is translated, never the name.
+ * Purser's labels after it ("Stockline (test payee)"): only that label is translated, never the name. "@name(key^prefix)"
+ * marks it a name only in an item whose key, as synced, starts with that prefix, and a sentence in any other: the
+ * authority map's "to" is a task mandate's payees on its "Task: ..." rows ("Metal", alone when it has one payee), and
+ * Purser's own sentence on every other row (v1.5.4).
  * Tokenisation's answer is Purser's own record (no company's data), its test shop's name included.
  */
 export const NL_DATA_FIELDS: Readonly<Record<string, readonly string[]>> = {
   dashboard: ["spend[].label", "feed[].who", "feed[].text"],
   agents: ["controls", ...["name", "role", "job", "may[]", "may_not[]", "card.pays_for", "rails[]", "decisions[].text", "decisions[].decided_by", "decisions[].precedent.cases[].kind",
     "decisions[].precedent.cases[].outcome_words", "decisions[].precedent.cases[].why[]", "learning.calibration[].kind", "learning.suggestions[].text"].map((f) => `agents[].${f}`)],
-  "authority-map": ["name", ...["what", "rail", "per_payment", "in_all", "from", "to", "when", "under", "needs_cfo"].map((f) => `rows[].${f}`)].map((f) => `authority_map.agents[].${f}`),
+  "authority-map": ["name", ...["what", "rail", "per_payment", "in_all", "from", "to@name(what^Task: )", "when", "under", "needs_cfo"].map((f) => `rows[].${f}`)].map((f) => `authority_map.agents[].${f}`),
   connections: ["rule", "money_rule", ...["connections", "money", "planned"].flatMap((g) => ["name", "what", "needs"].map((f) => `${g}[].${f}`))],
   "connections/mine": ["rule", "items[].name", "items[].detail"],
   tokenisation: ["token_life.vic.label", "token_life.vic.purchase.merchant", "token_life.vic.misuse[].merchant", "token_life.agent_tokens.label", "invoice_token.label", "invoice_token.face_value",
@@ -403,9 +406,12 @@ function nxIn(s,depth){if(Object.prototype.hasOwnProperty.call(NLX,s))return NLX
   for(const [r,to] of NLP)if(r.test(s)){const out=s.replace(r,to);return depth>6?out.replace(/[⟦⟧]/g,''):out.replace(/⟦([^⟦⟧]*)⟧/g,(m,x)=>nxIn(x,depth+1))}return s}
 function nx(s){if(!NL||typeof s!=='string'||!s)return s;return nxIn(s.replace(/⟦/g,'').replace(/⟧/g,''),0).replace(//g,'⟦').replace(//g,'⟧')}
 function nxName(s){if(!NL||typeof s!=='string'||!s)return s;for(const [r,to] of NLN)if(r.test(s))return s.replace(r,to);return s}
-function nxAt(v,p,i,f){if(i===p.length)return typeof v==='string'?f(v):v;if(p[i]==='[]')return Array.isArray(v)?v.map((x)=>nxAt(x,p,i+1,f)):v;
-  if(!v||typeof v!=='object'||Array.isArray(v)||!Object.prototype.hasOwnProperty.call(v,p[i]))return v;const o=Object.assign({},v);o[p[i]]=nxAt(v[p[i]],p,i+1,f);return o}
-function nxAll(v,fields){if(!NL||!fields)return v;for(const k of fields){const name=k.endsWith('@name');v=nxAt(v,k.replace(/@name$/,'').replace(/\[\]/g,'.[]').split('.').filter(Boolean),0,name?nxName:nx)}return v}
+function nxAt(v,p,i,f,up){if(i===p.length)return typeof v==='string'?f(v,up):v;if(p[i]==='[]')return Array.isArray(v)?v.map((x)=>nxAt(x,p,i+1,f,up)):v;
+  if(!v||typeof v!=='object'||Array.isArray(v)||!Object.prototype.hasOwnProperty.call(v,p[i]))return v;const o=Object.assign({},v);o[p[i]]=nxAt(v[p[i]],p,i+1,f,v);return o}
+function nxAll(v,fields){if(!NL||!fields)return v;const when=(k)=>/@name\(.*\)$/.test(k);
+  for(const k of [...fields.filter(when),...fields.filter((x)=>!when(x))]){const c=/@name(?:\((\w+)\^(.*)\))?$/.exec(k);
+    const f=!c?nx:c[1]===undefined?nxName:(s,up)=>up&&typeof up[c[1]]==='string'&&up[c[1]].startsWith(c[2])?nxName(s):nx(s);
+    v=nxAt(v,k.replace(/@name.*$/,'').replace(/\[\]/g,'.[]').split('.').filter(Boolean),0,f)}return v}
 function nlFields(path){const k=String(path).replace(/^\/v1\//,'').replace(/\?.*$/,'').replace(/^airwallex-live\/.*$/,'airwallex-live');return Object.prototype.hasOwnProperty.call(NL_DATA_FIELDS,k)?NL_DATA_FIELDS[k]:null}
 function nxOwn(v){if(!NL)return v;if(typeof v==='string')return nx(v);if(Array.isArray(v))return v.map(nxOwn);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=nxOwn(v[k]);return o}return v}
 `;

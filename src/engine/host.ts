@@ -891,23 +891,26 @@ export class EngineHost {
   }
 
   /**
-   * Why this key's person may not approve this policy change, by the Cloud's id for them (passkeyFinish's `person`), or
-   * null (red team round 2, finding B): they proposed it (its signed proposed_by_id), or another key of theirs already
-   * co-signed it. A name is free text, compared as src/lib/personName.ts reads it in decide(); an id is not.
+   * Why this key's person may not approve this proposal, by the Cloud's id for them (passkeyFinish's `person`), or null:
+   * they proposed this policy change (its signed proposed_by_id; red team round 2, finding B), or another key of theirs
+   * already co-signed it, whatever its kind (fuzz finding 1, v1.5.4: four eyes on a payment counted one person's two keys
+   * under two names as two people). A name is free text, compared as src/lib/personName.ts reads it in decide(); an id is not.
    */
   private ownProposal(proposalId: string, keyId: string): string | null {
     const { db } = this.deps;
     const p = db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string; terms_json: string } | undefined;
-    if (!p || p.kind !== "policy_change") return null;
-    let t: { proposed_by_id?: unknown; proposed_by?: unknown };
-    try { t = JSON.parse(p.terms_json) as typeof t; } catch { return null; }
+    if (!p) return null;
     db.exec(PASSKEY_PEOPLE);
     const personOf = (cred: string) => (db.prepare("SELECT person FROM engine_passkey_people WHERE credential_id = ?").get(cred) as { person: string } | undefined)?.person ?? null;
     const me = personOf(keyId);
     if (!me) return null;
-    if (typeof t.proposed_by_id === "string" && t.proposed_by_id === me) return `You proposed ${proposalId}${typeof t.proposed_by === "string" ? ` (as ${t.proposed_by})` : ""}, so you cannot approve it (segregation of duties); another person approves it with their own passkey. Nothing was changed.`;
+    if (p.kind === "policy_change") {
+      let t: { proposed_by_id?: unknown; proposed_by?: unknown } = {};
+      try { t = JSON.parse(p.terms_json) as typeof t; } catch { /* unreadable terms: the executor refuses them */ }
+      if (typeof t.proposed_by_id === "string" && t.proposed_by_id === me) return `You proposed ${proposalId}${typeof t.proposed_by === "string" ? ` (as ${t.proposed_by})` : ""}, so you cannot approve it (segregation of duties); another person approves it with their own passkey. Nothing was changed.`;
+    }
     const cosigned = db.prepare("SELECT credential_id FROM cosignatures WHERE proposal_id = ?").all(proposalId) as { credential_id: string }[];
-    if (cosigned.some((c) => c.credential_id !== keyId && personOf(c.credential_id) === me)) return `You already approved ${proposalId} with another key; a second person must approve it with their own passkey. Nothing was changed.`;
+    if (cosigned.some((c) => c.credential_id !== keyId && personOf(c.credential_id) === me)) return `You already approved ${proposalId} with another key; a second person must approve it with their own passkey. Nothing was ${p.kind === "policy_change" ? "changed" : "paid"}.`;
     return null;
   }
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { matchReceipt, openReceivable, receivablesView } from "../src/agents/receivables.js";
 import { books } from "../src/accounting/books.js";
+import { routeDeposit } from "../src/receivables/ar.js";
 
 const at = (s: string) => new Date(`2026-10-30T${s}Z`);
 function world() {
@@ -47,5 +48,20 @@ describe("the receivables agent", () => {
     expect(bal("4200", "GBP")).toBe(-86_050);
     expect(bal("2900", "EUR")).toBe(-2_500);
     expect(bal("1202", "GBP")).toBe(86_050);
+  });
+
+  // v1.5.4: the older matcher settled the longest number a reference named ("NW-R-10 / NW-R-100" paid NW-R-100). Now the
+  // per-word rule of src/receivables/ar.ts: two different receivables named go to suspense for the CFO, and neither is paid.
+  it("a reference that names two different receivables is escalated to suspense and pays neither", () => {
+    const db = openDb(":memory:");
+    for (const no of ["NW-R-10", "NW-R-100", "NW/7", "NW/7/2"]) openReceivable(db, { invoice_no: no, customer: "Customer", currency: "EUR", amount_cents: 10_000, due_date: "2026-11-29" }, at("09:00:00"));
+    const refs = ["NW-R-10 / NW-R-100", "NW-R-100 replaces NW-R-10", "NW/7, NW/7/2", "/INV/NW-R-10 /INV/NW-R-100", "/INV/NW-R-10/NW-R-100"];
+    refs.forEach((ref, i) => expect(matchReceipt(db, dep(`m${i}`, "EUR", 10_000, ref), at("10:00:00")), ref).toMatchObject({ outcome: "UNMATCHED", invoice_no: null, detail: expect.stringMatching(/names 2 invoices \(NW/) }));
+    expect(routeDeposit(db, dep("r1", "EUR", 10_000, "NW-R-10 / NW-R-100"), at("10:00:00"))).toMatchObject({ by: "receivables", outcome: "UNMATCHED" });
+    expect(db.prepare("SELECT invoice_no, paid_cents, status FROM receivables WHERE paid_cents > 0 OR status <> 'OPEN'").all()).toEqual([]);
+    expect(books(db).trial.find((t) => t.account === "2900" && t.currency === "EUR")?.balance_cents).toBe(-60_000);
+    // A number that is only a "/"-part of a longer one named, in every word that names it, is that one: one invoice, paid.
+    expect(matchReceipt(db, dep("s1", "EUR", 10_000, "/INV/NW/7/2"), at("10:00:00"))).toMatchObject({ outcome: "MATCHED", invoice_no: "NW/7/2" });
+    expect(matchReceipt(db, dep("s2", "EUR", 10_000, "Payment NW-R-100"), at("10:00:00"))).toMatchObject({ outcome: "MATCHED", invoice_no: "NW-R-100" });
   });
 });

@@ -28,7 +28,7 @@ import { RECEIVABLES } from "../ledger/accounts.js";
 import { postEntry } from "../ledger/core.js";
 import { salesInvoice, settleOpenItem } from "../ledger/documents.js";
 import { vatOn } from "../ledger/vat.js";
-import { invoiceKey, referenceWords, unknownInvoiceWord } from "../lib/invoiceKey.js";
+import { namedInvoiceNos, unknownInvoiceWord } from "../lib/invoiceKey.js";
 import { withoutAccountsOrAddresses, withoutNames } from "../lib/personalData.js";
 import { matchReceipt, namesReceivable, type Deposit } from "../agents/receivables.js";
 import { fromCents } from "../lib/money.js";
@@ -115,15 +115,9 @@ export async function issueInvoice(db: DB, inv: NewArInvoice, links: Pick<Airwal
  */
 function named(db: DB, reference: string | null): { inv: ArInvoice } | { review: string } | null {
   if (!reference) return null;
-  const perWord = referenceWords(reference);
   const all = arInvoices(db);
-  const found = all.filter((i) => perWord.some((w) => w.includes(invoiceKey(i.invoice_no))));
-  // A number that is only a "/"-part of a longer one named ("NW/7" in "NW/7/2") is that one, not a second invoice; but
-  // only when every word that names it names a longer one on file too (red team round 2, finding C: "NW/7, NW/7/2"
-  // names NW/7 as a word of its own, so two invoices are named and a person decides).
-  const within = (a: string, b: string) => a !== b && `/${b}/`.includes(`/${a}/`);
-  const partOnly = (k: string) => perWord.filter((w) => w.includes(k)).every((w) => found.some((o) => within(k, invoiceKey(o.invoice_no)) && w.includes(invoiceKey(o.invoice_no))));
-  const hits = found.filter((i) => !partOnly(invoiceKey(i.invoice_no)));
+  const nos = new Set(namedInvoiceNos(reference, all.map((i) => i.invoice_no)));
+  const hits = all.filter((i) => nos.has(i.invoice_no));
   if (!hits.length) {
     const unknown = unknownInvoiceWord(reference, all.map((i) => i.invoice_no));
     return unknown ? { review: `the reference names ${unknown}, which is not an invoice on file` } : null;
