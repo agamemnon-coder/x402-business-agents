@@ -72,9 +72,11 @@ describe("money into the Global Account becomes the Treasury agent's event (D22)
     matchReceipt(db, deposit("d1", 100_000, "NW-R-201"), NOW, "webhook");
     matchReceipt(db, deposit("d1", 100_000, "NW-R-201"), NOW, "poll");
     expect(events(db, "money.in")).toEqual([{
-      for: "treasury", rail: "airwallex", via: "Airwallex webhook", deposit_id: "d1", amount: "1000.00", currency: "EUR", payer: "Alpenweg Sport AG",
-      outcome: "SHORT", invoice_no: "NW-R-201", detail: expect.stringMatching(/short by 240.00 EUR/),
+      for: "treasury", rail: "airwallex", via: "Airwallex webhook", deposit_id: "d1", amount: "1000.00", currency: "EUR",
+      outcome: "SHORT", invoice_no: "NW-R-201", detail: expect.stringMatching(/^NW-R-201: paid 1000.00 EUR, short by 240.00 EUR/),
     }]);
+    // By invoice number only: the agent's decision in its own words is audited, and the audit goes to Purser Cloud.
+    expect(JSON.stringify(events(db, "money.in"))).not.toMatch(/Alpenweg/);
   });
 
   it("an unmatched deposit is still news for the Treasury agent; with the autonomy off nothing is published", () => {

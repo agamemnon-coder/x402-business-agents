@@ -96,7 +96,7 @@ export const ACTIVITIES: readonly Activity[] = [
   {
     id: "R9", name: "Accounts receivable", purpose: "Send the company's invoices, match the payments that come in, and remind customers who have not paid",
     basis: "Art. 6(1)(b) contracts with customers; (c) bookkeeping", subjects: "Customers who are natural persons (sole traders), the customers' contacts",
-    data: "Customers' names and contact e-mail, invoice amounts, payments received and how they were matched, reminders sent",
+    data: "Customers' names and contact e-mail, payers' names and payment references (these on the runner only: Purser Cloud receives invoice numbers and amounts, and a reference to review without the names, accounts and e-mail addresses in it), invoice amounts, payments received and how they were matched, reminders sent",
     rows: ["ar_invoices", "money_loops"], recipients: ["airwallex", "cloudflare"], retention: BOOKS,
   },
 ];

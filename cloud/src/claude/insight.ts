@@ -183,7 +183,8 @@ export async function auditTrail(db: TenantDb, t: TxBody): Promise<Json> {
 export function explain(t: TxBody, trail: Json): { sentence: string; lines: string[]; data: Json } {
   const amount = `${t.currency} ${Number(t.amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const when = new Date(t.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  const verb = t.direction === "in" ? `${t.counterparty} paid the company ${amount}` : t.direction === "out" ? `The company paid ${t.counterparty} ${amount}` : `${amount} moved between the company's own accounts`;
+  // Money in from a customer names the invoice only (the runner keeps the payer's name): "A customer" says who.
+  const verb = t.direction === "in" ? `${t.counterparty || "A customer"} paid the company ${amount}` : t.direction === "out" ? `The company paid ${t.counterparty || "a payee"} ${amount}` : `${amount} moved between the company's own accounts`;
   const why = t.invoice ? `for invoice ${t.invoice.supplier_no ?? t.invoice.ap_id ?? ""}${t.invoice.ap_id ? ` (${t.invoice.ap_id})` : ""}` : t.description ? `for ${t.description}` : "";
   const ap = t.approval;
   const allowed = ap.required

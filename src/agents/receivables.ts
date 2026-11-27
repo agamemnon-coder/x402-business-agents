@@ -3,6 +3,9 @@
 // way (src/agents/euroBill.ts invoiceKey), and recorded once per Airwallex deposit id. A payment that does not settle
 // its invoice exactly (short, over, in another currency, or with no invoice at all) is escalated to the CFO with the
 // difference in words. Nothing here moves money: a refund of an overpayment is a separate decision for the CFO.
+// The audit log goes to Purser Cloud, so what is audited names the invoice by its number and the amounts only: the
+// customer's and the payer's names, and the payer's own reference text, stay in receivables and receipts here (the
+// receipt's detail in words keeps them, for the runner's own pages and logs).
 
 import { autonomyOn } from "../config/agents.js";
 import { publish } from "../autonomy/bus.js";
@@ -44,32 +47,36 @@ export function matchReceipt(db: DB, d: Deposit, now = new Date(), via: "webhook
     if (seen) return seen;
     const inv = invoiceIn(db, d.reference);
     const money = (c: number, cur: string) => `${fromCents(c)} ${cur}`;
-    let outcome: ReceiptOutcome, detail: string, applied = 0;
+    let outcome: ReceiptOutcome, detail: string, audited: string, applied = 0;
     if (!inv) {
       outcome = "UNMATCHED";
+      audited = `${money(d.amount_cents, d.currency)} names no open invoice: held in suspense until the CFO identifies it`;
       detail = `${money(d.amount_cents, d.currency)} from ${d.payer ?? "an unknown payer"} names no open invoice ("${(d.reference ?? "").slice(0, 60)}"): held in suspense until the CFO identifies it`;
     } else if (inv.currency !== d.currency) {
       outcome = "WRONG_CURRENCY";
-      detail = `${money(d.amount_cents, d.currency)} for ${inv.invoice_no}, invoiced in ${inv.currency}: held in suspense; the CFO decides whether to accept or return it`;
+      detail = audited = `${money(d.amount_cents, d.currency)} for ${inv.invoice_no}, invoiced in ${inv.currency}: held in suspense; the CFO decides whether to accept or return it`;
     } else {
       const due = inv.amount_cents - inv.paid_cents;
       applied = Math.min(due, d.amount_cents);
       const paid = inv.paid_cents + applied;
       outcome = d.amount_cents === due ? "MATCHED" : d.amount_cents < due ? "SHORT" : "OVER";
-      detail = outcome === "MATCHED" ? `${inv.invoice_no} from ${inv.customer} paid in full, ${money(d.amount_cents, d.currency)}`
-        : outcome === "SHORT" ? `${inv.invoice_no} from ${inv.customer}: paid ${money(d.amount_cents, d.currency)}, short by ${money(due - d.amount_cents, d.currency)}; the rest stays open and the customer is asked`
-        : `${inv.invoice_no} from ${inv.customer}: paid ${money(d.amount_cents, d.currency)}, over by ${money(d.amount_cents - due, d.currency)}; the excess waits in suspense and a refund is the CFO's decision`;
+      const words = (who: string) => outcome === "MATCHED" ? `${inv.invoice_no}${who} paid in full, ${money(d.amount_cents, d.currency)}`
+        : outcome === "SHORT" ? `${inv.invoice_no}${who}: paid ${money(d.amount_cents, d.currency)}, short by ${money(due - d.amount_cents, d.currency)}; the rest stays open and the customer is asked`
+        : `${inv.invoice_no}${who}: paid ${money(d.amount_cents, d.currency)}, over by ${money(d.amount_cents - due, d.currency)}; the excess waits in suspense and a refund is the CFO's decision`;
+      detail = words(` from ${inv.customer}`);
+      audited = words("");
       db.prepare("UPDATE receivables SET paid_cents = ?, status = ? WHERE invoice_no = ?")
         .run(paid, outcome === "OVER" ? "OVERPAID" : paid >= inv.amount_cents ? "PAID" : "PARTIAL", inv.invoice_no);
     }
     db.prepare("INSERT INTO receipts (deposit_id, global_account_id, currency, amount_cents, reference, payer, invoice_no, applied_cents, outcome, detail, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(d.deposit_id, d.global_account_id, d.currency, d.amount_cents, d.reference, d.payer, outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, applied, outcome, detail, d.received_at);
-    audit(db, "treasury", outcome === "MATCHED" ? "receivable.matched" : "receivable.escalated", d.deposit_id, { origin: { actor: "external", party: "retailer", ...(inv?.customer ? { name: inv.customer } : {}) }, outcome, invoice_no: inv?.invoice_no ?? null, amount: fromCents(d.amount_cents), currency: d.currency, detail }, now);
-    // D22: money in at Airwallex is news for the Treasury agent (autonomy only), once per deposit.
+    audit(db, "treasury", outcome === "MATCHED" ? "receivable.matched" : "receivable.escalated", d.deposit_id, { origin: { actor: "external", party: "retailer" }, outcome, invoice_no: inv?.invoice_no ?? null, amount: fromCents(d.amount_cents), currency: d.currency, detail: audited }, now);
+    // D22: money in at Airwallex is news for the Treasury agent (autonomy only), once per deposit. By number only too:
+    // the agent's own decision, in its words, is audited and so goes to the cloud.
     if (autonomyOn()) {
       publish(db, "money.in", {
         rail: "airwallex", via: via === "webhook" ? "Airwallex webhook" : "Airwallex poll", deposit_id: d.deposit_id, amount: fromCents(d.amount_cents), currency: d.currency,
-        payer: d.payer, outcome, invoice_no: outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, detail,
+        outcome, invoice_no: outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, detail: audited,
       }, "treasury", "system", now);
     }
     return { outcome, invoice_no: inv?.invoice_no ?? null, detail };

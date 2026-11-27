@@ -239,7 +239,9 @@ describe("the new read tools, on the demo company", () => {
     const e = await tool("explain_payment", { id: card.id });
     expect(e.structuredContent.explanation.allowed_by).toMatch(/^No CFO approval was needed/);
     const incoming = (await tool("explain_payment", { id: "receipt:dep_demo_7" }));
-    expect(text(incoming)).toMatch(/^Summit Outfitters paid the company EUR 1,987\.50/);
+    // By invoice number: the payer's name stays on the runner.
+    expect(text(incoming)).toMatch(/^A customer paid the company EUR 1,987\.50 on \d+ Nov 2026 for invoice NW-2026-119/);
+    expect(text(incoming)).not.toMatch(/Summit/);
   });
 
   it("each answers in plain words first, short enough for a phone", async () => {
