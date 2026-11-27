@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import { describe, expect, it } from "vitest";
 import { matchReceipt, openReceivable } from "../src/agents/receivables.js";
+import { recordDeposits, settledDeposits } from "../src/airwallex/deposits.js";
 import { ingestEmail } from "../src/ap/inbox.js";
 import type { Asker } from "../src/ap/read.js";
 import { audit, GENESIS, verifyAuditChain } from "../src/audit/log.js";
@@ -146,5 +147,22 @@ describe("the audit rows in a sync batch", () => {
     expect(json).not.toContain("anna@");
     expect(json).not.toContain("Bakker <");
     expect(json).toContain('\\"from\\":\\"@bakker-outdoor.example\\"');
+  });
+
+  it("record an Airwallex deposit by its id, amount, currency and status: no payer, no reference", () => {
+    const db = openDb(":memory:");
+    const deposit = { id: "dep_awx_1", globalAccountId: "ga_eur", currency: "EUR", amountCents: 12_500, status: "PENDING", payer: PAYERS[1]!, reference: `${PAYERS[1]} ${spaced(IBANS[0]!)} ${EMAILS[1]} order 12`, createdAt: "2026-11-20T10:00:00Z" };
+    recordDeposits(db, [deposit], NOW);
+    recordDeposits(db, [{ ...deposit, status: "SETTLED" }], NOW);
+    const rows = (db.prepare("SELECT event, subject, payload_json FROM audit_log ORDER BY seq").all() as { event: string; subject: string; payload_json: string }[])
+      .map((r) => ({ event: r.event, subject: r.subject, payload: JSON.parse(r.payload_json) as unknown }));
+    expect(rows).toEqual([
+      { event: "awx_deposit.seen", subject: "dep_awx_1", payload: { amount_cents: 12_500, currency: "EUR", status: "PENDING" } },
+      { event: "awx_deposit.status", subject: "dep_awx_1", payload: { amount_cents: 12_500, currency: "EUR", status: "SETTLED", was: "PENDING" } },
+    ]);
+    const json = auditJson(db);
+    for (const s of [PAYERS[1]!, "Vries", IBANS[0]!, spaced(IBANS[0]!), EMAILS[1]!, "order 12"]) expect(json, s).not.toContain(s);
+    // The reconciliation still finds the settled deposit, by its id.
+    expect(settledDeposits(db)).toEqual([{ id: "dep_awx_1", currency: "EUR", amountCents: 12_500, label: "deposit" }]);
   });
 });
