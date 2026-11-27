@@ -38,6 +38,21 @@ export function referenceWords(reference: string): string[][] {
   });
 }
 
+/**
+ * The invoice numbers of these that a reference names, as whole words (referenceWords). A number that is only a
+ * "/"-part of a longer one named ("NW/7" in "NW/7/2") is that one, not a second invoice; but only when every word that
+ * names it names a longer one of these too (red team round 2, finding C: "NW/7, NW/7/2" names NW/7 by a word of its
+ * own). Two or more returned is two different invoices named: which one is paid is a person's call, never the longer
+ * number's (both matchers, src/receivables/ar.ts and src/agents/receivables.ts).
+ */
+export function namedInvoiceNos<T extends string>(reference: string, invoiceNos: readonly T[]): T[] {
+  const perWord = referenceWords(reference);
+  const found = invoiceNos.filter((no) => perWord.some((w) => w.includes(invoiceKey(no))));
+  const within = (a: string, b: string) => a !== b && `/${b}/`.includes(`/${a}/`);
+  const partOnly = (k: string) => perWord.filter((w) => w.includes(k)).every((w) => found.some((o) => within(k, invoiceKey(o)) && w.includes(invoiceKey(o))));
+  return found.filter((no) => !partOnly(invoiceKey(no)));
+}
+
 /** Whether a payment reference names this invoice number as a whole word. */
 export const referenceNames = (reference: string, invoiceNo: string): boolean => referenceTokens(reference).includes(invoiceKey(invoiceNo));
 
