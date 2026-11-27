@@ -29,7 +29,7 @@ nl:{
   recon_h:'Aansluiting: T:0 tegen de rails',recon_ok:'T:0 en elke rail komen overeen',recon_bad:'T:0 en de rails wijken af',recon_none:'Nog geen aansluiting.',recon_at:'teruggelezen {at}',
   t0holds:'In T:0',railholds:'Op de rail',agrees:'klopt',differs:'wijkt af',
   misuse_h:'Kaartnummer zonder token',record:'Runverslag',story:'Wat er draaide',
-  rails:{airwallex_card:'Visa-kaart (Airwallex Issuing)',airwallex_transfer:'Airwallex-overboeking',metal:'Alta testnet',airwallex_airi:'Visa via Airi'}}};
+  rails:{airwallex_card:'Visa-kaart (Airwallex Issuing)',airwallex_transfer:'Airwallex-overboeking',metal:'Alta-testnet',airwallex_airi:'Visa via Airi'}}};
 function pw(k,v){const W=PR_W[NL?'nl':'en'];let s=W[k]||PR_W.en[k]||k;for(const [a,b] of Object.entries(v||{}))s=s.split('{'+a+'}').join(String(b));return s}
 const prRail=(r)=>(PR_W[NL?'nl':'en'].rails[r])||r;
 const prShort=(h)=>h?String(h).slice(0,12)+'…':'—';

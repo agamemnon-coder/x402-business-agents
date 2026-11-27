@@ -22,6 +22,7 @@ import { payApInvoice } from "../../src/ap/pay.js";
 import { DE, EN, NL } from "../fakes/apInvoices.js";
 import { pdfOf } from "../fakes/pdf.js";
 import { world } from "../support/rt4World.js";
+import { englishIn, visibleTexts } from "./dutchWords.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -1208,6 +1209,59 @@ async function moneyLoopPass() {
     }
   }
   serverM.close();
+}
+
+await dutchPass();
+
+/**
+ * 27 Nov (the owner: English first, Dutch second): a guest who chose Nederlands in this browser walks every page of the
+ * demo company, each invoice, each agent's drawer, the company page and Ask Purser's dialog (its words only; no question
+ * is sent). No text a person sees or hears holds an English word, once names, codes, ids and amounts are out
+ * (test/browser/dutchWords.ts).
+ */
+async function dutchPass() {
+  const port = PORT + 400;
+  const ORIGIN = `http://localhost:${port}`;
+  const serverN = await serve(cloudEnv(ORIGIN, join(dir, "dutch-blobs")), port);
+  const c = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await c.addInitScript(() => { try { localStorage.setItem("purser.cloud.language", "nl"); } catch { /* the page still renders */ } });
+  const p = await c.newPage();
+  const errors: string[] = [];
+  p.on("pageerror", (e) => errors.push(String(e)));
+  await p.goto(`${ORIGIN}/#/sign-in`);
+  await p.waitForSelector("#guest");
+  await p.click("#guest");
+  await p.waitForURL(/#\/overview$/, { timeout: 20_000 });
+  await p.waitForSelector(".dash", { timeout: 20_000 });
+  ok((await p.evaluate(() => document.documentElement.lang)) === "nl", "Dutch: the guest's console is in Dutch");
+  const english: string[] = [];
+  const look = async (where: string) => { await settleOn(p); await p.waitForTimeout(600); await p.evaluate(() => { for (const d of document.querySelectorAll("details")) d.open = true; });
+    for (const s of englishIn(await visibleTexts(p))) english.push(`${where}: ${s}`); };
+  const open = async (hash: string) => { await p.goto(`${ORIGIN}/${hash}`); await look(hash); };
+  for (const tab of ["overview", "invoices", "receivables", "cash", "transactions", "books", "agents", "tokenisation", "airwallex", "connections", "claude", "settings", "company"]) await open(`#/${tab}`);
+  await p.goto(`${ORIGIN}/#/invoices`);
+  await settleOn(p);
+  for (const h of await p.locator("main a[href^='#/invoices/']").evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href") ?? ""))])) await open(h);
+  await p.goto(`${ORIGIN}/#/agents`);
+  await p.waitForSelector("button.dk-face");
+  for (let i = 0; i < await p.locator("button.dk-face").count(); i++) {
+    await p.locator("button.dk-face").nth(i).click();
+    await p.waitForSelector("dialog.dk-drawer[open]");
+    await look(`#/agents, card ${i + 1}`);
+    await p.keyboard.press("Escape");
+  }
+  // Ask Purser's dialog: the panel the console's button opens, its words only.
+  await p.goto(`${ORIGIN}/#/overview`);
+  await p.waitForSelector(".dash");
+  await p.click("#pask-fab");
+  const ask = p.frameLocator("#pask-panel iframe");
+  await ask.locator("#q").waitFor({ timeout: 20_000 });
+  const frame = p.frames().find((f) => /\/ask\?embed=1/.test(f.url()));
+  for (const s of frame ? englishIn(await visibleTexts(frame)) : ["(the dialog did not open)"]) english.push(`Ask Purser: ${s}`);
+  ok(english.length === 0, `Dutch: no English on any page, invoice, agent card or Ask Purser's dialog${english.length ? ` (${english.length}:\n      ${english.slice(0, 80).join("\n      ")})` : ""}`);
+  ok(errors.length === 0, `Dutch: no page errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
+  await c.close();
+  serverN.close();
 }
 
 await browser.close();

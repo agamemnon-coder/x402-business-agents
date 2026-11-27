@@ -62,7 +62,7 @@ nl:{
   n_agents:'agents',n_here:'aan het werk hier',n_dec:'beslissingen vastgelegd',
   tick:'Nieuwste beslissingen',pause:'Pauze',play:'Afspelen',
   details:'Details',phone:'Op je telefoon',nego:'Bekijk een onderhandeling',
-  no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',sim_card:'Gesimuleerde kaart · testgeld',sbx_card:'Sandboxkaart · testgeld',issuer_h:'Uitgever',issuer:'Airwallex (sandbox)',alta_h:'On-chain',alta:'Een Alta-mandaat (voorheen Metal)',
+  no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',sim_card:'Gesimuleerde kaart · testgeld',sbx_card:'Sandboxkaart · testgeld',issuer_h:'Uitgever',issuer:'Airwallex (sandbox)',alta_h:'Op de chain',alta:'Een Alta-mandaat (voorheen Metal)',
   close:'Sluiten',job_h:'Wat hij doet',model_h:'Model',ran:'De gegevens van dit bedrijf tonen hem met {m}',limit_h:'Limiet',code_h:'Waar hij in de code staat',sw:'Aan in de runner met {sw}=on',
   phone_h:'{name} op je telefoon',wal_btn:'Toevoegen aan Apple Wallet',wal_busy:'Pas wordt gemaakt…',wal_fail:'De pas kon niet worden gemaakt: {why}',
   wal_wait:'Apple Wallet: wacht op het pascertificaat',wal_nocard:'Apple Wallet: alleen voor een agent met een kaart',
@@ -228,7 +228,7 @@ function openDrawer(x,ctx){
   const facts=el('dl','dk-facts',[el('dt','',dw('model_h')),el('dd','',[r.model||x.face.model?el('span','dk-mod',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','mono',x.face.model)]):el('span','sub',dw('code_only')),r.model_note?el('span','sub',r.model_note):null,
       x.face.ran.some((m)=>m!==x.face.model)?el('span','sub',dw('ran',{m:x.face.ran.join(', ')})):null]),
     x.face.last4?el('dt','',dw('issuer_h')):null,x.face.last4?el('dd','',el('span','dk-mod',[dkLogo('airwallex')?dkImg(dkLogo('airwallex'),'Airwallex'):null,el('span','',dw('issuer'))])):null,
-    ALTA_AGENTS.includes(r.id)?el('dt','',dw('alta_h')):null,ALTA_AGENTS.includes(r.id)?el('dd','',el('span','dk-mod',[dkLogo('alta')?dkImg(dkLogo('alta'),'Alta (formerly Metal)'):null,el('span','',dw('alta'))])):null,
+    ALTA_AGENTS.includes(r.id)?el('dt','',dw('alta_h')):null,ALTA_AGENTS.includes(r.id)?el('dd','',el('span','dk-mod',[dkLogo('alta')?dkImg(dkLogo('alta'),nx('Alta (formerly Metal)')):null,el('span','',dw('alta'))])):null,
     r.limit&&!(rec&&rec.card)?el('dt','',dw('limit_h')):null,r.limit&&!(rec&&rec.card)?el('dd','',r.limit):null]);
   const blocks=rec?agentRecord(rec,ctx.demo,x.live,ctx.CV):x.live&&ctx.CV?[liveCardPanel(x.live,ctx.CV)]:[];
   const tok=rec&&ctx.P?partnerTokenBlock(ctx.P,rec.id):null;

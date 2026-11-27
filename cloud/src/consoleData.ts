@@ -24,14 +24,14 @@ const payload = (r: Audit): Json => { try { return JSON.parse(r.payload_json) as
 const REPO = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
 
 /** What each agent may and may not do, as Purser's code enforces it (src/policy, src/agents). */
-const CAN: Record<string, { may: string[]; may_not: string[] }> = {
+export const AGENT_CAN: Record<string, { may: string[]; may_not: string[] }> = {
   sourcing: { may: ["Buy upstream data and the warehouse software on its own card, within its limits", "Ask the CFO for a higher limit"], may_not: ["Raise its own limit", "Pay a supplier invoice", "Pay a merchant outside its card's categories"] },
   support: { may: ["Refund customers when a dispute holds", "Pay the helpdesk software on its own card, within its limits"], may_not: ["Raise its own limit", "Pay a supplier invoice", "Pay a merchant outside its card's categories"] },
   treasury: { may: ["Watch spending and sweep final earnings to Airwallex", "Propose a supplier invoice's payment for the CFO", "Pay small software costs on its own card, within its limits"], may_not: ["Pay any supplier invoice without the CFO's Face ID over its exact terms", "Change a limit or the policy", "Add a supplier"] },
   checker: { may: ["Decide what happens to each supplier invoice: pay, ask the CFO, hold or reject"], may_not: ["Loosen code's own checks (it can only make them stricter)", "Pay anything"] },
   payer: { may: ["Propose how and when a checked invoice is paid: rail, day and currency"], may_not: ["Pay without the CFO's Face ID over the exact terms", "Break a treasury floor"] },
 };
-const ROLE: Record<string, string> = { sourcing: "Sourcing", support: "Support", treasury: "Treasury", checker: "Payables (checker)", payer: "Payables (payer)" };
+export const AGENT_ROLE: Record<string, string> = { sourcing: "Sourcing", support: "Support", treasury: "Treasury", checker: "Payables (checker)", payer: "Payables (payer)" };
 const KNOWN = new Set([...Object.keys(AGENT_DISPLAY), ...Object.keys(AP_AGENT_DISPLAY)]);
 
 interface Tx { at: string; direction: string; rail: string; rail_label?: string; amount: string; currency: string; moved: boolean; description: string; approval: { authority: string; required: boolean }; invoice: { ap_id: string | null } | null; booking: { entry_ids: number[] } | null }
@@ -97,10 +97,10 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const runs = mine.filter((r) => r.event === "agent.run").map(payload);
     const fallbackRuns = runs.filter((p) => Array.isArray(p.claude_calls) && (p.claude_calls as unknown[]).length === 0).length;
     return {
-      id, name: agentName(id), role: ROLE[id] ?? id,
+      id, name: agentName(id), role: AGENT_ROLE[id] ?? id,
       job: (AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? (AP_AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? "",
       models: [...models].sort(),
-      may: CAN[id]?.may ?? [], may_not: CAN[id]?.may_not ?? [],
+      may: AGENT_CAN[id]?.may ?? [], may_not: AGENT_CAN[id]?.may_not ?? [],
       card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts, month: asOfMonth || null, spent_month: asOfMonth ? (spentMonth / 100).toFixed(2) : null } : null,
       rails, spent: moved.filter((t) => t.moved).length, declined: moved.filter((t) => !t.moved).length,
       status, status_since: since,
