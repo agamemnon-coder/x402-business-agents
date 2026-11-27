@@ -71,6 +71,9 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
   const accountSha256 = account ? ibanSha(account) : null;
 
   const why = db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1");
+  // Each negotiation's agreed invoice and the bill as issued it replaces (src/engine/host.ts recordNegotiated).
+  const negotiated = new Map((db.prepare("SELECT subject, json_extract(payload_json, '$.original_invoice_no') AS original FROM audit_log WHERE event = 'ap.negotiated' ORDER BY seq").all() as { subject: string; original: unknown }[])
+    .filter((x) => typeof x.original === "string" && x.original).map((x) => [x.subject, x.original as string]));
   const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json, period, lines FROM ap_invoices ORDER BY received_at, id").all() as
     { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string; period: string | null; lines: string | null }[])
     .map((x): HistoryInvoice => ({
@@ -80,6 +83,7 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
       period: x.period ? (JSON.parse(x.period) as string[]) : null,
       // The lines it printed (src/ap/period.ts itemLines), kept when it came in (19 Nov, third round); null for invoices from before.
       lines: x.lines ? (JSON.parse(x.lines) as string[]) : null,
+      ...(negotiated.has(x.id) ? { negotiatedFrom: negotiated.get(x.id)! } : {}),
       blockedAsDuplicate: x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate"),
       // A person's reason is looked up only for a rejected invoice under this invoice's number: the one the checks cite.
       rejectedWhy: x.status === "rejected" && x.id !== ctx.selfId && !!r.invoice_no && sameInvoiceNo(x.invoice_no, r.invoice_no)

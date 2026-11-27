@@ -208,7 +208,7 @@ export interface NegotiatedFacts {
 function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
   const codes = new Set(inv.findings.map((f) => f.code));
   const out: NonNullable<InvoiceView["checks_passed"]> = [];
-  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before"].some((c) => codes.has(c))) out.push("not_paid_before");
+  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before", "negotiated_before"].some((c) => codes.has(c))) out.push("not_paid_before");
   if (inv.vendor && payableAccount(inv.reading) !== null && !codes.has("possible_fraud") && !codes.has("new_supplier")) out.push("bank_on_file", "known_supplier");
   return out;
 }

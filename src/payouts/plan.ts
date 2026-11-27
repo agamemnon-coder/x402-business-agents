@@ -14,7 +14,7 @@ import { INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
-import { invoiceAlreadyHandled, PROPOSAL_ID_PENDING } from "../agents/euroBill.js";
+import { invoiceAlreadyHandled, negotiationProblem, PROPOSAL_ID_PENDING, type NegotiatedPayment } from "../agents/euroBill.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from "../policy/rules.js";
 import { heldPayoutCents, owedPlatformFeeCents } from "../policy/payoutLock.js";
@@ -161,19 +161,23 @@ export async function proposeSupplierPayment(
   gate?: PlanGate,
   /** The legal entity that pays (src/policy/entities.ts), when the company holds several; `rail` acts for its account. */
   payFrom?: string,
+  /** The negotiated terms this invoice pays (src/negotiate), as for proposeInvoicePayment: checked, guarded on the bill as issued, and signed. */
+  negotiated?: NegotiatedPayment,
 ): Promise<SupplierPaymentOutcome> {
   const escalate = (reason: string, extra: Record<string, string> = {}): SupplierPaymentOutcome => {
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...extra }, now);
     return { kind: "escalated", reason };
   };
-  const refWrong = referenceProblem(inv.reference);
+  const refWrong = referenceProblem(inv.reference) ?? (negotiated ? negotiationProblem(inv, negotiated) : null);
   if (refWrong) return escalate(refWrong);
   const ben = payoutBeneficiary(db, inv.vendor);
   if (!ben) return escalate(`${inv.vendor} has no account on file to pay in ${inv.currency}; it is added through a verified new-supplier request first`);
   if (ben.currency !== inv.currency) return escalate(`${inv.vendor}'s account on file receives ${ben.currency}, but the invoice is in ${inv.currency}: a person checks which account to pay`);
   if (!counterpartyAllowed(db, ben.name)) return escalate(`${ben.name} is blocked by the CFO policy`);
   if (frozen(db)) return escalate("the CFO pulled the emergency stop");
-  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ben.details.account_key_sha256 });
+  const who = { vendor: inv.vendor, accountSha256: ben.details.account_key_sha256 };
+  // A negotiated invoice's bill as issued is the same bill (red team round 2, finding D): paid once, as issued or as agreed.
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, who) ?? (negotiated ? invoiceAlreadyHandled(db, negotiated.original_invoice_no, now, undefined, who) : null);
   if (dup) return escalate(`${dup}; a second copy is not paid again`);
 
   const amount = toCents(inv.amount);
@@ -278,7 +282,8 @@ export async function proposeSupplierPayment(
     },
     balances_before: Object.fromEntries(touched.map((c) => [c, fromCents(balances[c]?.availableCents ?? 0)])),
     floors: Object.fromEntries(touched.map((c) => [c, fromCents(floorCents(db, c))])),
-    evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(documentText) }],
+    evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(documentText) }, ...(negotiated ? [{ type: "negotiated_terms", ref: negotiated.original_invoice_no, sha256: negotiated.agreement_sha256 }] : [])],
+    ...(negotiated ? { negotiation: { ...negotiated } } : {}),
     ...(paying ? { paying_account: paying } : {}),
     // The paying legal entity and its own funding account, signed with the rest (absent for a single-entity company).
     ...(entity.fields ?? {}),
@@ -289,7 +294,7 @@ export async function proposeSupplierPayment(
   };
   let proposal: ProposalRow;
   try {
-    const file = () => createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ben.details.account_key_sha256 }), assignId: true }, now);
+    const file = () => createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, who) ?? (negotiated ? invoiceAlreadyHandled(tx, negotiated.original_invoice_no, now, undefined, who) : null), assignId: true }, now);
     // The proposal records who started it (proposal.created): the gate's origin when it gave one.
     proposal = origin ? withOrigin(origin, file) : file();
   } catch (e) {
