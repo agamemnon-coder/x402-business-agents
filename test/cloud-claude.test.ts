@@ -187,7 +187,7 @@ describe("polish (13 Nov): Purser's icon, ready-made prompts, results a phone ca
       expect(r.structuredContent).toBeTruthy();
     }
     expect((await call(DEMO_CONNECTOR_TOKEN, "what_needs_attention")).content[0]!.text).toMatch(/^As of 12 Nov 2026: 1 invoice waiting for the CFO's Face ID/);
-    expect((await call(DEMO_CONNECTOR_TOKEN, "company_overview")).content[0]!.text).toMatch(/EUR 9,226\.92/);
+    expect((await call(DEMO_CONNECTOR_TOKEN, "company_overview")).content[0]!.text).toMatch(/EUR 14,808\.34/);
   });
 
   it("reads the demo company as of its own last day everywhere (jury, 13 Nov: three different days)", async () => {
@@ -209,7 +209,7 @@ describe("the demo company's public token", () => {
     expect(String(init.json.result!.instructions)).toMatch(/demo company: made-up data/);
     expect(await toolNames(DEMO_CONNECTOR_TOKEN)).not.toContain("propose_invoice_payment");
     const o = await call(DEMO_CONNECTOR_TOKEN, "company_overview");
-    expect((o.structuredContent!.money as { in: string }).in).toBe("16190.70");
+    expect((o.structuredContent!.money as { in: string }).in).toBe("21772.12");
     const d = await call(DEMO_CONNECTOR_TOKEN, "agent_decisions", { limit: 5 });
     expect((d.structuredContent!.items as unknown[]).length).toBe(5);
   });

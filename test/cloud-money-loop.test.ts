@@ -22,6 +22,9 @@ import { treasuryView } from "../src/treasury/view.js";
 import { batchesFor, pushToCloud } from "../src/cloudsync/client.js";
 import { MoneyLoopSnapshot } from "../cloud/src/moneyLoop.js";
 import { DEMO_MONEY_LOOP } from "../cloud/src/guest/moneyLoop.gen.js";
+import { DEMO_END, DEMO_TENANT } from "../cloud/src/guest/guest.js";
+import { cashPosition } from "../cloud/src/claude/insight.js";
+import { TenantDb } from "../cloud/src/tenant.js";
 import { MONEY_JS } from "../cloud/src/consoleMoney.js";
 import { consolePage } from "../cloud/src/console.js";
 import { NAV_GROUPS } from "../cloud/src/consoleShell.js";
@@ -149,7 +152,7 @@ describe("GET /v1/treasury and GET /v1/receivables", () => {
     const key = (g.json as { session: string }).session;
     const tr = (await get("/v1/treasury", key)).json as { demo: boolean; test_money: boolean; treasury: MoneyLoopSnapshot & { approval: string } };
     expect(tr.demo && tr.test_money).toBe(true);
-    expect(tr.treasury.cash.find((x) => x.currency === "EUR")!.cents).toBe(922_692);
+    expect(tr.treasury.cash.find((x) => x.currency === "EUR")!.cents).toBe(1_480_834);
     const waiting = tr.treasury.fx.proposals.filter((p) => p.status === "PENDING_APPROVAL");
     expect(waiting).toHaveLength(1);
     expect(tr.treasury.fx.exposures.find((e) => e.currency === waiting[0]!.buy_currency)).toMatchObject({ decision: "proposal" });
@@ -166,6 +169,88 @@ describe("GET /v1/treasury and GET /v1/receivables", () => {
     expect(((await get("/v1/treasury", key)).json as { treasury: unknown }).treasury).toEqual(tr.treasury);
     // A guest reads; a guest never pushes.
     expect((await push(key, DEMO_MONEY_LOOP)).status).toBe(403);
+  });
+});
+
+describe("the demo company's books and its Receivables page", () => {
+  let c: TestCloud;
+  beforeEach(() => { c = testCloud(); });
+  afterEach(() => c.close());
+  const AR_NAMES = /Summit|Alpine|Fjord|Highland|Kustlijn|Rocky|Demo payer/;
+  type Open = { items: { party: string; doc_ref: string; currency: string; open_cents: number }[] };
+
+  it("agree on what is open, per currency: the ledger's receivables, the balance sheet and Ask Purser's cash position", async () => {
+    const key = ((await c.req("POST", "/v1/auth/guest", { key: null })).json as { session: string }).session;
+    const page = ((await c.req("GET", "/v1/receivables", { key })).json as { receivables: MoneyLoopSnapshot["receivables"] }).receivables;
+    const open: Record<string, number> = {};
+    for (const i of page.invoices) if (i.status === "OPEN" || i.status === "PARTIAL") open[i.currency] = (open[i.currency] ?? 0) + i.amount_cents - i.paid_cents;
+    // The page's own two figures agree first: its invoices and its aged debtors.
+    expect(Object.fromEntries(page.aged.map((a) => [a.currency, Object.values(a.buckets).reduce((n, x) => n + x, 0)]))).toEqual(open);
+    expect(Object.keys(open).sort()).toEqual(["EUR", "GBP", "USD"]);
+    expect(open.EUR).toBe(770_241);
+
+    const report = (await c.req("GET", "/v1/reports/receivables", { key })).json as Open;
+    const byCurrency = (items: Open["items"]) => items.reduce<Record<string, number>>((m, x) => ({ ...m, [x.currency]: (m[x.currency] ?? 0) + x.open_cents }), {});
+    expect(byCurrency(report.items)).toEqual(open);
+    // Invoice by invoice too, and by number only: no customer's name in the books the cloud holds.
+    const pageOpen = page.invoices.filter((i) => i.status === "OPEN" || i.status === "PARTIAL").map((i) => [i.invoice_no, i.amount_cents - i.paid_cents]).sort();
+    expect(report.items.map((x) => [x.doc_ref, x.open_cents]).sort()).toEqual(pageOpen);
+    expect(JSON.stringify(report)).not.toMatch(AR_NAMES);
+
+    const balance = (await c.req("GET", "/v1/reports/balance", { key })).json as { by_currency: Record<string, { balanced: boolean; accounts: { account: string; cents: number }[] }> };
+    for (const [currency, cents] of Object.entries(open)) {
+      expect(balance.by_currency[currency]!.accounts.find((a) => a.account === "1300")?.cents, currency).toBe(cents);
+      expect(balance.by_currency[currency]!.balanced, currency).toBe(true);
+    }
+
+    const cash = (await cashPosition(new TenantDb(c.env.sql, DEMO_TENANT), new Date(DEMO_END))) as { currency: string; open: { receivables: string } };
+    expect(cash.currency).toBe("EUR");
+    expect(cash.open.receivables).toBe((open.EUR! / 100).toFixed(2));
+  });
+
+  it("show the money that came in for those invoices on the Transactions page and in the cash, by invoice number only", async () => {
+    const key = ((await c.req("POST", "/v1/auth/guest", { key: null })).json as { session: string }).session;
+    const page = ((await c.req("GET", "/v1/receivables", { key })).json as { receivables: MoneyLoopSnapshot["receivables"] }).receivables;
+    const entries = ((await c.req("GET", "/v1/ledger/entries?limit=200", { key })).json as { items: { description: string; source_key: string | null; lines: { party: string | null }[] }[] }).items;
+    const ar = entries.filter((e) => e.source_key?.startsWith("ar:"));
+    expect(ar.length).toBeGreaterThanOrEqual(page.invoices.length + page.payments.length);
+    expect(JSON.stringify(ar)).not.toMatch(AR_NAMES);
+    const tx = ((await c.req("GET", "/v1/transactions?limit=200", { key })).json as { items: { id: string; direction: string; currency: string; amount: string; counterparty: string; reconciliation: string }[] }).items;
+    for (const p of page.payments) {
+      const t = tx.find((x) => x.id === `receipt:${p.payment_id}`);
+      expect(t, p.payment_id).toMatchObject({ direction: "in", currency: p.currency, amount: (p.amount_cents / 100).toFixed(2), reconciliation: "matched" });
+      expect(JSON.stringify(t)).not.toMatch(AR_NAMES);
+    }
+    // The Cash & FX page's EUR is the demo company's net cash, the payments for these invoices included.
+    const cash = (await cashPosition(new TenantDb(c.env.sql, DEMO_TENANT), new Date(DEMO_END))) as { net_cash: string };
+    const tr = ((await c.req("GET", "/v1/treasury", { key })).json as { treasury: MoneyLoopSnapshot }).treasury;
+    expect((tr.cash.find((x) => x.currency === "EUR")!.cents / 100).toFixed(2)).toBe(cash.net_cash);
+  });
+});
+
+describe("a demo company made before", () => {
+  let c: TestCloud;
+  beforeEach(() => { c = testCloud(); });
+  afterEach(() => c.close());
+  const guest = async () => ((await c.req("POST", "/v1/auth/guest", { key: null })).json as { session: string }).session;
+  const openByCurrency = async (key: string) => ((await c.req("GET", "/v1/reports/receivables", { key })).json as { items: { currency: string; open_cents: number }[] }).items
+    .reduce<Record<string, number>>((m, x) => ({ ...m, [x.currency]: (m[x.currency] ?? 0) + x.open_cents }), {});
+
+  it("is brought up to date on the next guest sign-in: its books and its Cash & FX", async () => {
+    const want = await openByCurrency(await guest());
+    expect(want).toEqual({ EUR: 770_241, GBP: 98_000, USD: 145_000 });
+    // An older seed: no receivables in its books, and its audit chain ended elsewhere.
+    await c.env.sql.batch([
+      { sql: "DELETE FROM ledger_lines WHERE tenant_id = ? AND account = '1300'", params: [DEMO_TENANT] },
+      { sql: "UPDATE audit_rows SET row_hash = ? WHERE tenant_id = ? AND seq = (SELECT MAX(seq) FROM audit_rows WHERE tenant_id = ?)", params: ["0".repeat(64), DEMO_TENANT, DEMO_TENANT] },
+    ]);
+    expect(await openByCurrency(await guest())).toEqual(want);
+    // An older money loop with the same generated_at (the demo's last day) and other figures.
+    const older = { ...DEMO_MONEY_LOOP, cash: DEMO_MONEY_LOOP.cash.map((x) => (x.currency === "EUR" ? { ...x, cents: 922_692 } : x)) };
+    await c.env.sql.batch([{ sql: "UPDATE money_loops SET body_json = ?, body_sha256 = ? WHERE tenant_id = ? AND id = 'latest'", params: [JSON.stringify(older), "0".repeat(64), DEMO_TENANT] }]);
+    const key = await guest();
+    const tr = ((await c.req("GET", "/v1/treasury", { key })).json as { treasury: MoneyLoopSnapshot }).treasury;
+    expect(tr.cash).toEqual(DEMO_MONEY_LOOP.cash);
   });
 });
 

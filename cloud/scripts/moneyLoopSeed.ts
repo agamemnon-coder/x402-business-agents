@@ -1,11 +1,10 @@
 // npm run cloud:money-loop-seed: writes cloud/src/guest/moneyLoop.gen.ts, the demo company's Cash & FX and Receivables
 // (v1.5.1). Made here by the runner's own code on stand-ins, with no network and no model: the demo's sales invoices
-// issued and booked (src/receivables/ar.ts, no payment link: nothing reaches Airwallex), payments matched by reference
-// and by amount, one short within tolerance, one partly paid, one overpaid and one that names no invoice (both to the
-// review queue), the reminder drafts due by the demo's last day; then the 13-week forecast from that ledger
+// and the payments matched to them, the same ones its books hold (./demoReceivables.ts), the reminder drafts due by
+// the demo's last day; then the 13-week forecast from that ledger
 // (src/treasury/advisor.ts), the FX advice on a stand-in indicative rate (labelled so), and the conversion it suggests
 // filed for the CFO's passkey, never approved. Then the snapshot the runner would push (src/treasury/cloudSnapshot.ts).
-// Its cash is the demo company's own net cash (EUR 9,226.92 on 12 Nov, cloud/src/guest/seed.gen.ts), its payables the
+// Its cash is the demo company's own net cash (on 12 Nov, from cloud/src/guest/seed.gen.ts), its payables the
 // two invoices that wait there (BTX-2026-24, ZV-4471) and a USD supplier invoice. Demo data: no real money, no real
 // company, no real customer.
 import { writeFileSync } from "node:fs";
@@ -13,12 +12,14 @@ import { openDb, type DB } from "../../src/db/open.js";
 import { postEntry } from "../../src/ledger/core.js";
 import { cashByCurrency } from "../../src/ledger/reports.js";
 import { bankAccountFor } from "../../src/config/gl.js";
-import { draftReminders, issueInvoice, matchPayment } from "../../src/receivables/ar.js";
+import { draftReminders } from "../../src/receivables/ar.js";
+import { toCents } from "../../src/lib/money.js";
 import { forecastInput, ledgerOpening, proposeFxConversion } from "../../src/treasury/advisor.js";
 import { cashForecast } from "../../src/treasury/forecastCore.js";
 import { fxAdvice, ratesNeeded, fxExposure, type IndicativeRate } from "../../src/treasury/fxCore.js";
 import { moneyLoopSnapshot } from "../../src/treasury/cloudSnapshot.js";
-import { DEMO_END } from "../src/guest/seed.gen.js";
+import { DEMO_END, SEED_BATCHES } from "../src/guest/seed.gen.js";
+import { DEMO_AR_STEPS } from "./demoReceivables.js";
 
 const end = new Date(DEMO_END);
 const asOf = DEMO_END.slice(0, 10);
@@ -32,34 +33,9 @@ set("usd_floor", "1000.00");
 set("floor.GBP", "1000.00");
 set("treasury.fx_threshold_eur", "400.00");
 
-// Sales invoices (customer names stay on the runner; the cloud sees numbers and amounts only).
-const SALES: [string, string, string, number, string, string, string][] = [
-  // invoice, customer, currency, net cents, VAT code, issued, due
-  ["NW-2026-131", "Summit Outfitters", "EUR", 98_347, "S21", "2026-10-06", "2026-10-20"],
-  ["NW-2026-132", "Alpine Sports Retail", "EUR", 69_860, "S21", "2026-10-09", "2026-10-23"],
-  ["NW-2026-133", "Fjord Outdoor AS", "EUR", 132_231, "S0", "2026-10-13", "2026-10-27"],
-  ["NW-2026-134", "Highland Trail Ltd", "GBP", 64_000, "S0", "2026-10-16", "2026-10-30"],
-  ["NW-2026-135", "Summit Outfitters", "EUR", 132_231, "S21", "2026-10-20", "2026-11-03"],
-  ["NW-2026-136", "Kustlijn Buitensport BV", "EUR", 78_512, "S21", "2026-10-22", "2026-11-05"],
-  ["NW-2026-137", "Alpine Sports Retail", "EUR", 176_860, "S21", "2026-10-14", "2026-10-28"],
-  ["NW-2026-138", "Highland Trail Ltd", "GBP", 98_000, "S0", "2026-10-30", "2026-11-20"],
-  ["NW-2026-139", "Rocky Ridge Supply Inc", "USD", 145_000, "S0", "2026-11-02", "2026-12-02"],
-  ["NW-2026-140", "Fjord Outdoor AS", "EUR", 155_000, "S0", "2026-11-04", "2026-11-25"],
-  ["NW-2026-141", "Kustlijn Buitensport BV", "EUR", 265_488, "S21", "2026-11-10", "2026-12-10"],
-];
-for (const [no, customer, currency, net, vat, issued, due] of SALES) await issueInvoice(db, { invoice_no: no, customer, currency, net_cents: net, vat_code: vat, issue_date: issued, due_date: due }, null, at(issued, 9));
-const open = (no: string) => (db.prepare("SELECT amount_cents - paid_cents AS c FROM ar_invoices WHERE invoice_no = ?").get(no) as { c: number }).c;
-
-// Payments into the Global Accounts, matched by the runner's rules (payer names never leave the runner).
-const pay = (id: string, currency: string, cents: number, reference: string | null, day: string) =>
-  matchPayment(db, { payment_id: id, currency, amount_cents: cents, reference, payer: "Demo payer", received_at: at(day, 11).toISOString() }, at(day, 11));
-pay("dep_demo_131", "EUR", open("NW-2026-131"), "Invoice NW-2026-131", "2026-10-19");
-pay("dep_demo_132", "EUR", open("NW-2026-132") - 120, "Invoice NW-2026-132", "2026-10-24"); // short by EUR 1.20: within tolerance, written off
-pay("dep_demo_133", "EUR", open("NW-2026-133"), "nw-2026-133 thank you", "2026-10-27");
-pay("dep_demo_134", "GBP", open("NW-2026-134"), null, "2026-10-31"); // no reference: the one open GBP invoice of exactly this amount
-pay("dep_demo_135", "EUR", 80_000, "NW-2026-135", "2026-11-04"); // partly paid: the rest stays open
-pay("dep_demo_136", "EUR", open("NW-2026-136") + 5_000, "NW-2026-136", "2026-11-06"); // overpaid by EUR 50.00: the excess to review
-pay("dep_demo_901", "EUR", 42_500, "Order 7781 November", "2026-11-09"); // names no invoice, no exact amount: to review
+// The demo company's sales invoices and the payments matched to them, the same story its books hold
+// (cloud/scripts/demoReceivables.ts; customer and payer names stay on the runner).
+for (const step of DEMO_AR_STEPS) await step.run(db, at(step.day, step.hour));
 draftReminders(db, asOf, end);
 
 // Payables the forecast counts: the two the demo company waits on, and a USD data supplier's invoice.
@@ -84,9 +60,19 @@ for (const [id, merchant, cents, currency, day] of [
   ["ctx_demo_5", "Replyhub", 3800, "EUR", "2026-10-19"], ["ctx_demo_6", "Replyhub", 3800, "EUR", "2026-11-03"],
 ] as const) charge.run(id, merchant, cents, currency, at(day).toISOString(), at(day).toISOString());
 
-// The opening balances, so that the cash per currency on the demo's last day is the demo company's: EUR 9,226.92, and
-// the USD and GBP Global Accounts' test money.
-const TARGET: Record<string, number> = { EUR: 922_692, USD: 124_000, GBP: 86_000 };
+// The opening balances, so that the cash per currency on the demo's last day is the demo company's: in EUR its net cash
+// (money in minus money out, fees included, on every rail: what Ask Purser's cash_position reads from the same
+// transactions), and the USD and GBP Global Accounts' test money.
+const netCash = (currency: string) => {
+  let c = 0;
+  for (const b of SEED_BATCHES) for (const t of ((b as { transactions?: { direction: string; currency: string; moved: boolean; body: { amount: string; fee: { amount: string; currency: string } | null } }[] }).transactions ?? [])) {
+    if (!t.moved || t.direction === "internal" || t.currency !== currency) continue;
+    const fee = t.body.fee && t.body.fee.currency === currency ? toCents(t.body.fee.amount) : 0;
+    c += t.direction === "in" ? toCents(t.body.amount) : -(toCents(t.body.amount) + fee);
+  }
+  return c;
+};
+const TARGET: Record<string, number> = { EUR: netCash("EUR"), USD: 124_000, GBP: 86_000 };
 const now = Object.fromEntries(cashByCurrency(db).map((r) => [r.currency, r.balance_cents]));
 for (const [currency, want] of Object.entries(TARGET)) {
   const diff = want - (now[currency] ?? 0);

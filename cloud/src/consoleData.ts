@@ -72,7 +72,8 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const ip = issued ? payload(issued) : {};
     const [perPurchase, perMonth] = String(ip.limits ?? "").split("/").map((s) => s.trim());
     const raised = [...mine].reverse().find((r) => r.event === "card.limit_changed");
-    const statusRow = [...mine].reverse().find((r) => ["card.frozen", "card.thawed", "card.closed"].includes(r.event));
+    // A card resting frozen between approved purchases (src/policy/cards.ts, frozen by default) is not a paused agent.
+    const statusRow = [...mine].reverse().find((r) => ["card.frozen", "card.thawed", "card.closed"].includes(r.event) && !(r.event === "card.frozen" && /^frozen by default/.test(String(payload(r).why ?? ""))));
     const status = statusRow?.event === "card.closed" ? "revoked" : statusRow?.event === "card.frozen" ? "paused" : "active";
     const models = new Set<string>();
     for (const r of mine) { const m = payload(r).model; if (typeof m === "string" && m.startsWith("claude-")) models.add(m); }

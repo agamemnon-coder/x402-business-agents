@@ -40,16 +40,18 @@ interface Draft extends Omit<TxRow, "rail_label" | "booking" | "reconciliation" 
   /** Committed at the rail but not settled yet (an FX conversion still SCHEDULED): flagged not_settled. */
   pending?: boolean;
   approval: Omit<TxRow["approval"], "decision" | "method" | "approved_at"> & { sha: string | null };
-  /** The ledger feed's key prefix for this movement's postings, and what its bank lines should sum to in its currency. */
-  book: { prefix: string; expectCents: number } | null;
+  /** The ledger feed's key prefix for this movement's postings (or, for a module that books its own, their exact keys),
+   *  and what its bank lines should sum to in its currency. */
+  book: (({ prefix: string } | { keys: string[] }) & { expectCents: number }) | null;
 }
 
 interface FeedEntry { entry_id: number; base: string; lines: { account: string; debit: number; credit: number; currency: string }[] }
 
-/** The feed's postings still standing, each with its key without version (@vN) or repeat (#N) suffix. */
+/** The feed's postings still standing, and the receivables module's (src/receivables/ar.ts, keys ar:…), each with its
+ *  key without version (@vN) or repeat (#N) suffix. */
 function feedEntries(db: DB): FeedEntry[] {
   if (!has(db, "ledger_entries")) return [];
-  const rows = db.prepare(`SELECT e.entry_id, e.source_key FROM ledger_entries e WHERE e.created_by = ? AND e.reverses IS NULL AND e.source_key IS NOT NULL
+  const rows = db.prepare(`SELECT e.entry_id, e.source_key FROM ledger_entries e WHERE (e.created_by = ? OR e.source_key LIKE 'ar:%') AND e.reverses IS NULL AND e.source_key IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM ledger_entries r WHERE r.reverses = e.entry_id) ORDER BY e.entry_id`).all(FEED_ACTOR) as { entry_id: number; source_key: string }[];
   const lines = db.prepare("SELECT account, debit_cents AS debit, credit_cents AS credit, currency FROM ledger_lines WHERE entry_id = ?");
   return rows.map((r) => ({ entry_id: r.entry_id, base: r.source_key.replace(/@v\d+$/, "").replace(/#\d+$/, ""), lines: lines.all(r.entry_id) as FeedEntry["lines"] }));
@@ -174,6 +176,23 @@ export function transactionRegister(db: DB): Register {
     }
   }
 
+  // Payments into the Global Accounts that the receivables module matched (src/receivables/ar.ts routeDeposit): booked
+  // by it, bank against debtors, an excess or an unnamed payment against suspense. A deposit is in this table or in
+  // receipts, never both. The payer's name stays on the runner: these rows name the invoice only.
+  if (has(db, "ar_payments")) {
+    for (const p of db.prepare("SELECT payment_id, currency, amount_cents, invoice_no, outcome, received_at FROM ar_payments ORDER BY received_at, payment_id").all() as
+      { payment_id: string; currency: string; amount_cents: number; invoice_no: string | null; outcome: string; received_at: string }[]) {
+      drafts.push({
+        id: `receipt:${p.payment_id}`, at: p.received_at, direction: "in", rail: "airwallex_receipt", description: p.invoice_no ? `Payment of invoice ${p.invoice_no}` : "Payment with no matching invoice",
+        counterparty: "", counterparty_account: null, amount: fromCents(p.amount_cents), currency: p.currency, eur_equivalent: p.currency === "EUR" ? fromCents(p.amount_cents) : null,
+        fee: null, moved: true, status: p.outcome, status_words: `received, ${words(p.outcome)}`,
+        invoice: p.invoice_no ? { ap_id: null, supplier_no: p.invoice_no, vendor: "", document: null } : null,
+        approval: { required: false, authority: "money in: no approval needed", proposal_id: null, terms_sha256: null, sha: null },
+        proof: p.payment_id, book: { keys: [`ar:pay:${p.payment_id}`, `ar:suspense:${p.payment_id}`], expectCents: p.amount_cents },
+      });
+    }
+  }
+
   // Metal: data sales (in), purchases from the warehouse API (out), refunds, sweeps to Airwallex and their credit.
   const usdz = (cents: number) => fromCents(cents);
   for (const s of db.prepare("SELECT sale_id, price_cents, payer, tx_hash, status, created_at, scheme, clearing_json FROM sales ORDER BY sale_id").all() as
@@ -263,7 +282,8 @@ export function transactionRegister(db: DB): Register {
       decision: a?.decision ?? null, method: a?.method ?? null, approved_at: a?.created_at ?? null,
       terms_sha256: d.approval.terms_sha256 ?? ((a as { terms_sha256?: string } | undefined)?.terms_sha256 ?? null),
     };
-    const entries = d.book ? feed.filter((e) => e.base.startsWith(d.book!.prefix)) : [];
+    const b = d.book;
+    const entries = !b ? [] : "keys" in b ? feed.filter((e) => b.keys.includes(e.base)) : feed.filter((e) => e.base.startsWith(b.prefix));
     for (const e of entries) used.add(e.entry_id);
     const bookedCents = entries.reduce((n, e) => n + e.lines.filter((l) => isBank(l.account) && l.currency === d.currency).reduce((k, l) => k + l.debit - l.credit, 0), 0);
     const booking: TxRow["booking"] = {
@@ -304,7 +324,7 @@ export function transactionRegister(db: DB): Register {
     check: {
       rows: rows.length, moved: rows.filter((r) => r.moved).length, unreconciled: rows.filter((r) => r.moved && r.reconciliation !== "matched").length,
       without_approval: ids("no_approval"), without_booking: ids("no_booking"), without_proof: ids("no_proof"), amount_mismatch: [...ids("amount_mismatch"), ...ids("booked_not_moved")],
-      bookings_without_movement: feed.filter((e) => listed.test(e.base) && !used.has(e.entry_id)).map((e) => e.entry_id),
+      bookings_without_movement: feed.filter((e) => (listed.test(e.base) || /^ar:(pay|suspense):/.test(e.base)) && !used.has(e.entry_id)).map((e) => e.entry_id),
     },
   };
 }

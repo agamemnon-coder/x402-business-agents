@@ -78,8 +78,11 @@ export function purchaseInvoice(db: DB, inv: DocumentBase & { supplier: string }
   }, now);
 }
 
-/** An invoice to a customer: accounts receivable against revenue and output VAT. */
-export function salesInvoice(db: DB, inv: DocumentBase & { customer: string }, now = new Date()): Posted {
+/**
+ * An invoice to a customer: accounts receivable against revenue and output VAT. `description` replaces the default
+ * wording ("Sales invoice <number> to <customer>") when the entry must not carry the customer's name.
+ */
+export function salesInvoice(db: DB, inv: DocumentBase & { customer: string; description?: string }, now = new Date()): Posted {
   if (!inv.customer.trim() || !inv.doc_ref.trim()) throw new LedgerRefused("a sales invoice needs a customer and a document number");
   const lines: LineInput[] = [];
   let receivable = 0;
@@ -94,7 +97,7 @@ export function salesInvoice(db: DB, inv: DocumentBase & { customer: string }, n
   if (outputVat) lines.push({ account: OUTPUT_VAT, ...side(outputVat, "credit"), currency: inv.currency, doc_ref: inv.doc_ref, memo: "output VAT" });
   lines.unshift({ account: RECEIVABLES, ...side(receivable, "debit"), currency: inv.currency, party: inv.customer, doc_ref: inv.doc_ref, due_date: inv.due_date });
   return postEntry(db, {
-    date: inv.date, description: `Sales invoice ${inv.doc_ref} to ${inv.customer}`, created_by: inv.created_by, source_key: inv.source_key ?? `sale:${inv.customer}:${inv.doc_ref}`,
+    date: inv.date, description: inv.description ?? `Sales invoice ${inv.doc_ref} to ${inv.customer}`, created_by: inv.created_by, source_key: inv.source_key ?? `sale:${inv.customer}:${inv.doc_ref}`,
     doc_ref: inv.doc_ref, doc_sha256: inv.doc_sha256, lines,
   }, now);
 }
@@ -123,6 +126,8 @@ export interface Settlement {
   proof?: string;
   /** The signed proposal the payment was made under: booked only while its stored terms hash to what was signed. */
   proposal_id?: string;
+  /** Replaces the default wording ("Payment of <doc> to <party>", "Receipt of <doc> from <party>"). */
+  description?: string;
 }
 
 /** Paying a supplier's open item, or receiving a customer's: never more than is open. */
@@ -146,7 +151,7 @@ export function settleOpenItem(db: DB, s: Settlement, now = new Date()): Posted 
       ? [{ ...item, debit: s.amount_cents }, { account: s.bank, credit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }]
       : [{ account: s.bank, debit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }, { ...item, credit: s.amount_cents }];
     return postEntry(db, {
-      date: s.date, description: s.kind === "pay" ? `Payment of ${s.doc_ref} to ${s.party}` : `Receipt of ${s.doc_ref} from ${s.party}`, created_by: s.created_by,
+      date: s.date, description: s.description ?? (s.kind === "pay" ? `Payment of ${s.doc_ref} to ${s.party}` : `Receipt of ${s.doc_ref} from ${s.party}`), created_by: s.created_by,
       source_key: s.source_key, doc_ref: s.proof ?? s.doc_ref, lines,
     }, now);
   }).immediate();
