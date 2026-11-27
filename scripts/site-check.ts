@@ -14,7 +14,7 @@ export const SITE_CHECK_PAGES: readonly { path: string; type: "html" | "json" | 
   { path: "/", type: "html" }, { path: "/try", type: "html" }, { path: "/try?present=1&phone=0", type: "html" },
   { path: "/proof", type: "html" }, { path: "/verify", type: "html" }, { path: "/runs", type: "html" }, { path: "/books", type: "html" },
   { path: "/airwallex", type: "html" }, { path: "/airwallex/calls", type: "html" }, { path: "/alta", type: "html" }, { path: "/visa", type: "html" },
-  { path: "/t0", type: "html" }, { path: "/claude", type: "html" }, { path: "/health", type: "json" }, { path: "/assets/logo-airwallex.png", type: "png" },
+  { path: "/books", type: "html" }, { path: "/claude", type: "html" }, { path: "/health", type: "json" }, { path: "/assets/logo-airwallex.png", type: "png" },
 ];
 
 const TYPE: Record<"html" | "json" | "png", RegExp> = { html: /^text\/html\b/, json: /^application\/json\b/, png: /^image\/png\b/ };

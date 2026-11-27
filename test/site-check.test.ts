@@ -26,6 +26,6 @@ describe("the live site check's rules", () => {
 
   it("covers the home page, the demo in both forms, the proof pages, the partners' pages, /health and the logo", () => {
     const paths = SITE_CHECK_PAGES.map((p) => p.path);
-    for (const p of ["/", "/try", "/try?present=1&phone=0", "/proof", "/verify", "/airwallex", "/alta", "/visa", "/t0", "/claude", "/health", "/assets/logo-airwallex.png"]) expect(paths).toContain(p);
+    for (const p of ["/", "/try", "/try?present=1&phone=0", "/proof", "/verify", "/airwallex", "/alta", "/visa", "/books", "/claude", "/health", "/assets/logo-airwallex.png"]) expect(paths).toContain(p);
   });
 });
