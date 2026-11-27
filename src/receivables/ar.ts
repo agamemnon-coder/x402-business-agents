@@ -29,7 +29,7 @@ import { postEntry } from "../ledger/core.js";
 import { salesInvoice, settleOpenItem } from "../ledger/documents.js";
 import { vatOn } from "../ledger/vat.js";
 import { invoiceKey, referenceTokens, unknownInvoiceWord } from "../lib/invoiceKey.js";
-import { withoutAccountsOrAddresses } from "../lib/personalData.js";
+import { withoutAccountsOrAddresses, withoutNames } from "../lib/personalData.js";
 import { matchReceipt, namesReceivable, type Deposit } from "../agents/receivables.js";
 import { fromCents } from "../lib/money.js";
 
@@ -281,8 +281,8 @@ export function draftReminders(db: DB, asOf: string, now = new Date()): DunningD
 
 /**
  * A payment's reference as it may leave the runner (the money loop's review queue, src/treasury/cloudSnapshot.ts): the
- * payer writes it, so it can carry their name, their bank account or an e-mail address. Every IBAN-shaped word and
- * e-mail address is taken out, and so is every name the runner knows for it: the payer's (whole, and each word of
+ * payer writes it, so it can carry their name, their bank account or an e-mail address. Every IBAN and e-mail address,
+ * however written, is taken out, and so is every name the runner knows for it: the payer's (whole, and each word of
  * three letters or more) and every customer's on file. What is left (an order number, an invoice number, a month)
  * still helps a person find the payment; the reference itself stays in ar_payments here.
  */
@@ -291,10 +291,8 @@ export function referenceForCloud(db: DB, paymentId: string, reference: string):
   const customers = (db.prepare("SELECT customer FROM ar_invoices").all() as { customer: string }[]).map((r) => r.customer);
   const hasOld = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'receivables'").get();
   if (hasOld) customers.push(...(db.prepare("SELECT customer FROM receivables").all() as { customer: string }[]).map((r) => r.customer));
-  const names = [...new Set([payer, ...customers, ...payer.split(/[\s,.;:]+/).filter((w) => w.length >= 3)].map((n) => n.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
-  let out = withoutAccountsOrAddresses(reference);
-  for (const n of names) out = out.replace(new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi"), "[name]");
-  return out.replace(/\s{2,}/g, " ").trim();
+  // Each name whole, next to any letter (src/lib/personalData.ts withoutNames: "Émile Ørsted" too, not only ASCII).
+  return withoutNames(withoutAccountsOrAddresses(reference), [payer, ...customers, ...payer.split(/[\s,.;:]+/).filter((w) => w.length >= 3)]).replace(/\s{2,}/g, " ").trim();
 }
 
 /** An address shown masked (j…@example.com), for a console or a page; the stored one is never logged. */

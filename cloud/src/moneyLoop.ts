@@ -7,7 +7,8 @@
 // named and bounded; no field for a customer's or payer's name, a contact address or a reminder's text; each text the
 // runner writes from its own templates (the money label, the opening's source, why an item is left out of the forecast,
 // why a payment waits for a person) only in those templates' shape; and the one text a payer writes (a payment's
-// reference to review) refused when it holds an IBAN-shaped word or an e-mail address. A name in that reference cannot
+// reference to review) refused when it holds an IBAN or an e-mail address, however written (src/lib/personalData.ts:
+// "NL91-ABNA-…", "NL 91 ABNA …", "jan @ example.com", "jan(at)example.com" too). A name in that reference cannot
 // be told from other words here: the runner takes out the names it knows (src/receivables/ar.ts referenceForCloud).
 // Kept per company as one row ('latest') and
 // read by GET /v1/treasury and GET /v1/receivables. The same figures again change nothing; an older snapshot never
@@ -40,7 +41,7 @@ const INV = "[A-Za-z0-9][A-Za-z0-9_.:/-]{0,79}";
 const REVIEW_REASON = z.string().max(300).regex(new RegExp(`^(?:the reference names [^\\s@]{1,80}, which is not an invoice on file|the reference names \\d{1,4} invoices|${INV} is already (?:open|partial|paid|overpaid)`
   + `|${INV} is invoiced in [A-Z]{3}, the payment is in [A-Z]{3}|no invoice named and \\d{1,4} open invoices are open for exactly this amount|no invoice named and no open invoice is open for exactly this amount`
   + `|${INV} overpaid by [A-Z]{3} \\d{1,13}\\.\\d{2}: a refund or a credit is the CFO's decision)$`)).refine((v) => !holdsAccountOrAddress(v), "a reason holds an account or an e-mail address");
-const REFERENCE = TEXT(140).refine((v) => !holdsAccountOrAddress(v), "a payment's reference holds an IBAN-shaped word or an e-mail address: the runner takes them out before it sends");
+const REFERENCE = TEXT(140).refine((v) => !holdsAccountOrAddress(v), "a payment's reference holds an IBAN or an e-mail address: the runner takes them out before it sends");
 
 export const MoneyLoopSnapshot = z.object({
   generated_at: STAMP,
