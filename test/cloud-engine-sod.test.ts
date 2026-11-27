@@ -19,7 +19,7 @@ function memoryDocs(): DocStore {
   };
 }
 
-async function world() {
+async function world(label = "Carla CFO") {
   const db = openDb(":memory:");
   useDocStore(db, memoryDocs());
   const store = { text: null as string | null, load() { return this.text; }, save(text: string) { this.text = text; } };
@@ -27,7 +27,7 @@ async function world() {
   const phone = new FakeAuthenticator();
   const host = new EngineHost({ db, reader: parserOnly, rails: { rail: bank, sim: bank }, rp: { rpId: RP, origin: ORIGIN }, company: { name: "SoD Co", lang: "en" }, vault: null, feed: null });
   const start = await host.passkeyStart();
-  const done = await host.passkeyFinish({ code: start.code, credential: phone.register({ challenge: start.challenge, origin: ORIGIN, rpId: RP }), label: "Carla CFO" });
+  const done = await host.passkeyFinish({ code: start.code, credential: phone.register({ challenge: start.challenge, origin: ORIGIN, rpId: RP }), label });
   if (!done.ok) throw new Error(done.reason);
   // The threshold on, and the stop pulled: lifting it loosens with no euro amount, so it is above the threshold.
   for (const [key, value] of [["approval.policy_sod_eur", "1000.00"], ["freeze", "on"]]) db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, '2026-11-20')").run(key, value);
@@ -58,5 +58,34 @@ describe("segregation of duties in the Cloud engine", () => {
     w.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('approval.second_key_eur', '5000.00', '2026-11-20')").run();
     expect(await w.host.proposeSecondKey([{ key: "approval.second_key_eur", to: "" }])).toEqual({ ok: false, reason: expect.stringMatching(/segregation of duties applies/) });
     expect(await w.host.proposeSecondKey([{ key: "approval.second_key_eur", to: "" }], "Carla CFO")).toMatchObject({ ok: true });
+  });
+
+  it("pulling the stop is never refused for the signed-in person's display name: a tightening needs no proposer (review 153)", async () => {
+    const w = await world();
+    w.db.prepare("DELETE FROM settings WHERE key = 'freeze'").run();
+    // Display names are 1 to 120 characters of anything (cloud/src/app.ts); none of them may keep the CFO from the stop.
+    for (const name of ["Jane Doe (Finance)", "x".repeat(81), "x".repeat(120), "Treasury", "extern accountant", "ext:mallory", "max + anna"]) {
+      const out = await w.host.emergencyStop(true, name);
+      expect(out, JSON.stringify(name)).toMatchObject({ ok: true });
+      if (!out.ok) continue;
+      const terms = JSON.parse((w.db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(out.proposal.id) as { terms_json: string }).terms_json) as Record<string, unknown>;
+      expect(terms.proposed_by, JSON.stringify(name)).toBeUndefined();
+    }
+  });
+
+  it("a display name with a part in brackets is its proposer as approvals read the approver, so its passkey still cannot approve it", async () => {
+    const w = await world("Carla CFO (Finance)");
+    const out = await w.host.emergencyStop(false, "Carla CFO (Finance)");
+    if (!out.ok) throw new Error(out.reason);
+    const terms = JSON.parse((w.db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(out.proposal.id) as { terms_json: string }).terms_json) as Record<string, unknown>;
+    expect(terms).toMatchObject({ proposed_by: "Carla CFO" });
+    const answer = await w.approve(out.proposal);
+    expect(answer.status).not.toBe("approved");
+    expect(answer.message).toMatch(/Carla CFO proposed .* cannot approve it/);
+    expect(w.db.prepare("SELECT value FROM settings WHERE key = 'freeze'").get()).toEqual({ value: "on" });
+    // A forged identity is still refused where segregation of duties applies: an agent's or the system's name is no person.
+    for (const forged of ["Treasury", "treasury (Finance)", "ext:mallory", "system"]) {
+      expect(await w.host.emergencyStop(false, forged), forged).toEqual({ ok: false, reason: expect.stringMatching(/not a signed-in person's name/) });
+    }
   });
 });
