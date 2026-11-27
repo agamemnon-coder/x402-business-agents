@@ -14,6 +14,7 @@ import type { Blobs, Sql } from "../store.js";
 import { TENANT_TABLES, TenantDb } from "../tenant.js";
 import { DEMO_END, SEED_BATCHES } from "./seed.gen.js";
 import { DEMO_MONEY_LOOP } from "./moneyLoop.gen.js";
+import { moneyLoopSha } from "../moneyLoop.js";
 
 export const DEMO_TENANT = "t_demo_company";
 export const DEMO_SLUG = "purser-demo";
@@ -61,10 +62,15 @@ export async function ensureDemoCompany(sql: Sql, blobs: Blobs, now: Date): Prom
 
 /**
  * The demo company's Cash & FX and Receivables (./moneyLoop.gen.ts, npm run cloud:money-loop-seed), through the same
- * sync a runner's push goes through; kept apart from the seed's batches so a company made before it gets it too.
+ * sync a runner's push goes through; kept apart from the seed's batches so a company made before it gets it too. Its
+ * generated_at is the demo's last day, so a new seed of it can keep the same one: the figures are compared too.
  */
 async function ensureDemoMoneyLoop(sql: Sql, blobs: Blobs, now: Date): Promise<void> {
-  const current = async () => (await sql.first<{ at: string }>("SELECT at FROM money_loops WHERE tenant_id = ? AND id = 'latest'", [DEMO_TENANT]))?.at === DEMO_MONEY_LOOP.generated_at;
+  const want = await moneyLoopSha(DEMO_MONEY_LOOP);
+  const current = async () => {
+    const r = await sql.first<{ at: string; body_sha256: string }>("SELECT at, body_sha256 FROM money_loops WHERE tenant_id = ? AND id = 'latest'", [DEMO_TENANT]);
+    return r?.at === DEMO_MONEY_LOOP.generated_at && r.body_sha256 === want;
+  };
   if (await current()) return;
   try {
     await applySync(new TenantDb(sql, DEMO_TENANT), blobs, SyncBatch.parse({ money_loop: DEMO_MONEY_LOOP }), now, { kind: "key", principal: "" });

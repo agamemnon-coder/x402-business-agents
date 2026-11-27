@@ -23,8 +23,9 @@ import { setSetting } from "../../src/world/settings.js";
 import { pdfOf } from "../../src/e2e/documents.js";
 import { executeSupplierPayment } from "../../src/executors/supplierPayment.js";
 import { syncLedger } from "../../src/ledger/feed.js";
-import { pollCardTransactions } from "../../src/policy/cards.js";
+import { chargeInWindow, pollCardTransactions } from "../../src/policy/cards.js";
 import { authorityMap } from "../../src/policy/authorityMap.js";
+import { DEMO_AR_STEPS } from "./demoReceivables.js";
 
 /** The day the demo's story ends (its newest activity); everything is dated in the five weeks before it. */
 export const DEMO_END = process.env.GUEST_SEED_END ?? "2026-11-12T16:00:00Z";
@@ -58,10 +59,12 @@ const deps = { ...w.deps, approve: async (id: string) => { await approve(id); aw
 
 // The story, in date order (days before DEMO_END). Every step is the runner's own code on the stand-ins.
 const cardOf = (agent: string) => (db.prepare("SELECT card_id FROM cards WHERE agent = ?").get(agent) as { card_id: string }).card_id;
-/** An agent's own purchase on its card: the issuing stand-in approves or declines it by the card's limits and categories. */
+/** An agent's own purchase on its card: the issuing stand-in approves or declines it by the card's limits and categories.
+ *  Cards rest frozen between purchases (src/policy/cards.ts): Purser thaws the card for this one, as the runner's card
+ *  buyer does (src/agents/cardBuyer.ts, with the same purpose: the merchant and the plan). */
 async function charge(plan: keyof typeof PLANS) {
   const p = PLANS[plan]!;
-  const c = await w.issuing.simulateCardCharge({ cardId: cardOf(p.agent), amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc });
+  const c = await chargeInWindow(db, w.issuing, p.agent, { cardId: cardOf(p.agent), amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc }, now(), `${p.merchant}, ${p.label}`);
   await deps.awaitWebhooks({ cardTransactions: [c.transactionId] });
 }
 /** Money in: a retailer pays the company's own invoice into its EUR Global Account; the receivables agent matches it by
@@ -72,6 +75,15 @@ function received(r: { invoice_no: string; customer: string; cents: number }) {
   bal.EUR!.availableCents += r.cents;
   matchReceipt(db, { deposit_id: `dep_demo_${++depositN}`, global_account_id: "ga_eur_demo", currency: "EUR", amount_cents: r.cents, reference: `Invoice ${r.invoice_no}`, payer: r.customer, received_at: now().toISOString() }, now());
 }
+/** The demo's sales invoices booked by the receivables module, and the payments matched to them (./demoReceivables.ts:
+ *  the same story its Receivables page shows). A payment raises the stand-in's balance in its currency, as Airwallex's. */
+const arSteps = DEMO_AR_STEPS.map((step): [number, number, () => Promise<unknown>] => [
+  Math.min(34, Math.round((end - Date.parse(`${step.day}T16:00:00Z`)) / DAY)), step.hour,
+  async () => {
+    const r = await step.run(db, now());
+    if (r.received_cents) (bal[r.currency] ??= { availableCents: 0, pendingCents: 0, reservedCents: 0 } as { availableCents: number }).availableCents += r.received_cents;
+  },
+]);
 const SALES = [
   [30, "NW-2026-101", "Summit Outfitters", 284_000], [25, "NW-2026-104", "Alpine Sports Retail", 196_500], [21, "NW-2026-107", "Fjord Outdoor AS", 312_040],
   [16, "NW-2026-110", "Summit Outfitters", 227_500], [11, "NW-2026-113", "Alpine Sports Retail", 158_900], [7, "NW-2026-116", "Fjord Outdoor AS", 241_380],
@@ -120,6 +132,8 @@ const STORY: [number, number, () => Promise<unknown>][] = [
     for (const [d, no, customer, cents] of SALES) openReceivable(db, { invoice_no: no, customer, currency: "EUR", amount_cents: cents, due_date: new Date(end - (d - 3) * DAY).toISOString().slice(0, 10) }, now());
   }],
   ...SALES.map(([d, no, customer, cents]) => [d, 9, async () => received({ invoice_no: no, customer, cents })] as [number, number, () => Promise<unknown>]),
+  // The sales invoices the receivables module issues and books, and the payments it matches (./demoReceivables.ts).
+  ...arSteps,
   // The agents' own small purchases, and the issuing stand-in's declines: over the limit, a category the card may not pay.
   ...([[33, "packwise-starter"], [31, "ledgerly-starter"], [28, "packwise-pro"], [26, "packwise-on-support-card"], [24, "replyhub-starter"], [19, "ledgerly-starter"], [12, "packwise-starter"], [9, "replyhub-starter"], [5, "ledgerly-starter"]] as const)
     .map(([d, plan]) => [d, 11, () => charge(plan)] as [number, number, () => Promise<unknown>]),

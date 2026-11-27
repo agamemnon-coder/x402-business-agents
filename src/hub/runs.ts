@@ -56,6 +56,8 @@ export function worldId(db: DB): string {
 }
 
 export const runIdOf = (world: string, proposalId: string) => `${world}/${proposalId}`;
+/** The world part of a run id as worldId makes it: "w-" and 10 hex characters, or "w-new". */
+const WORLD_PREFIX = /^w-(?:[0-9a-f]{10}|new)\//;
 
 /** The kinds that pay money out; the emergency stop fails these (never a policy change, which may lift the stop). */
 const PAYOUT_KINDS = new Set(["invoice_payment", "supplier_payment", "refund_batch", "task_card"]);
@@ -283,5 +285,8 @@ export function assertSafeBody(body: HubBody, secrets: string[] = []): void {
   const text = JSON.stringify(body);
   if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new Error("hub body: over 8 KB");
   for (const s of secrets) if (s && s.length >= 4 && text.includes(s)) throw new Error("hub body: contains a secret value");
-  for (const [name, re] of FORBIDDEN) if (re.test(text)) throw new Error(`hub body: contains what looks like ${name}`);
+  // A run's world id is "w-" and 10 hex characters of a hash (worldId), which can be all digits by chance: it is checked
+  // as that shape, and the patterns run over the body with it set aside (CI, 27 Nov: one world in about 50 tripped them).
+  const scanned = JSON.stringify({ ...body, runs: body.runs.map((r) => ({ ...r, id: r.id.replace(WORLD_PREFIX, "w-/") })) });
+  for (const [name, re] of FORBIDDEN) if (re.test(scanned)) throw new Error(`hub body: contains what looks like ${name}`);
 }

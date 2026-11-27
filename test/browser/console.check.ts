@@ -1182,7 +1182,7 @@ async function moneyLoopPass() {
       await p.waitForSelector(".ml-prop.wait", { timeout: 20_000 });
       await settleOn(p);
       const cash = (await p.innerText("main")).replace(/\u00a0/g, " ");
-      ok(/Cash & FX/.test(cash) && cash.includes("EUR 9,226.92") && cash.includes("GBP 860.00") && cash.includes("USD 1,240.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
+      ok(/Cash & FX/.test(cash) && cash.includes("EUR 14,808.34") && cash.includes("GBP 860.00") && cash.includes("USD 1,240.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
       ok(cash.includes("Buy USD 2,160.00, selling at most EUR 2,009.26") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
         `${tag}: the FX advisor's conversion above the threshold waits for the CFO's passkey, said in words`);
       ok(/Below the threshold/.test(cash) && /about EUR 162\.26/.test(cash), `${tag}: a shortfall below the threshold is shown, with no conversion`);

@@ -108,18 +108,18 @@ describe("GET /v1/tokenisation", () => {
 describe("Invoices & books: bookings and an invoice's journal", () => {
   it("finds each invoice's accrual and the payment that settled it, and serves its journal lines", async () => {
     const b = (await get("/v1/books/bookings")).json.bookings as Record<string, number[]>;
-    expect(b["AP-0004"]).toEqual([27, 29]);
-    expect(b["AP-0005"]).toEqual([31]);
+    expect(b["AP-0004"]).toEqual([45, 47]);
+    expect(b["AP-0005"]).toEqual([50]);
     // Waiting for its new supplier, it is owed already: accrued, nothing paid (the CFO review, 14 Nov).
-    expect(b["AP-0006"]).toEqual([32]);
+    expect(b["AP-0006"]).toEqual([52]);
     const j = (await get("/v1/books/invoices/AP-0004/journal")).json.items as J[];
-    expect(j.map((e) => e.entry_id)).toEqual([27, 29]);
+    expect(j.map((e) => e.entry_id)).toEqual([45, 47]);
     // The receipt is booked before its payment (jury, 13 Nov).
     expect(j.map((e) => e.posting_date)).toEqual([...j.map((e) => e.posting_date)].sort());
     const lines = j.flatMap((e) => e.lines as J[]);
     expect(lines.reduce((n, l) => n + l.debit_cents - l.credit_cents, 0)).toBe(0);
     // AP-0006 (waiting for its supplier): its accrual only, which owes the supplier the invoice's total.
-    expect(((await get("/v1/books/invoices/AP-0006/journal")).json.items as J[]).map((e) => e.entry_id)).toEqual([32]);
+    expect(((await get("/v1/books/invoices/AP-0006/journal")).json.items as J[]).map((e) => e.entry_id)).toEqual([52]);
     // Another company's invoice is not found, as on every route that names an object.
     expect((await get("/v1/books/invoices/AP-0004/journal", A.key)).status).toBe(404);
   });

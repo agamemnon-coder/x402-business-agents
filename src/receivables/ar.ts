@@ -4,7 +4,9 @@
 // Global Account transaction, a card payment through the link) are matched to an invoice by the rules below and booked
 // once (bank against debtors); what does not fit goes to a review queue and to suspense (2900), never to revenue.
 // Reminders are drafts for a person to send (due + 3, + 10, + 20 days); Purser sends nothing. Customer names, contact
-// addresses and payer names never go to the audit log or the console: invoice numbers and amounts do.
+// addresses and payer names never go to the audit log or the console: invoice numbers and amounts do. The ledger goes
+// to Purser Cloud too, so its entries name an invoice by its number only: the number is the open item's party, and the
+// customer's name stays in ar_invoices here.
 //
 // Matching, in order (one payment is matched once, by its Airwallex id):
 //   1 reference  the payment's reference names an invoice number, written any way (src/lib/invoiceKey.ts); the
@@ -60,6 +62,12 @@ export const arInvoice = (db: DB, no: string) => db.prepare("SELECT * FROM ar_in
 export const arInvoices = (db: DB) => db.prepare("SELECT * FROM ar_invoices ORDER BY due_date, invoice_no").all() as ArInvoice[];
 export const openArInvoices = (db: DB) => arInvoices(db).filter((i) => i.status === "OPEN" || i.status === "PARTIAL");
 
+/** The party an invoice's open item is booked under: the one its issue entry used (an invoice issued before 27 Nov
+ *  carries its customer's name there and keeps it, so it can still be settled), else its number. */
+const ledgerParty = (db: DB, inv: ArInvoice): string =>
+  (db.prepare("SELECT l.party FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE e.source_key = ? AND l.account = ? AND l.party IS NOT NULL LIMIT 1")
+    .get(`ar:issue:${inv.invoice_no}`, RECEIVABLES) as { party: string } | undefined)?.party ?? inv.invoice_no;
+
 /**
  * Issues one invoice: recorded, booked (debtors against revenue and output VAT, once), and, when `links` is given, a
  * single-use Airwallex payment link for exactly its amount, read back against the invoice before it is kept.
@@ -76,7 +84,8 @@ export async function issueInvoice(db: DB, inv: NewArInvoice, links: Pick<Airwal
     db.prepare(`INSERT INTO ar_invoices (invoice_no, customer, contact_email, currency, net_cents, vat_code, amount_cents, issue_date, due_date, status, issued_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)`).run(inv.invoice_no, inv.customer, inv.contact_email ?? null, inv.currency, inv.net_cents, inv.vat_code, amount, inv.issue_date, inv.due_date, now.toISOString());
     const e = salesInvoice(db, {
-      date: inv.issue_date, doc_ref: inv.invoice_no, due_date: inv.due_date, currency: inv.currency, created_by: ACTOR, customer: inv.customer,
+      // By number only (the ledger goes to the cloud): the invoice number is the open item's party.
+      date: inv.issue_date, doc_ref: inv.invoice_no, due_date: inv.due_date, currency: inv.currency, created_by: ACTOR, customer: inv.invoice_no, description: `Sales invoice ${inv.invoice_no}`,
       source_key: `ar:issue:${inv.invoice_no}`, lines: [{ account: REVENUE, net_cents: inv.net_cents, vat_code: inv.vat_code }],
     }, now);
     audit(db, ACTOR, "ar.issued", inv.invoice_no, { currency: inv.currency, amount: fromCents(amount), due_date: inv.due_date, entry_id: e.entry_id, test_money: true }, now);
@@ -147,9 +156,10 @@ export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): Matc
       else { outcome = "OVERPAID"; applied = open; suspense = p.amount_cents - open; review = `${inv.invoice_no} overpaid by ${money(suspense, p.currency)}: a refund or a credit is the CFO's decision`; }
     }
     const base = { date: p.received_at.slice(0, 10), created_by: ACTOR };
-    if (applied) settleOpenItem(db, { ...base, kind: "receive", party: inv!.customer, doc_ref: inv!.invoice_no, amount_cents: applied, currency: p.currency, bank, source_key: `ar:pay:${p.payment_id}`, proof: p.payment_id }, now);
+    const party = inv ? ledgerParty(db, inv) : null;
+    if (applied) settleOpenItem(db, { ...base, kind: "receive", party: party!, doc_ref: inv!.invoice_no, amount_cents: applied, currency: p.currency, bank, source_key: `ar:pay:${p.payment_id}`, proof: p.payment_id, description: `Receipt of ${inv!.invoice_no}` }, now);
     if (writeOff) postEntry(db, { ...base, description: `Short payment of ${inv!.invoice_no} within tolerance, written off`, source_key: `ar:writeoff:${p.payment_id}`, doc_ref: inv!.invoice_no,
-      lines: [{ account: BANK_FEES, debit: writeOff, currency: p.currency, doc_ref: inv!.invoice_no }, { account: RECEIVABLES, credit: writeOff, currency: p.currency, party: inv!.customer, doc_ref: inv!.invoice_no }] }, now);
+      lines: [{ account: BANK_FEES, debit: writeOff, currency: p.currency, doc_ref: inv!.invoice_no }, { account: RECEIVABLES, credit: writeOff, currency: p.currency, party: party!, doc_ref: inv!.invoice_no }] }, now);
     if (suspense) postEntry(db, { ...base, description: inv ? `Overpayment of ${inv.invoice_no}, held in suspense` : "Payment to review, held in suspense", source_key: `ar:suspense:${p.payment_id}`, doc_ref: p.payment_id,
       lines: [{ account: bank, debit: suspense, currency: p.currency, doc_ref: p.payment_id }, { account: SUSPENSE, credit: suspense, currency: p.currency, doc_ref: p.payment_id, memo: "until a person identifies it" }] }, now);
     if (inv && applied) {

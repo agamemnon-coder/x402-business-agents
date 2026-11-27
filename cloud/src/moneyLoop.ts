@@ -62,12 +62,16 @@ export const MoneyLoopSnapshot = z.object({
 }).strict().refine((s) => JSON.stringify(s).length <= MONEY_LOOP_MAX_BYTES, `the money loop snapshot is larger than ${MONEY_LOOP_MAX_BYTES} bytes`);
 export type MoneyLoopSnapshot = z.infer<typeof MoneyLoopSnapshot>;
 
-/** The statements that keep the pushed snapshot, and what it did: added, changed (a newer one) or unchanged. */
-export async function storeMoneyLoop(db: TenantDb, s: MoneyLoopSnapshot, now: string, out: Stmt[]): Promise<{ added: number; changed: number; unchanged: number }> {
-  // The figures, without the moment they were read: the same figures pushed again are unchanged.
+/** The figures' hash, without the moment they were read: the same figures pushed again are unchanged. */
+export async function moneyLoopSha(s: MoneyLoopSnapshot): Promise<string> {
   const figures: Partial<MoneyLoopSnapshot> = { ...s };
   delete figures.generated_at;
-  const sha = await sha256Hex(jcs(figures as unknown as Json));
+  return sha256Hex(jcs(figures as unknown as Json));
+}
+
+/** The statements that keep the pushed snapshot, and what it did: added, changed (a newer one) or unchanged. */
+export async function storeMoneyLoop(db: TenantDb, s: MoneyLoopSnapshot, now: string, out: Stmt[]): Promise<{ added: number; changed: number; unchanged: number }> {
+  const sha = await moneyLoopSha(s);
   const cur = await db.one<{ at: string; body_sha256: string }>("money_loops", { id: "latest" });
   if (cur && (cur.body_sha256 === sha || s.generated_at < cur.at)) return { added: 0, changed: 0, unchanged: 1 };
   const row = { at: s.generated_at, body_json: JSON.stringify(s), body_sha256: sha, received_at: now };

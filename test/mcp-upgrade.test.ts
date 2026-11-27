@@ -162,14 +162,17 @@ describe("the new read tools, on the demo company", () => {
   it("cash_position: net cash from what moved, and a projection from due days that says what it is", async () => {
     const r = await tool("cash_position");
     const s = r.structuredContent;
-    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", net_cash: "9226.92" });
+    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", net_cash: "14808.34" });
     expect(s.projection).toHaveLength(4);
     // The open payables: Zeeland's (EUR 484.00, due 17 Nov, accrued while its new supplier waits) in the first week, and
     // Bergtex's (EUR 1,309.00, due 23 Nov) in the second.
     expect(s.open.payables).toBe("1793.00");
-    expect(s.projection[0]).toMatchObject({ due_out: "484.00" });
-    expect(s.projection[1]).toMatchObject({ due_out: "1309.00", projected_net_cash: (9226.92 - 1793).toFixed(2) });
-    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): net cash EUR 9,226\.92 as of 12 Nov 2026/);
+    // The open receivables, the Receivables page's EUR: NW-2026-137 (overdue) and the rest of NW-2026-135 (partly paid)
+    // in the first week, NW-2026-140 (due 25 Nov) in the second, NW-2026-141 (due 10 Dec) after these two.
+    expect(s.open.receivables).toBe("7702.41");
+    expect(s.projection[0]).toMatchObject({ expected_in: "2940.01", due_out: "484.00" });
+    expect(s.projection[1]).toMatchObject({ expected_in: "1550.00", due_out: "1309.00", projected_net_cash: (14808.34 + 2940.01 + 1550 - 1793).toFixed(2) });
+    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): net cash EUR 14,808\.34 as of 12 Nov 2026/);
     expect(text(r)).toMatch(/not a bank balance/);
     expect((await tool("cash_position", { weeks: 13 })).structuredContent.projection).toHaveLength(13);
   });
@@ -222,7 +225,7 @@ describe("the new read tools, on the demo company", () => {
     expect(events).toEqual(expect.arrayContaining(["ap.received", "proposal.created", "proposal.approved", "transfer.status", "proposal.executed"]));
     expect(events.indexOf("proposal.approved")).toBeLessThan(events.indexOf("proposal.executed"));
     expect(byInvoice.steps.find((s: { event: string }) => s.event === "proposal.approved")).toMatchObject({ who: "The CFO" });
-    expect(byInvoice.books).toEqual([expect.objectContaining({ entry_id: 29, entry_hash: expect.stringMatching(/^[0-9a-f]{64}$/) })]);
+    expect(byInvoice.books).toEqual([expect.objectContaining({ entry_id: 47, entry_hash: expect.stringMatching(/^[0-9a-f]{64}$/) })]);
     expect(byInvoice.steps.map((s: { seq: number }) => s.seq)).toEqual([...byInvoice.steps.map((s: { seq: number }) => s.seq)].sort((a: number, b: number) => a - b));
   });
 
@@ -230,7 +233,7 @@ describe("the new read tools, on the demo company", () => {
     const r = await tool("explain_payment", { id: "AP-0004" });
     expect(text(r)).toMatch(/^The company paid Lagerhaus Nord GmbH EUR 618\.80 on 7 Nov 2026 for invoice LN-2026-0815 \(AP-0004\)/);
     expect(text(r)).toMatch(/The CFO approved P-0008 on 7 Nov 2026 by signing its exact terms with Face ID/);
-    expect(text(r)).toMatch(/Booked in ledger entry 29/);
+    expect(text(r)).toMatch(/Booked in ledger entry 47/);
     expect(text(r)).toMatch(/Demo data, no real money/);
     const card = (await tool("list_transactions", { limit: 30 })).structuredContent.items.find((t: { id: string }) => t.id.startsWith("card:"));
     const e = await tool("explain_payment", { id: card.id });

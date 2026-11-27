@@ -85,6 +85,14 @@ describe("the body for the hub", () => {
     expect(() => assertSafeBody(body)).not.toThrow();
   });
 
+  it("takes a world id whose hash prefix is all digits for what it is, not an account number", () => {
+    // worldId is "w-" and 10 hex characters of the first audit row's hash: about 1 world in 50 has 9 digits in a row there.
+    const run = { id: "w-1234567890/P-0001", agent: "support", what: "Refund", amount: "0.10", currency: "USDZ", check: "pass" as const, rule: "r", human: "waiting" as const };
+    expect(() => assertSafeBody({ mode: "dry-run", title: "Purser", runs: [run] })).not.toThrow();
+    expect(() => assertSafeBody({ mode: "dry-run", title: "Purser", runs: [{ ...run, rule: "account 123456789" }] })).toThrow(/account number/);
+    expect(() => assertSafeBody({ mode: "dry-run", title: "Purser", runs: [{ ...run, id: "123456789/P-0001" }] })).toThrow(/account number/);
+  });
+
   it("is refused when it is not exactly the agreed shape, too big, or carries a secret", () => {
     const run = { id: "w/P-1", agent: "support", what: "Refund", amount: "0.10", currency: "USDZ", check: "pass" as const, rule: "r", human: "waiting" as const };
     const body = (o: Partial<HubBody> = {}): HubBody => ({ mode: "dry-run", title: "Purser", runs: [run], ...o });

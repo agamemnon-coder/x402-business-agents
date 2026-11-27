@@ -25,13 +25,13 @@ export const SHELL_WORDS = {
     per_month: "{amt} a month", flow_h: "How invoices flow to payment",
     flow_sub: "Where each of the {n} invoices is now, from the inbox to the books.", fl_received: "Received",
     fl_review: "Checked, needs a person", fl_faceid: "Waits for Face ID", fl_paid: "Paid", fl_booked: "{n} booked",
-    fl_stopped: "Stopped before paying", fl_stopped_sub: "{blocked} blocked · {rejected} rejected · {dups} duplicates",
+    fl_stopped: "Stopped before paying", fl_stopped_sub: "{blocked} blocked · {rejected} rejected · {dups} duplicates", fl_stopped_sub1: "{blocked} blocked · {rejected} rejected · {dups} duplicate",
     fl_none: "No invoices yet: the flow fills as they arrive.", act_spent: "{spent} of {cap} this month",
     act_more: "{n} agents in Purser", open: "Open", to_tx: "Transactions", to_inv: "Invoices", to_agents: "Agents",
     st_code: "Not run here", st_switch: "Off by default", code_only: "Code only", how: "How it works",
     see: "Watch a negotiation", k_search: "Search", k_ph: "Jump to a page", k_none: "No page matches",
     sb_min: "Collapse the sidebar", sb_max: "Expand the sidebar", as_of: "{name} · figures as of {day}",
-    k_cash: "Cash position", k_wait: "Waiting for the CFO", k_paid: "Paid this month",
+    k_cash: "Cash position", k_wait: "Invoices waiting for the CFO", k_paid: "Paid this month",
     k_paid_sub: "{n} invoices · {prev} in {month}", k_spend: "Agent spend vs limits",
     k_spend_sub: "of {cap} monthly limits · {n} cards", k_spend_none: "No agent card in the records",
     ag_h: "Agent status", ag_sub: "Each card's spend against its monthly limit, and the agent's newest decision.",
@@ -45,13 +45,13 @@ export const SHELL_WORDS = {
     flow_sub: "Waar elk van de {n} facturen nu staat, van de inbox tot de boeken.", fl_received: "Ontvangen",
     fl_review: "Gecontroleerd, wacht op iemand", fl_faceid: "Wacht op Face ID", fl_paid: "Betaald",
     fl_booked: "{n} geboekt", fl_stopped: "Gestopt voor betaling",
-    fl_stopped_sub: "{blocked} geblokkeerd · {rejected} afgewezen · {dups} dubbel",
+    fl_stopped_sub: "{blocked} geblokkeerd · {rejected} afgewezen · {dups} dubbel", fl_stopped_sub1: "{blocked} geblokkeerd · {rejected} afgewezen · {dups} dubbel",
     fl_none: "Nog geen facturen: de stroom vult zich zodra ze binnenkomen.", act_spent: "{spent} van {cap} deze maand",
     act_more: "{n} agents in Purser", open: "Openen", to_tx: "Transacties", to_inv: "Facturen", to_agents: "Agents",
     st_code: "Hier niet gedraaid", st_switch: "Standaard uit", code_only: "Alleen code", how: "Hoe hij werkt",
     see: "Bekijk een onderhandeling", k_search: "Zoeken", k_ph: "Ga naar een pagina", k_none: "Geen pagina gevonden",
     sb_min: "Zijbalk inklappen", sb_max: "Zijbalk uitklappen", as_of: "{name} · cijfers per {day}", k_cash: "Kaspositie",
-    k_wait: "Wacht op de CFO", k_paid: "Betaald deze maand", k_paid_sub: "{n} facturen · {prev} in {month}",
+    k_wait: "Facturen voor de CFO", k_paid: "Betaald deze maand", k_paid_sub: "{n} facturen · {prev} in {month}",
     k_spend: "Uitgaven agents vs limieten", k_spend_sub: "van {cap} maandlimiet · {n} kaarten",
     k_spend_none: "Geen agentkaart in de gegevens", ag_h: "Status van de agents",
     ag_sub: "Wat elke kaart uitgaf tegen zijn maandlimiet, en de nieuwste beslissing van de agent.",
@@ -150,7 +150,7 @@ function payFlow(items,booked,dups,cur0){
   const ol=el('ol','pflow',[stage('in','inbox',sw('fl_received'),items,'#/invoices'),stage('rv','triangle-alert',sw('fl_review'),review,'#/invoices?f=act'),
     stage('fid','scan-face',sw('fl_faceid'),is(['waiting_cfo']),'#/invoices?f=waiting_cfo'),stage('pd','circle-check',sw('fl_paid'),paid,'#/invoices?f=paid',nb?el('span','pf-x',[ic('file-check'),sw('fl_booked',{n:nb})]):null)]);
   const stopped=is(['blocked','rejected']);
-  const off=el('a','pf-off',[ic('octagon-x'),el('span','',[el('b','',sw('fl_stopped')+' '),el('span','num',String(stopped.length+dups))]),el('span','sub',sw('fl_stopped_sub',{blocked:is(['blocked']).length,rejected:is(['rejected']).length,dups}))]);off.href='#/invoices?f=blocked';
+  const off=el('a','pf-off',[ic('octagon-x'),el('span','',[el('b','',sw('fl_stopped')+' '),el('span','num',String(stopped.length+dups))]),el('span','sub',sw(dups===1?'fl_stopped_sub1':'fl_stopped_sub',{blocked:is(['blocked']).length,rejected:is(['rejected']).length,dups}))]);off.href='#/invoices?f=blocked';
   return cardLink(el('section','card dcard rise pflow-c',[el('div','dh',[el('h2','',sw('flow_h')),el('p','',sw('flow_sub',{n}))]),ol,off]),'#/invoices',sw('to_inv'))}
 // One line per agent the records name: spent against its monthly limit, its newest decision, a link to its record.
 function agentStrip(agents){
