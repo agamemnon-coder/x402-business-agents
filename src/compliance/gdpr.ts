@@ -55,7 +55,7 @@ export const ACTIVITIES: readonly Activity[] = [
   {
     id: "R3", name: "Accounts payable and bookkeeping", purpose: "Read supplier invoices, check them, pay them and keep the books",
     basis: "Art. 6(1)(b) contracts with suppliers; (c) bookkeeping (Art. 2:10 BW, Art. 52 AWR)", subjects: "Suppliers who are natural persons (sole traders), the suppliers' contacts",
-    data: "Names, addresses, bank details (IBAN, BIC; on the runner the last four and a hash where the full number is not needed), invoices, documents and the e-mails they came in",
+    data: "Names, addresses, bank details (IBAN, BIC; on the runner the last four and a hash where the full number is not needed; in the audit log, which goes to Purser Cloud, an account's last four only), invoices, documents and the e-mails they came in (an inbox sender named in the audit log by the domain only)",
     rows: ["invoices", "documents", "ap_invoices", "beneficiaries", "erp_sync", "books_connections"],
     recipients: ["anthropic", "airwallex", "cloudflare", "t0", "moneybird", "xero", "intuit", "exact", "odoo", "microsoft", "google"],
     retention: BOOKS,
