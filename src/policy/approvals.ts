@@ -11,13 +11,16 @@ import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
 import { proposerOf, sodChanges, sodThreshold } from "./policySod.js";
-import { recordFactor, secondKeyReasons } from "./secondKey.js";
+import { recordFactor, samePayee, secondKeyReasons, type PaymentTerms } from "./secondKey.js";
 import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
 import { hubGateRefusal } from "../hub/gate.js";
 import { hubDecisionsEnabled } from "../hub/config.js";
 import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
-import { aloneDecision } from "./withinLimit.js";
+import { aloneDecision, plainCents } from "./withinLimit.js";
+import { checkWindows } from "../world/settings.js";
+import { SPLIT_DAYS } from "../config/checkNumbers.js";
+import { fromCents } from "../lib/money.js";
 import { aloneLimitInForce, sourceWords } from "./aloneLimit.js";
 import { aloneGate } from "./aloneGate.js";
 import { ANOMALY_HELD, anomalyReasons } from "./anomaly.js";
@@ -300,6 +303,14 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     // The task token (agent and task from the token) and the agent's task mandates; each refusal is recorded there.
     const scope = aloneGate().check(db, p, terms, { agent: args.agent, issueDate: args.invoice?.issueDate ?? null, ...(args.taskToken !== undefined ? { taskToken: args.taskToken } : {}) }, now);
     if (!scope.ok) return no(`${p.proposal_id}: ${scope.reason}`, scope.code);
+    // 27 Nov (red team, runner finding 1): one bill cut into parts under the limit is no payment within it. This payment
+    // and every one approved alone to the same payee within the split window, on Purser's own clock (when code approved
+    // it, never a date the supplier prints), stay within the limit together, or the CFO signs it. A payment that stands
+    // on a task mandate is counted against the total the CFO signed for that mandate instead (mandateCheck).
+    const sum = aloneToPayee(db, p.proposal_id, terms as PaymentTerms, args.limit.currency, now);
+    if (!scope.mandate && sum.cents > 0 && sum.cents + (plainCents(String(amount)) ?? 0) > (plainCents(args.limit.amount) ?? 0)) {
+      return no(`${p.proposal_id}: with ${sum.count} payment${sum.count === 1 ? "" : "s"} approved alone to the same payee within ${sum.days} days (${args.limit.currency} ${fromCents(sum.cents)}), together ${args.limit.currency} ${fromCents(sum.cents + (plainCents(String(amount)) ?? 0))}, above the ${args.limit.currency} ${args.limit.amount} the agent may pay alone: the CFO signs it`);
+    }
     // The anomaly hold (src/policy/anomaly.ts): far outside what this payee normally receives, the CFO signs it.
     const odd = anomalyReasons(db, p);
     if (odd.length) {
@@ -325,6 +336,30 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     return { ok: true };
   }).immediate();
 }
+/**
+ * What code approved alone to one payee (src/policy/secondKey.ts samePayee: its beneficiary, else its vendor) in the
+ * limit's currency within the split window (the company's ap.split_days, else SPLIT_DAYS) before `now`, by when code
+ * approved it. A payment approved alone that may still move money counts: approved, executing, executed or failed (a
+ * failed payout can be replaced under the same approval, src/executors/replaceFailed.ts).
+ */
+function aloneToPayee(db: DB, self: string, terms: PaymentTerms, currency: string, now: Date): { cents: number; count: number; days: number } {
+  const days = checkWindows(db).splitDays ?? SPLIT_DAYS;
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+  const rows = db.prepare(`SELECT p.terms_json FROM proposals p JOIN approvals a ON a.proposal_id = p.proposal_id
+    WHERE a.method = ? AND a.decision = 'APPROVED' AND a.created_at >= ? AND a.created_at <= ? AND p.proposal_id != ?
+      AND p.kind IN ('invoice_payment', 'supplier_payment') AND p.status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'FAILED')`)
+    .all(POLICY_METHOD, since, now.toISOString(), self) as { terms_json: string }[];
+  let cents = 0, count = 0;
+  for (const r of rows) {
+    let t: PaymentTerms;
+    try { t = JSON.parse(r.terms_json) as PaymentTerms; } catch { continue; }
+    if (t.currency !== currency || !samePayee(t, terms)) continue;
+    cents += plainCents(String(t.amount)) ?? 0;
+    count++;
+  }
+  return { cents, count, days };
+}
+
 /** Why code did not approve a payment alone; `code` names the governance rule when one refused (task mandate, token, anomaly). */
 export type WithinLimitRefusal = { ok: false; reason: string; code?: "mandate" | "token" | "anomaly" };
 

@@ -149,7 +149,9 @@ Said plainly, so no row above reads as more than it is.
   not a second person ([main run](runs/2026-11-03-main-run.md)).
 - **An agent may pay alone within its limit (principle d).** The article says a person still approves anything that
   leaves the account today. Purser lets an agent pay alone at or below the limit the CFO signed with the passkey, and
-  only there; above it, always the CFO. That is a choice the CFO makes by signing a limit, not one the agent earns.
+  only there; above it, always the CFO. The limit holds per payee too: what code paid alone to one payee within the
+  split window (27 days by default, counted from when code approved each payment, never from dates a supplier prints)
+  and this payment stay within it together, or the CFO signs. That is a choice the CFO makes by signing a limit, not one the agent earns.
   No test runs many clean payments and then checks the limit is unchanged; it holds because the check has no input
   for a track record, which the Dafny proof covers.
 - **The card drill's open findings (principle c).** In the drill of 20 November, 37 of 54 steps passed and 11 failed:

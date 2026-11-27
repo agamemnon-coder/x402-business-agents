@@ -161,10 +161,11 @@ describe("the split window after eval v4: 27 days, the longest that never adds u
     const base = V4_WORLD.invoiceCase(k, fieldsFor(k, "purser_script"));
     const at = (issueDate: string) => {
       const prior: HistoryInvoice = { ...base.history[0]!, issueDate, receivedAt: `${issueDate}T09:00:00.000Z` };
-      const c = { ...base, history: [prior] };
+      const c = { ...base, invoice: { ...base.invoice, receivedAt: "2026-11-13T09:00:00.000Z" }, history: [prior] };
       return codeRequires(c, codeFindings(c)).by;
     };
-    // The case's invoice is dated 2026-11-13 (its own date: 13.11.2026).
+    // The case's invoice is dated 2026-11-13 (its own date: 13.11.2026), here received that day too; 27 Nov (red team,
+    // runner finding 1): the window is measured on when each was received.
     expect(base.invoice.reading.issue_date).toBe("2026-11-13");
     for (const d of ["2026-10-13", "2026-10-16", "2026-10-15", "2026-10-14"]) expect(at(d), d).not.toBe("possible_split");
     expect(at("2026-10-17")).toBe("possible_split");
