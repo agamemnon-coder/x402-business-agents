@@ -152,6 +152,20 @@ describe("matching a payment", () => {
     expect(routeDeposit(db, dep("d-2", "payment nw-r-101.", 124_000), now)).toMatchObject({ by: "receivables", outcome: "MATCHED" });
   });
 
+  // Red team (review 153): "NW-10 / NW-100" named both, and the longer number was paid while the customer's own stayed open.
+  it("a reference that names two different invoices goes to review, whatever their lengths, and pays neither", async () => {
+    const db = openDb(":memory:");
+    for (const [no, who] of [["NW-10", "Customer A"], ["NW-100", "Customer B"]] as const) await issueInvoice(db, { invoice_no: no, customer: who, currency: "EUR", net_cents: 100_000, vat_code: "S21", issue_date: "2026-11-20", due_date: "2026-12-04" }, null, now);
+    for (const [id, ref] of [["dep-1", "NW-10 / NW-100"], ["dep-2", "NW-100 replaces NW-10"], ["dep-3", "NW-10/NW-100"]] as const) {
+      expect(matchPayment(db, pay(id, "EUR", 121_000, ref), now), ref).toMatchObject({ outcome: "REVIEW", invoice_no: null, suspense_cents: 121_000 });
+    }
+    expect(reviewQueue(db).map((r) => [r.payment_id, r.reason])).toEqual([["dep-1", "the reference names 2 invoices: NW-10, NW-100"], ["dep-2", "the reference names 2 invoices: NW-10, NW-100"], ["dep-3", "the reference names 2 invoices: NW-10, NW-100"]]);
+    expect(db.prepare("SELECT invoice_no, status FROM ar_invoices ORDER BY invoice_no").all()).toEqual([{ invoice_no: "NW-10", status: "OPEN" }, { invoice_no: "NW-100", status: "OPEN" }]);
+    // A number that is a "/"-part of a longer one named whole is not a second invoice: "NW/7" inside "NW/7/2".
+    for (const no of ["NW/7", "NW/7/2"]) await issueInvoice(db, { invoice_no: no, customer: "Customer C", currency: "EUR", net_cents: 10_000, vat_code: "S0", issue_date: "2026-11-20", due_date: "2026-12-04" }, null, now);
+    expect(matchPayment(db, pay("dep-4", "EUR", 10_000, "/INV/NW/7/2"), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW/7/2" });
+  });
+
   // Review 153: a word keeps its "/", so the SWIFT remittance form "/INV/<number>" became "INV/<number>" and named nothing.
   it("a reference in the SWIFT form /INV/<number> names the invoice, in both matchers, and still only as a whole word", async () => {
     expect(referenceTokens("/INV/NW-R-101")).toEqual(expect.arrayContaining(["INV/NW-R-101", "NW-R-101"]));
