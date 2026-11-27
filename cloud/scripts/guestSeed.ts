@@ -23,7 +23,7 @@ import { setSetting } from "../../src/world/settings.js";
 import { pdfOf } from "../../src/e2e/documents.js";
 import { executeSupplierPayment } from "../../src/executors/supplierPayment.js";
 import { syncLedger } from "../../src/ledger/feed.js";
-import { pollCardTransactions } from "../../src/policy/cards.js";
+import { chargeInWindow, pollCardTransactions } from "../../src/policy/cards.js";
 import { authorityMap } from "../../src/policy/authorityMap.js";
 
 /** The day the demo's story ends (its newest activity); everything is dated in the five weeks before it. */
@@ -58,10 +58,11 @@ const deps = { ...w.deps, approve: async (id: string) => { await approve(id); aw
 
 // The story, in date order (days before DEMO_END). Every step is the runner's own code on the stand-ins.
 const cardOf = (agent: string) => (db.prepare("SELECT card_id FROM cards WHERE agent = ?").get(agent) as { card_id: string }).card_id;
-/** An agent's own purchase on its card: the issuing stand-in approves or declines it by the card's limits and categories. */
+/** An agent's own purchase on its card: the issuing stand-in approves or declines it by the card's limits and categories.
+ *  Cards rest frozen between purchases (src/policy/cards.ts): Purser thaws the card for this one, as the runner does. */
 async function charge(plan: keyof typeof PLANS) {
   const p = PLANS[plan]!;
-  const c = await w.issuing.simulateCardCharge({ cardId: cardOf(p.agent), amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc });
+  const c = await chargeInWindow(db, w.issuing, p.agent, { cardId: cardOf(p.agent), amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc }, now(), `the agent's ${p.merchant} purchase`);
   await deps.awaitWebhooks({ cardTransactions: [c.transactionId] });
 }
 /** Money in: a retailer pays the company's own invoice into its EUR Global Account; the receivables agent matches it by
