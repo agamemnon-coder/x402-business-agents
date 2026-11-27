@@ -519,20 +519,22 @@ function examine(c: InvoiceCase): Examined {
     }
   }
 
-  // 19 Nov (adversarial eval v2: six invoices cut to stay under the limit were paid alone): one supplier's invoices dated
-  // within the split window of this one, paid or still to be paid, each within the agent's limit, are added up. When this
-  // one is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming the others.
-  // A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid; one that prints
-  // another month than this one is the supplier's regular billing, not a part (eval v3).
+  // 19 Nov (adversarial eval v2: six invoices cut to stay under the limit were paid alone): one supplier's invoices
+  // received within the split window of this one, paid or still to be paid, each within the agent's limit, are added up.
+  // When this one is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming
+  // the others. A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid.
+  // 27 Nov (red team, runner finding 1): the window is measured on Purser's own clock, when each invoice was received,
+  // never on the dates or the months the supplier prints: four parts of one bill printed 30 days apart and received the
+  // same day were each paid alone. A supplier's monthly invoices, received a month apart, still fall outside it.
   const limit = c.policy.aloneLimit;
   if (limit && MONEY.test(r.total) && limitRule(limit, r.currency, r.total).rule === null) {
     const key = r.invoice_no ? invoiceKey(r.invoice_no) : null;
+    const received = day(c.invoice.receivedAt ?? c.today);
     const parts = others.filter(sameParty)
       // Each part is itself within the limit: one above it went to the CFO on its own, so nothing was cut to avoid it.
       .filter((x) => x.state !== "rejected" && x.state !== "blocked" && !x.blockedAsDuplicate && x.currency === r.currency && MONEY.test(x.total) && limitRule(limit, x.currency, x.total).rule === null)
       .filter((x) => !key || invoiceKey(x.invoiceNo) !== key)
-      .filter((x) => !periodsDiffer(periods, x.period))
-      .filter((x) => Math.abs(day(x.issueDate || x.receivedAt) - issued) <= win.splitDays * DAY_MS);
+      .filter((x) => Math.abs(day(x.receivedAt) - received) <= win.splitDays * DAY_MS);
     const sum = parts.reduce((n, x) => n + toCents(x.total), toCents(r.total));
     if (parts.length && sum > toCents(limit.amount)) {
       const shown = parts.slice(0, SPLIT_SHOWN).map((x) => `${x.id} (invoice ${x.invoiceNo || "with no number"}, ${money(x.currency, x.total)}, ${(x.issueDate || x.receivedAt).slice(0, 10)})`);

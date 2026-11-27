@@ -15,7 +15,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { moneyIn, writtenAmount } from "../lib/numbers.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { cardOf, ingestCardTransaction, storeCard } from "../policy/cards.js";
+import { cardOf, ingestCardTransaction, policyAllowsCard, storeCard } from "../policy/cards.js";
 import { frozen, policyValue } from "../policy/rules.js";
 import { attachReview } from "../claude/review.js";
 import type { Actor } from "../audit/log.js";
@@ -248,6 +248,9 @@ export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: str
   const t = beginExecution<TaskCardTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "task_card") throw new Error(`${proposalId} is not a task card`);
     if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status != 'FAILED'").get(`task:${proposalId}`)) throw new Error(`${proposalId} already has its card`);
+    // 27 Nov (red team, runner finding 6): the emergency stop, a pause or stop, a revoked identity: nothing is issued
+    // while the policy does not let this card pay. The card is never made live, so no merchant can charge it.
+    if (!policyAllowsCard(db, `task:${proposalId}`)) throw new Error(`${proposalId}: ${frozen(db) ? "the emergency stop is on" : "the CFO policy does not let this card pay now"}; the card is not issued`);
   }, now);
   try {
     reserveTask(db, proposalId, t, now);

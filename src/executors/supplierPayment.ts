@@ -15,8 +15,7 @@ import type { PayoutRail, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { sameLedgerInvoice } from "../lib/invoiceKey.js";
-import { partyOf } from "../agents/euroBill.js";
+import { otherPayoutForBill } from "../agents/euroBill.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { hashFirst } from "../policy/hashFirst.js";
 import { authorize } from "../policy/principals.js";
@@ -69,8 +68,8 @@ async function runSupplierPayment(db: DB, rail: PayoutRail, sim: SandboxSim | nu
       checkPayingAccount(db, t as SupplierPaymentTerms & PlatformFields, rail, now());
       const held = holdReason(db, t, now());
       if (held) throw new Error(held);
-      const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-        .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), t.invoice_no, { ...partyOf(db, t.invoice_no), vendor: t.vendor }));
+      // The bill as issued and a negotiation's agreed invoice of it are one bill (red team, runner finding 2).
+      const other = otherPayoutForBill(db, t);
       if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
       const row = transferRow(db, t);
       if (row?.status === "CANCELLED") throw closedError(t);

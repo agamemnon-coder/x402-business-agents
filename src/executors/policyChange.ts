@@ -71,7 +71,7 @@ export function proposePolicyChange(db: DB, req: { changes: { key: string; to: s
   const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
-  const sod = sodChanges(db, JSON.stringify({ changes }));
+  const sod = sodChanges(db, JSON.stringify({ changes }), now);
   // The signed-in person is the proposer where segregation of duties needs one, and only there is the name read: below
   // the threshold (or with it off), and for any tightening such as pulling the stop, a change asked for in the Cloud
   // stays one person's to ask for and approve, and no name ever refuses it.

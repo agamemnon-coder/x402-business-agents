@@ -15,7 +15,7 @@
 
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
-import { supplierPaymentEur } from "./fourEyes.js";
+import { fxConversionEur, supplierPaymentEur } from "./fourEyes.js";
 
 export const SECOND_KEY_EUR = "approval.second_key_eur";
 export const SECOND_KEY_NEW_PAYEE = "approval.second_key_new_payee";
@@ -157,6 +157,14 @@ export function secondKeyReasons(db: DB, p: { kind: string; terms_json: string }
   if (!secondKeyOn(db)) return [];
   const paid = paidBefore(db);
   if (p.kind === "invoice_payment" || p.kind === "supplier_payment") return reasonsOfPayment(db, JSON.parse(p.terms_json) as PaymentTerms, now, paid);
+  // An FX conversion (27 Nov, red team, runner finding 3): its value in euros (fxConversionEur); a pair without EUR
+  // states none and counts as over, as a payment does. It has no payee, so only the amount applies.
+  if (p.kind === "fx_conversion") {
+    const eur = setting(db, SECOND_KEY_EUR);
+    if (!/^\d+\.\d{2}$/.test(eur)) return [];
+    const v = fxConversionEur(p.terms_json);
+    return v === null || toCents(v) >= toCents(eur) ? [`amount at or above EUR ${eur}`] : [];
+  }
   if (p.kind === "payment_batch") {
     const lines = (JSON.parse(p.terms_json) as { lines?: { kind: string; terms: PaymentTerms }[] }).lines ?? [];
     return [...new Set(lines.flatMap((l) => (l.kind === "invoice_payment" || l.kind === "supplier_payment" ? reasonsOfPayment(db, { ...l.terms, kind: l.kind }, now, paid) : [])))];

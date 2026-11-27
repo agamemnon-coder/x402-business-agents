@@ -27,6 +27,7 @@ import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments, type AloneDecl
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
+import { invoiceKey } from "../lib/invoiceKey.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
 import { audit, verifyAuditChain } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -1113,6 +1114,14 @@ export class EngineHost {
       if (r.vendor !== o.vendor || r.currency !== o.currency || !r.invoice_no.startsWith(`${o.invoice_no}-`))
         return { ok: false as const, reason: `${r.id} is not the agreed replacement of ${o.id}` };
     }
+    // 27 Nov (red team, runner finding 2): one bill is paid once, as issued or as agreed. Another invoice from this supplier
+    // that is this bill (its number as issued, or another negotiation's agreed "<original>-<sha8>"), not rejected or
+    // blocked, means this agreed invoice is not recorded (agreed() then withdraws it): on the seeded scene, with no
+    // original named, a second negotiation of one bill filed a second payable invoice for it.
+    const bill = invoiceKey(o?.invoice_no ?? n.original_invoice_no);
+    const twin = (db.prepare("SELECT id, invoice_no, status FROM ap_invoices WHERE id NOT IN (?, ?) AND status NOT IN ('rejected', 'blocked') AND vendor = ?").all(r.id, o?.id ?? "", r.vendor) as { id: string; invoice_no: string; status: string }[])
+      .find((x) => { const k = invoiceKey(x.invoice_no); return k === bill || (k.startsWith(`${bill}-`) && /^[0-9A-F]{8}$/.test(k.slice(bill.length + 1))); });
+    if (twin) return { ok: false as const, reason: `${twin.id} (${twin.invoice_no}, ${twin.status.replace(/_/g, " ")}) is already this bill; one bill is paid once` };
     const off = c(n.original_amount) - c(r.total);
     const facts = {
       original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,

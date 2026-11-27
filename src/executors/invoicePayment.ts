@@ -26,8 +26,7 @@ import { checkPayingAccount } from "../airwallex/binding.js";
 import { entityRefusal } from "../policy/entities.js";
 import { applicationFeeOf, noteApplicationFee, takePlatformFee } from "./supplierPayment.js";
 import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
-import { negotiationOf, partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
-import { sameLedgerInvoice } from "../lib/invoiceKey.js";
+import { negotiationOf, otherPayoutForBill, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { exclusive, heldPayoutCents, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { checkpoint, step } from "../policy/saga.js";
@@ -92,8 +91,8 @@ async function runInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | 
       const held = holdReason(db, t, now());
       if (held) throw new Error(held);
       // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
-      const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-        .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), t.invoice_no, { ...partyOf(db, t.invoice_no), vendor: t.vendor }));
+      // The bill as issued and a negotiation's agreed invoice of it are one bill (red team, runner finding 2).
+      const other = otherPayoutForBill(db, t);
       if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
       // A resume after a crash (src/policy/saga.ts): a step already started was decided on when it started; it is now
       // finished, not judged again on balances it has itself changed. The euro check is then made fresh before step 2.

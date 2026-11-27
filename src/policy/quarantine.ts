@@ -11,6 +11,7 @@ import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { CHAIN_ID, USDZ } from "../metal/network.js";
 import { receiptId, type Receipt, type ReceivePolicyPort } from "../metal/receivePolicy.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId } from "./approvals.js";
+import { frozen } from "./rules.js";
 
 const CURSOR = "quarantine.next_block";
 /** A held payment's two options wait this long for the CFO; after that they are proposed again on the next poll. */
@@ -89,12 +90,23 @@ export async function pollQuarantine(db: DB, port: ReceivePolicyPort, now = new 
   return added;
 }
 
+/**
+ * Why the emergency stop holds this release now, or null: a return sends the held money back out to its sender on chain,
+ * so it waits while the stop is on; accepting it into the sweep wallet sends nothing out and is not held.
+ */
+function stopRefusal(db: DB, t: Pick<QuarantineReleaseTerms, "action">): string | null {
+  return t.action === "return" && frozen(db) ? "the emergency stop is on: a held payment is not returned on chain until it is lifted; nothing sent" : null;
+}
+
 /** After the CFO's approval: the sweep wallet releases the held payment to the approved address, once. */
 export async function executeQuarantineRelease(db: DB, port: ReceivePolicyPort, sweepKeyFile: string, proposalId: string, now = new Date()): Promise<void> {
   const t = beginExecution<QuarantineReleaseTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "quarantine_release") throw new Error(`${proposalId} is not a quarantine release`);
     const row = db.prepare("SELECT status FROM quarantines WHERE receipt_id = ?").get(terms.receipt_id) as { status: string } | undefined;
     if (row?.status !== "OPEN") throw new Error(`the held payment ${terms.receipt_id.slice(0, 10)}… is ${row?.status ?? "unknown"}, not held`);
+    // 27 Nov (red team, runner finding 8): a return sends money out on chain, so the emergency stop holds it.
+    const stopped = stopRefusal(db, terms);
+    if (stopped) throw new Error(stopped);
   }, now);
   try {
     const row = db.prepare("SELECT receipt_json FROM quarantines WHERE receipt_id = ?").get(t.receipt_id) as { receipt_json: string };
@@ -106,6 +118,9 @@ export async function executeQuarantineRelease(db: DB, port: ReceivePolicyPort, 
       throw new Error("the stored receipt does not match the approved terms");
     }
     if (!(await port.isOpen(t.receipt_id as Hex))) throw new Error("Metal no longer holds this payment (it was released already); nothing sent");
+    // Again right before the claim: a stop pulled while the chain was read stops it.
+    const stopped = stopRefusal(db, t);
+    if (stopped) throw new Error(stopped);
     const tx = await port.claim(sweepKeyFile, receipt, t.to as Address);
     db.transaction(() => {
       db.prepare("UPDATE quarantines SET status = ?, resolved_tx = ?, resolved_at = ? WHERE receipt_id = ?").run(t.action === "return" ? "RETURNED" : "ACCEPTED", tx, now.toISOString(), t.receipt_id);

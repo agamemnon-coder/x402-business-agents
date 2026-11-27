@@ -10,9 +10,14 @@
 //   - under one new request_id derived from the first (replacementRequestId), written before it is sent, so a crash, a
 //     second runner or a lost answer can only find or resend that one: Airwallex keys transfers by request_id, and the
 //     ledger's one_live_transfer_per_invoice index refuses a second live payout for the invoice;
-//   - once: a replacement that fails too, or whose own outcome is not known, stops for a person. Never a third send.
-// Every hold the executors check (the emergency stop, a pause or stop, the agent's identity, a blocked or changed payee)
-// and the currency's floor on fresh balances are checked again first. Every stop is audited (transfer.replace_stopped).
+//   - once: a replacement that fails too, or whose own outcome is not known, stops for a person. Never a third send;
+//   - only within REPLACE_WITHIN_DAYS of the first transfer's failure (27 Nov, red team, runner finding 5): later, the
+//     approval is old news and a person decides.
+// The execution guard's own checks run first, as for any execution (27 Nov, red team, runner finding 5: a replacement
+// was sent on a ledger whose audit log had been rewritten): the audit chain, the signed checkpoint, the signatures
+// behind the approval, the hub gate, the paying account and the Airwallex batch (hashFirst, beginExecution). Then every
+// hold the executors check (the emergency stop, a pause or stop, the agent's identity, a blocked or changed payee) and
+// the currency's floor on fresh balances. Every stop is audited (transfer.replace_stopped).
 
 import { createHash } from "node:crypto";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
@@ -24,7 +29,13 @@ import { fromCents, toCents } from "../lib/money.js";
 import { RETURNED_AFTER_PAID } from "../payouts/feeKept.js";
 import { freeCents, type PlatformFields, type SupplierPaymentTerms } from "../payouts/plan.js";
 import { recordRationale } from "../payouts/rationale.js";
-import { signedTerms } from "../policy/approvals.js";
+import { signedTerms, unsignedRefusal } from "../policy/approvals.js";
+import { auditChainRefusal } from "../audit/intact.js";
+import { checkpointRefusal } from "../audit/checkpointer.js";
+import { approvalSignatureRefusal } from "../policy/signedApproval.js";
+import { hubGateRefusal } from "../hub/gate.js";
+import { checkPayingAccount } from "../airwallex/binding.js";
+import { refuseIfInAwxBatch } from "../policy/awxBatchLink.js";
 import { exclusive } from "../policy/payoutLock.js";
 import { originJson, withOrigin } from "../provenance/origin.js";
 import { floorReasonNow, holdReason as invoiceHold, payeeReason, REFUSED_AT_CREATE } from "./invoicePayment.js";
@@ -42,7 +53,47 @@ export type ReplaceOutcome =
   | { outcome: "stopped"; code: StopCode; reason: string };
 
 export type StopCode = "not_a_payout" | "terms_changed" | "platform_fee" | "not_sent" | "read_failed" | "not_this_payout" | "returned_after_paid"
-  | "cancelled_not_failed" | "not_failed" | "held" | "floor" | "refused_at_create" | "replacement_unknown" | "replaced_once";
+  | "cancelled_not_failed" | "not_failed" | "held" | "floor" | "refused_at_create" | "replacement_unknown" | "replaced_once" | "guard" | "too_late";
+
+/**
+ * How long after the first transfer's failure Purser may still replace it (27 Nov, red team, runner finding 5): a week.
+ * A bank's rejection comes back within days; a replacement asked for later than this goes to a person, who files a new
+ * payment if it is still owed. Measured from when Purser first recorded the failure, or, when it has recorded none yet,
+ * from when the first transfer was sent (earlier than its failure, so never longer).
+ */
+export const REPLACE_WITHIN_DAYS = 7;
+
+/** When the first transfer failed as far as the ledger knows: its first FAILED or CANCELLED status read, else its send. */
+function failedSince(db: DB, row: Row): string | null {
+  const seen = db.prepare(`SELECT MIN(ts) AS at FROM audit_log WHERE subject IN (?, ?) AND event = 'transfer.status'
+    AND json_extract(payload_json, '$.status') IN ('FAILED', 'CANCELLED')`).get(row.transfer_id ?? "", row.request_id) as { at: string | null };
+  if (seen.at) return seen.at;
+  const sent = db.prepare("SELECT MIN(ts) AS at FROM audit_log WHERE subject = ? AND event IN ('transfer.created', 'transfer.adopted')").get(row.transfer_id ?? "") as { at: string | null };
+  return sent.at;
+}
+
+/**
+ * Why the execution guard would not let this payment run now, or null: the same checks hashFirst and beginExecution
+ * (src/policy/hashFirst.ts, src/policy/approvals.ts) make before any money moves, for a replacement too.
+ */
+function guardRefusal(db: DB, rail: unknown, proposalId: string, t: Terms, now: Date): string | null {
+  const tampered = auditChainRefusal(db);
+  if (tampered) return tampered;
+  const unanchored = checkpointRefusal(db, "payment", now);
+  if (unanchored) return unanchored;
+  const unsigned = approvalSignatureRefusal(db, proposalId);
+  if (unsigned) return unsignedRefusal(unsigned);
+  const p = db.prepare("SELECT proposal_id, kind, terms_json, terms_sha256, created_by, status FROM proposals WHERE proposal_id = ?").get(proposalId) as Parameters<typeof hubGateRefusal>[1];
+  const hub = hubGateRefusal(db, p, now);
+  if (hub) return hub;
+  try {
+    checkPayingAccount(db, t, rail as { payingAccount?: string | null }, now);
+    refuseIfInAwxBatch(db, proposalId);
+  } catch (e) {
+    return (e as Error).message;
+  }
+  return null;
+}
 
 type Terms = (SupplierPaymentTerms | InvoicePaymentTerms) & PlatformFields;
 type Row = { request_id: string; transfer_id: string | null; status: string; failure_type: string | null };
@@ -112,6 +163,8 @@ async function replace(db: DB, rail: ReplaceRail, sim: SandboxSim | null, propos
     return { outcome: "already_replaced", original, request_id: prior.request_id, status: cur.status };
   }
 
+  // When it failed, as recorded before this read writes its own status row below.
+  const failedAt = failedSince(db, row);
   // The first transfer, read at Airwallex now: it must be this payout, and final-failed.
   let first: Transfer;
   try { first = await rail.getTransfer(row.transfer_id); } catch (e) { return stop("read_failed", `the transfer ${row.transfer_id} could not be read at Airwallex (${(e as Error).message.slice(0, 120)}); whether it failed is not known`); }
@@ -123,6 +176,13 @@ async function replace(db: DB, rail: ReplaceRail, sim: SandboxSim | null, propos
   if (first.status === "FAILED") return { outcome: "waiting", original, reason: "Airwallex has it FAILED and has not closed it yet; asked again once it is" };
   if (first.status === "CANCELLED" && !first.failureType) return stop("cancelled_not_failed", "cancelled at Airwallex without a failure (a person's decision in Airwallex); it is not replaced");
   if (first.status !== "CANCELLED") return stop(NOT_A_FAILURE.has(first.status) ? "cancelled_not_failed" : "not_failed", `Airwallex has it ${first.status}, not failed`);
+  const since = failedAt;
+  if (!since || now().getTime() - Date.parse(since) > REPLACE_WITHIN_DAYS * 86_400_000) {
+    return stop("too_late", `the first transfer failed ${since ? `on ${since.slice(0, 10)}` : "at a time not on record"}, more than ${REPLACE_WITHIN_DAYS} days ago; a person decides whether it is still owed`);
+  }
+  // The execution guard, as for any payment that moves money now.
+  const guard = guardRefusal(db, rail, proposalId, t, now());
+  if (guard) return stop("guard", guard);
 
   // Every hold the executor checks, then the floor on fresh balances, before anything is written.
   const holdNow = () => (kind === "supplier_payment" ? supplierHold(db, t as SupplierPaymentTerms, now()) : invoiceHold(db, t as InvoicePaymentTerms, now()) ?? payeeReason(db, t as InvoicePaymentTerms));
