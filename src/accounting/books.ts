@@ -74,10 +74,12 @@ const EQUITY = "3000";
 /**
  * The money that was there before Purser moved any: one line per bank account and currency, money in against owner's
  * equity. Metal: each funding of the business account by its owner. Airwallex: its available balance at the first
- * read, less the movements Purser booked before that read (they are inside that balance already), the payments the
- * receivables module booked itself included (src/receivables/ar.ts: they are not journal lines here).
+ * read, less the movements Purser booked before that read (they are inside that balance already). `arBooked`: the
+ * receivables payments (src/receivables/ar.ts, not journal lines here) are booked beside these lines, as the ledger
+ * does (ar:pay), so those received before the read are left out too; without it (books(), built from the journal
+ * alone) they stay in the opening, or the closing cash would lose them.
  */
-export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
+export function openingLines(db: DB, moved: JournalLine[], opts: { arBooked?: boolean } = {}): JournalLine[] {
   const out: JournalLine[] = [];
   const line = (l: Pick<JournalLine, "date" | "ref" | "description" | "bank_account" | "currency" | "proof" | "rule"> & { cents: number }): JournalLine => ({
     date: l.date, source: "opening", ref: l.ref, description: l.description, counterparty: "owner", agent: "", cost_centre: "", gl_account: EQUITY, gl_name: CHART[EQUITY] ?? "",
@@ -91,7 +93,7 @@ export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
   const first = db.prepare("SELECT taken_at, label, json FROM balance_snapshots ORDER BY id LIMIT 1").get() as { taken_at: string; label: string; json: string } | undefined;
   if (first) {
     const bal = JSON.parse(first.json) as Record<string, { availableCents?: number } | undefined>;
-    const hasAr = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ar_payments'").get();
+    const hasAr = !!opts.arBooked && !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ar_payments'").get();
     // Every currency Airwallex holds, each on its own bank account (EUR 1200, USD 1201, GBP 1202, others 1203).
     for (const cur of Object.keys(bal).filter((c) => /^[A-Z]{3}$/.test(c)).sort()) {
       const bank = bankAccountFor(cur);
