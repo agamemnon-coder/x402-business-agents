@@ -11,7 +11,7 @@ import { ASK_PAGE_COPY_NL, ASK_SKILLS_NL } from "../cloud/src/ask/pageNl.js";
 import { connectionsCatalogue } from "../cloud/src/connections.js";
 import { consolePage } from "../cloud/src/console.js";
 import { AGENT_CAN, AGENT_ROLE } from "../cloud/src/consoleData.js";
-import { AGENT_NAMES_NL, CONNECTIONS_NL, NL_DATA_PATHS, NL_EXACT, NL_JS, NL_PATTERNS, ROSTER_NL } from "../cloud/src/consoleNl.js";
+import { AGENT_NAMES_NL, CONNECTIONS_NL, NL_DATA_FIELDS, NL_DATA_PATHS, NL_EXACT, NL_JS, NL_PATTERNS, ROSTER_NL } from "../cloud/src/consoleNl.js";
 import { feedLine } from "../cloud/src/dashboard.js";
 import { CATEGORY_WORDS, OUTCOME_WORDS } from "../src/learning/precedent.js";
 import { ACCOUNT_NAMES_NL, LEDGER_ACCOUNTS } from "../src/ledger/accounts.js";
@@ -19,7 +19,7 @@ import { RULES } from "../src/negotiate/rails.js";
 import { RATIONALE_WORDS_JS } from "../src/servers/rationaleWords.js";
 
 /** The page's own translator, on the Dutch catalogue's tables. */
-const page = new Function("L", "NL", `${NL_JS}; return { nx, nxAll };`)({ x: NL_EXACT, p: NL_PATTERNS }, true) as { nx: (s: string) => string; nxAll: <T>(v: T) => T };
+const page = new Function("L", "NL", `${NL_JS}; return { nx, nxAll, nlFields };`)({ x: NL_EXACT, p: NL_PATTERNS }, true) as { nx: (s: string) => string; nxAll: <T>(v: T, fields?: readonly string[] | null) => T; nlFields: (path: string) => readonly string[] | undefined };
 const english = page.nx;
 /** English words a Dutch sentence never holds (the browser check's list, short). */
 const EN = /\b(the|and|for|with|to|not|from|its|it|by|at|on|or|you|your|has|have|will|when|paid|invoice|payment|supplier|card|limit|own|only|each|every|after|new|policy|purchase|customer|refund|received|filed|proposed|declined|matched|stopped|duplicate)\b/i;
@@ -72,6 +72,9 @@ describe("the page's translator on the records' templates", () => {
       row("card.decline_met", { proposal_id: "P-0001" }),
       row("card.decline_met", {}),
       row("receivable.matched", { detail: "NW-2026-119 from Summit Outfitters paid in full, 1987.50 EUR" }),
+      row("receivable.matched", { detail: "NW-2026-119 paid in full, 1987.50 EUR" }),
+      row("receivable.matched", { detail: "NW-2026-120: paid 100.00 EUR, short by 20.00 EUR; the rest stays open and the customer is asked" }),
+      row("receivable.matched", { detail: "NW-2026-121: paid 130.00 EUR, over by 10.00 EUR; the excess waits in suspense and a refund is the CFO's decision" }),
       row("proposal.created", { kind: "invoice_payment" }, "P-0009"),
       row("proposal.approved", {}, "P-0009", "human"),
       row("proposal.executed", { status: "paid" }, "P-0009"),
@@ -96,7 +99,7 @@ describe("the page's translator on the records' templates", () => {
   });
 
   it("a whole answer: the strings change, the keys, codes and numbers do not", () => {
-    const v = page.nxAll({ status: "active", kind: "sandbox", amount: "19.99", name: "Sourcing agent", label: "prototype · Alta testnet · test money · financier simulated", rows: [{ what: "Purchases on its own company card", in_all: "EUR 100.00 a month" }] });
+    const v = page.nxAll({ status: "active", kind: "sandbox", amount: "19.99", name: "Sourcing agent", label: "prototype · Alta testnet · test money · financier simulated", rows: [{ what: "Purchases on its own company card", in_all: "EUR 100.00 a month" }] }, ["name", "label", "rows[].what", "rows[].in_all"]);
     expect(v).toEqual({ status: "active", kind: "sandbox", amount: "19.99", name: "Inkoopagent", label: "prototype · Alta-testnet · testgeld · financier nagebootst", rows: [{ what: "Aankopen met de eigen bedrijfskaart", in_all: "EUR 100.00 per maand" }] });
     expect(english("Northwind Outdoor (demo company)")).toBe("Northwind Outdoor (demobedrijf)");
     expect(english("this deployment has no Airwallex gateway")).toBe("deze omgeving heeft geen Airwallex-gateway");
@@ -107,6 +110,52 @@ describe("the page's translator on the records' templates", () => {
     expect(en.nx("The CFO")).toBe("The CFO");
     for (const p of ["/v1/dashboard", "/v1/agents", "/v1/connections", "/v1/connections/mine", "/v1/tokenisation", "/v1/partner-rails", "/v1/negotiation/recorded", "/v1/authority-map"]) expect(NL_DATA_PATHS.test(p), p).toBe(true);
     for (const p of ["/v1/me", "/v1/invoices", "/v1/proposals/P-1", "/v1/card-design", "/v1/company", "/v1/keys"]) expect(NL_DATA_PATHS.test(p), p).toBe(false);
+    // Each translated answer has its list of sentence fields, and each list its answer.
+    for (const p of ["/v1/dashboard", "/v1/agents", "/v1/connections", "/v1/connections/mine", "/v1/tokenisation", "/v1/partner-rails", "/v1/negotiation/recorded", "/v1/authority-map", "/v1/cards", "/v1/airwallex-live/balances", "/v1/airwallex-live/events?x=1"]) expect(page.nlFields(p), p).toBeTruthy();
+    for (const k of Object.keys(NL_DATA_FIELDS)) expect(NL_DATA_PATHS.test(`/v1/${k === "airwallex-live" ? "airwallex-live/balances" : k}`), k).toBe(true);
+  });
+});
+
+// Round 2 of the v1.5.3 red team: synced text (a merchant, a payee, a supplier, a reason from the rail) is data, never
+// the catalogue's. A ⟦…⟧ in it is shown as written and opens no translation, and a name that reads like a catalogue word
+// ("Other", "Metal") stays as synced. Only each answer's own sentence fields are translated (NL_DATA_FIELDS).
+describe("the page's translator leaves synced text as it is", () => {
+  const row = (event: string, payload: Record<string, unknown>, subject: string | null = null, actor = "sourcing") => feedLine({ seq: 1, ts: "2026-11-27T10:00:00Z", actor, event, subject, payload_json: JSON.stringify(payload) })!.text;
+  it("a marker in a merchant's, a payee's or a reason's text is shown as written and translates nothing", () => {
+    expect(english(row("card.charge_approved", { amount: "249.00", currency: "EUR", merchant: "⟦The CFO⟧" }))).toBe("249.00 EUR betaald bij ⟦The CFO⟧ met de eigen kaart, binnen de limiet");
+    expect(english(row("card.charge_approved", { amount: "249.00", currency: "EUR", merchant: "⟦Purser's code⟧" }))).toBe("249.00 EUR betaald bij ⟦Purser's code⟧ met de eigen kaart, binnen de limiet");
+    expect(english(row("payee.added", { vendor: "⟦Treasury agent⟧ Ltd" }, null, "awx-executor"))).toBe("⟦Treasury agent⟧ Ltd toegevoegd als begunstigde na goedkeuring van de CFO");
+    expect(english(row("card.charge_declined", { amount: "9.99", currency: "EUR", merchant: "Shop", reason: "LIMIT_EXCEEDED: ⟦still waiting⟧ 1000.00" }))).toBe("Airwallex weigerde 9.99 EUR bij Shop: LIMIT_EXCEEDED: ⟦still waiting⟧ 1000.00");
+    expect(english("⟦⟦The CFO⟧⟧")).toBe("⟦⟦The CFO⟧⟧");
+    expect(english("⟦1850.00⟧")).toBe("⟦1850.00⟧");
+    // Purser's own markers still work: a proposal's kind and a reason in its sentence.
+    expect(english(row("card.charge_declined", { amount: "9.99", currency: "EUR", merchant: "Shop", reason: "LIMIT_EXCEEDED" }))).toBe("Airwallex weigerde 9.99 EUR bij Shop: boven de limiet van de kaart");
+  });
+
+  it("only an answer's sentence fields: a merchant named Other or Metal stays Other and Metal", () => {
+    const dash = { feed: [{ who: "Sourcing agent", text: row("card.charge_approved", { amount: "1.00", currency: "EUR", merchant: "Other" }) }, { who: "The CFO", text: row("card.charge_approved", { amount: "2.00", currency: "EUR", merchant: "Metal" }) }], spend: [{ key: "x", label: "Other" }], merchant: "Other", vendor: "Metal" };
+    const nl = page.nxAll(dash, page.nlFields("/v1/dashboard"));
+    expect(nl.feed.map((f) => f.text)).toEqual(["1.00 EUR betaald bij Other met de eigen kaart, binnen de limiet", "2.00 EUR betaald bij Metal met de eigen kaart, binnen de limiet"]);
+    expect(nl.feed.map((f) => f.who)).toEqual(["Inkoopagent", "De CFO"]);
+    expect({ merchant: nl.merchant, vendor: nl.vendor }).toEqual({ merchant: "Other", vendor: "Metal" });
+    const rails = { label: "Airwallex sandbox · test money", t0: { bookings: [{ counterparty: "Other", what: "x" }, { counterparty: "Stockline (test payee)" }, { counterparty: "⟦The CFO⟧ (test payee)" }] }, tokens: [{ events: [{ merchant: "Metal", outcome: "approved" }] }], refusals: [{ code: "Other", detail: "Metal" }] };
+    const nr = page.nxAll(rails, page.nlFields("/v1/partner-rails"));
+    expect(nr.label).toBe("Airwallex-sandbox · testgeld");
+    expect(nr.t0.bookings.map((b) => b.counterparty)).toEqual(["Other", "Stockline (testbegunstigde)", "⟦The CFO⟧ (testbegunstigde)"]);
+    expect(nr.tokens[0]!.events[0]!.merchant).toBe("Metal");
+    expect(nr.refusals[0]).toEqual({ code: "Other", detail: "Metal" });
+    const agents = { agents: [{ id: "sourcing", name: "Sourcing agent", decisions: [{ text: row("card.charge_approved", { amount: "1.00", currency: "EUR", merchant: "Other" }), precedent: { cases: [{ counterparty: "Other", kind: "card purchase" }] } }] }] };
+    const na = page.nxAll(agents, page.nlFields("/v1/agents"));
+    expect(na.agents[0]!.name).toBe("Inkoopagent");
+    expect(na.agents[0]!.decisions[0]!.text).toBe("1.00 EUR betaald bij Other met de eigen kaart, binnen de limiet");
+    expect(na.agents[0]!.decisions[0]!.precedent.cases[0]!.counterparty).toBe("Other");
+    expect(page.nxAll({ supplier: "Other (simulated supplier)" }, page.nlFields("/v1/negotiation/recorded")).supplier).toBe("Other (nagebootste leverancier)");
+  });
+
+  it("an answer with no list of sentence fields is not translated at all", () => {
+    const synced = { ids: ["P-0001", "a".repeat(64)], synced: ["Metal", "Other", "Sourcing", "Airlines", "⟦1850.00⟧"], feed: ["Paid 1.00 EUR at Other on its own card, within its limit"] };
+    expect(page.nxAll(synced)).toEqual(synced);
+    expect(page.nxAll(synced, page.nlFields("/v1/dashboard"))).toEqual(synced);
   });
 });
 

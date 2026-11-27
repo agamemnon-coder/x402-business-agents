@@ -495,9 +495,9 @@ async function api(path,o){
   if(r.status===401&&!o.token&&(S||sessionEnded)){if(S){forget();S=null;ME=null;notice=t('cs.session_ended');sessionEnded=true;go('#/sign-in')}throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
   let j=await r.json().catch(()=>({error:r.statusText}));
-  // A Dutch page reads Purser's own English in Dutch (cloud/src/consoleNl.ts): what a few read-only pages show, as it
-  // arrives, and an error's words always. Nothing it sends back or signs is translated.
-  if(NL&&j&&typeof j==='object'){if(r.ok&&(!o.method||o.method==='GET')&&NL_DATA_PATHS.test(path))j=nxAll(j);else if(typeof j.error==='string')j.error=nx(j.error)}
+  // A Dutch page reads Purser's own English in Dutch (cloud/src/consoleNl.ts): the sentence fields of a few read-only
+  // answers (NL_DATA_FIELDS), as they arrive, and an error's words always. Nothing it sends back or signs is translated.
+  if(NL&&j&&typeof j==='object'){if(r.ok&&(!o.method||o.method==='GET')&&NL_DATA_PATHS.test(path))j=nxAll(j,nlFields(path));else if(typeof j.error==='string')j.error=nx(j.error)}
   // The server asks for the passkey again: one Face ID prompt, then the same request once more.
   if(r.status===403&&j.code==='step_up_required'&&!o.token&&!o.stepped&&S){await stepUp();return api(path,Object.assign({},o,{stepped:true}))}
   // The answer's code and body go with the error (a new approval key's endorsement asks for a second step).

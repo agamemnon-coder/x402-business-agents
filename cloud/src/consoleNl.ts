@@ -305,6 +305,10 @@ export const NL_PATTERNS: readonly (readonly [string, string])[] = [
   ["^(\\S+) from (.+) paid in full, (.+)$", "$1 van $2 volledig betaald, $3"],
   ["^(\\S+) from (.+): paid (.+), short by (.+); the rest stays open and the customer is asked$", "$1 van $2: $3 betaald, $4 te weinig; de rest blijft open en de klant krijgt de vraag"],
   ["^(\\S+) from (.+): paid (.+), over by (.+); the excess waits in suspense and a refund is the CFO's decision$", "$1 van $2: $3 betaald, $4 te veel; het teveel wacht op de tussenrekening en terugbetalen beslist de CFO"],
+  // The same without the customer's name, as the runner now writes it (no name reaches Purser Cloud).
+  ["^(\\S+) paid in full, (.+)$", "$1 volledig betaald, $2"],
+  ["^(\\S+): paid (.+), short by (.+); the rest stays open and the customer is asked$", "$1: $2 betaald, $3 te weinig; de rest blijft open en de klant krijgt de vraag"],
+  ["^(\\S+): paid (.+), over by (.+); the excess waits in suspense and a refund is the CFO's decision$", "$1: $2 betaald, $3 te veel; het teveel wacht op de tussenrekening en terugbetalen beslist de CFO"],
   // The demo company's name, and a supplier the negotiation simulates.
   ["^(.+) \\(demo company\\)$", "$1 (demobedrijf)"],
   ["^(.+) \\(simulated supplier\\)$", "$1 (nagebootste leverancier)"],
@@ -359,12 +363,46 @@ export const NL_PATTERNS: readonly (readonly [string, string])[] = [
 export const NL_DATA_PATHS = /^\/v1\/(dashboard|agents|authority-map|connections(\/mine)?|tokenisation|partner-rails|negotiation\/recorded|airwallex-live\/[a-z_-]+|cards)(\?|$)/;
 
 /**
- * The page's half: nx(text) for one string, nxAll(value) for what an API answered. Put after I18N_JS; L.x and L.p are
- * the Dutch catalogue's (an English page has neither, and translates nothing).
+ * Which strings of each of those answers are Purser's own sentences, by path in the answer ([] for each item of a list).
+ * Only these are translated: a name, a merchant, a vendor, a payee, an id or anyone's free text stays as it was synced,
+ * even when it reads like a word of the catalogue ("Other", "Metal"). A path with "@name" holds a name with one of
+ * Purser's labels after it ("Stockline (test payee)"): only that label is translated, never the name.
+ * Tokenisation's answer is Purser's own record (no company's data), its test shop's name included.
+ */
+export const NL_DATA_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  dashboard: ["spend[].label", "feed[].who", "feed[].text"],
+  agents: ["controls", ...["name", "role", "job", "may[]", "may_not[]", "card.pays_for", "rails[]", "decisions[].text", "decisions[].decided_by", "decisions[].precedent.cases[].kind",
+    "decisions[].precedent.cases[].outcome_words", "decisions[].precedent.cases[].why[]", "learning.calibration[].kind", "learning.suggestions[].text"].map((f) => `agents[].${f}`)],
+  "authority-map": ["name", ...["what", "rail", "per_payment", "in_all", "from", "to", "when", "under", "needs_cfo"].map((f) => `rows[].${f}`)].map((f) => `authority_map.agents[].${f}`),
+  connections: ["rule", "money_rule", ...["connections", "money", "planned"].flatMap((g) => ["name", "what", "needs"].map((f) => `${g}[].${f}`))],
+  "connections/mine": ["rule", "items[].name", "items[].detail"],
+  tokenisation: ["token_life.vic.label", "token_life.vic.purchase.merchant", "token_life.vic.misuse[].merchant", "token_life.agent_tokens.label", "invoice_token.label", "invoice_token.face_value",
+    "invoice_token.discount", "invoice_token.stages[].label", "invoice_token.stages[].txs[].what", "invoice_token.steps[].label", "invoice_token.steps[].txs[].what", "agent_cards.label",
+    "agent_cards.cards[].holder", "agent_cards.cards[].limits[]", "visa_credential.label"],
+  "partner-rails": ["label", "t0.bookings[].what", "t0.bookings[].counterparty@name", "tokens[].events[].outcome", "refusals[].what"],
+  "negotiation/recorded": ["label", "supplier@name", "turns[].refused"],
+  cards: ["label", "why", "agents[].name", "agents[].reason"],
+  "airwallex-live": ["reason"],
+};
+
+/**
+ * The page's half: nx(text) for one string, nxAll(value, fields) for an answer's sentence fields (nlFields(path) names
+ * them), nxOwn(value) for Purser's own constants (every string). Put after I18N_JS; L.x and L.p are the Dutch
+ * catalogue's (an English page has neither, and translates nothing).
+ * A ⟦ or ⟧ in the text itself is set aside before any pattern runs and put back after, so synced text can never open a
+ * translation of its own: only the markers Purser's patterns write are followed. A name's labels (NLN) are the patterns
+ * that put a label after the name as it is ("$1 (testbegunstigde)"), never through the catalogue.
  */
 export const NL_JS = String.raw`
-const NLX=L.x||{},NLP=(L.p||[]).map(([re,to])=>[new RegExp(re),to]);
-function nx(s,depth){if(!NL||typeof s!=='string'||!s)return s;if(Object.prototype.hasOwnProperty.call(NLX,s))return NLX[s];
-  for(const [r,to] of NLP)if(r.test(s)){const out=s.replace(r,to);return (depth||0)>6?out.replace(/[⟦⟧]/g,''):out.replace(/⟦([^⟦⟧]*)⟧/g,(m,x)=>nx(x,(depth||0)+1))}return s}
-function nxAll(v){if(!NL)return v;if(typeof v==='string')return nx(v);if(Array.isArray(v))return v.map(nxAll);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=nxAll(v[k]);return o}return v}
+const NLX=L.x||{},NLP=(L.p||[]).map(([re,to])=>[new RegExp(re),to]),NLN=NLP.filter(([r,to])=>/^\^\(\.\+\) \\\(/.test(r.source)&&/^\$1 \([^$⟦]*\)$/.test(to));
+const NL_DATA_FIELDS=` + JSON.stringify(NL_DATA_FIELDS) + String.raw`;
+function nxIn(s,depth){if(Object.prototype.hasOwnProperty.call(NLX,s))return NLX[s];
+  for(const [r,to] of NLP)if(r.test(s)){const out=s.replace(r,to);return depth>6?out.replace(/[⟦⟧]/g,''):out.replace(/⟦([^⟦⟧]*)⟧/g,(m,x)=>nxIn(x,depth+1))}return s}
+function nx(s){if(!NL||typeof s!=='string'||!s)return s;return nxIn(s.replace(/⟦/g,'').replace(/⟧/g,''),0).replace(//g,'⟦').replace(//g,'⟧')}
+function nxName(s){if(!NL||typeof s!=='string'||!s)return s;for(const [r,to] of NLN)if(r.test(s))return s.replace(r,to);return s}
+function nxAt(v,p,i,f){if(i===p.length)return typeof v==='string'?f(v):v;if(p[i]==='[]')return Array.isArray(v)?v.map((x)=>nxAt(x,p,i+1,f)):v;
+  if(!v||typeof v!=='object'||Array.isArray(v)||!Object.prototype.hasOwnProperty.call(v,p[i]))return v;const o=Object.assign({},v);o[p[i]]=nxAt(v[p[i]],p,i+1,f);return o}
+function nxAll(v,fields){if(!NL||!fields)return v;for(const k of fields){const name=k.endsWith('@name');v=nxAt(v,k.replace(/@name$/,'').replace(/\[\]/g,'.[]').split('.').filter(Boolean),0,name?nxName:nx)}return v}
+function nlFields(path){const k=String(path).replace(/^\/v1\//,'').replace(/\?.*$/,'').replace(/^airwallex-live\/.*$/,'airwallex-live');return Object.prototype.hasOwnProperty.call(NL_DATA_FIELDS,k)?NL_DATA_FIELDS[k]:null}
+function nxOwn(v){if(!NL)return v;if(typeof v==='string')return nx(v);if(Array.isArray(v))return v.map(nxOwn);if(v&&typeof v==='object'){const o={};for(const k of Object.keys(v))o[k]=nxOwn(v[k]);return o}return v}
 `;

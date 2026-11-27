@@ -166,7 +166,7 @@ function agentStrip(agents){
 
 // --- The Agents page: every agent in Purser ----------------------------------------------------------------------------
 // In Dutch, the roster's words as cloud/src/consoleNl.ts has them (its ids, models, switches and paths stay).
-const ROSTER=nxAll(` + json(ROSTER) + String.raw`);
+const ROSTER=nxOwn(` + json(ROSTER) + String.raw`);
 const REPO_BLOB=` + json(REPO_BLOB) + String.raw`;
 const TEAM_IC={sourcing:'link-2',payables:'receipt',treasury:'landmark',customers:'users',books:'file-check'};
 // A link to an agent's record (#/agents?a=id) opens its details and scrolls to it, once drawn.
