@@ -19,7 +19,10 @@ import { forecastInput, ledgerOpening, proposeFxConversion } from "../../src/tre
 import { cashForecast } from "../../src/treasury/forecastCore.js";
 import { fxAdvice, ratesNeeded, fxExposure, type IndicativeRate } from "../../src/treasury/fxCore.js";
 import { moneyLoopSnapshot } from "../../src/treasury/cloudSnapshot.js";
-import { DEMO_END, SEED_BATCHES } from "../src/guest/seed.gen.js";
+import { DEMO_END, DEMO_POLICY, SEED_BATCHES } from "../src/guest/seed.gen.js";
+import { floorKey } from "../../src/payouts/plan.js";
+import { fromCents } from "../../src/lib/money.js";
+import { FX_THRESHOLD_KEY } from "../../src/treasury/fxCore.js";
 import { DEMO_AR_STEPS } from "./demoReceivables.js";
 
 const end = new Date(DEMO_END);
@@ -28,11 +31,10 @@ const at = (day: string, hour = 10) => new Date(`${day}T${String(hour).padStart(
 const db: DB = openDb(":memory:");
 const set = (key: string, value: string) => db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, at("2026-10-01").toISOString());
 
-// The CFO's policy: a floor per currency and the FX threshold above which a conversion is proposed (and needs the passkey).
-set("eur_floor", "2000.00");
-set("usd_floor", "1000.00");
-set("floor.GBP", "1000.00");
-set("treasury.fx_threshold_eur", "400.00");
+// The CFO's policy: the demo company's own floors per currency and FX threshold (cloud/src/guest/seed.gen.ts DEMO_POLICY),
+// so Cash & FX shows the floors its policy has.
+for (const [cur, cents] of Object.entries(DEMO_POLICY.floors_cents)) set(floorKey(cur), fromCents(cents));
+if (DEMO_POLICY.fx_threshold_eur_cents !== null) set(FX_THRESHOLD_KEY, fromCents(DEMO_POLICY.fx_threshold_eur_cents));
 
 // The demo company's sales invoices and the payments matched to them, the same story its books hold
 // (cloud/scripts/demoReceivables.ts; customer and payer names stay on the runner).
@@ -92,7 +94,7 @@ const rates: IndicativeRate[] = ratesNeeded(fxExposure(f)).flatMap((n) => {
   const r = STAND_IN[`${n.buy_currency}/${n.sell_currency}`];
   return r ? [{ ...n, sell_cents: Math.round(n.buy_cents * r), rate: r.toFixed(4), at: at(asOf, 15).toISOString(), source: "demo stand-in rate (indicative, not Airwallex's)" }] : [];
 });
-const advice = fxAdvice(f, rates, 40_000);
+const advice = fxAdvice(f, rates, DEMO_POLICY.fx_threshold_eur_cents);
 for (const s of advice.suggestions) proposeFxConversion(db, s, f, at(asOf, 15));
 const snap = moneyLoopSnapshot(db, end, advice, f);
 if (!snap.fx.proposals.some((p) => p.status === "PENDING_APPROVAL")) throw new Error("the demo's conversion was not filed");
