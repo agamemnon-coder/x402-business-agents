@@ -1094,6 +1094,9 @@ async function guestPass() {
     // the agents' status, the activity feed, the connected rails and the flow.
     ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-ag a.as-row").count() >= 1 && await p.locator(".pflow-c").count() === 1,
       `${tag}: the dashboard's figures, queue, cash line, agents, feed and flow`);
+    // 27 Nov: one cash figure. The Overview's cash position is the ledger's EUR bank, as Books and Cash & FX show it.
+    { const k = ((await p.textContent(".ov-k a.ovk:first-child")) ?? "").replace(/\u00a0/g, " ");
+      ok(k.includes("EUR 49,881.33") && k.includes("EUR 35,072.99"), `${tag}: the Overview's cash position is the ledger's EUR bank, its opening balance said (${k.slice(0, 120)})`); }
     ok(await p.locator(".ov-hero, .ovg, canvas.pw-wave, canvas.ovg-c").count() === 0 && (await p.textContent("#view h1")) === "Overview", `${tag}: the page's own header, no headline or wave`);
     // 26 Nov, later (Max: "the globe small like a small connected thing"): a small card in the header, the demo company
     // in Amsterdam on a small Earth, a curve to four connections, each with its run as the catalogue records it.
@@ -1182,10 +1185,10 @@ async function moneyLoopPass() {
       await p.waitForSelector(".ml-prop.wait", { timeout: 20_000 });
       await settleOn(p);
       const cash = (await p.innerText("main")).replace(/\u00a0/g, " ");
-      ok(/Cash & FX/.test(cash) && cash.includes("EUR 14,808.34") && cash.includes("GBP 860.00") && cash.includes("USD 1,240.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
-      ok(cash.includes("Buy USD 2,160.00, selling at most EUR 2,009.26") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
+      ok(/Cash & FX/.test(cash) && cash.includes("EUR 49,881.33") && cash.includes("GBP 640.00") && cash.includes("USD 25,000.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
+      ok(cash.includes("Buy GBP 360.00, selling at most EUR 421.42") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
         `${tag}: the FX advisor's conversion above the threshold waits for the CFO's passkey, said in words`);
-      ok(/Below the threshold/.test(cash) && /about EUR 162\.26/.test(cash), `${tag}: a shortfall below the threshold is shown, with no conversion`);
+      ok(/about EUR 417\.24/.test(cash) && !/Below the threshold/.test(cash), `${tag}: the GBP shortfall is shown in EUR, and no currency is short below the threshold`);
       ok(await p.locator("main button", { hasText: /approve|pay|convert|goedkeur|betaal/i }).count() === 0 && await p.locator("main .ml-seg button").count() === 3, `${tag}: no button that approves, pays or converts; only the chart's three currencies`);
       ok(await p.locator(".ml-fc svg.chart.mlfc[role=img] > title").count() === 1 && await p.locator(".ml-fc svg.chart.mlfc .b.low").count() >= 1 && await p.locator(".ml-fc details.ctable").count() === 1, `${tag}: the 13-week forecast as a chart, titled, the weeks below the floor marked, its table one click away`);
       ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Cash & FX: nothing is wider than the screen`);

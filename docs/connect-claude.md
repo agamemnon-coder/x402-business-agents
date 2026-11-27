@@ -171,7 +171,7 @@ Each tool's annotations, the resources, the prompts and the error codes are in t
 | `books_report` | P&L, balance sheet, trial balance, VAT per quarter, payables, receivables | any token |
 | `agent_decisions` | The audit trail in words: who decided what (an agent, the CFO, or Purser's code) | any token |
 | `what_needs_attention` | Open, due, overdue, waiting, blocked | any token |
-| `cash_position` | Net cash (money in minus out since the first movement, not a bank balance) and a week-by-week projection from the books' due days | any token |
+| `cash_position` | Cash (the books' opening balance plus net cash, money in minus out since the first movement: the figure Cash & FX and the Overview show) and a week-by-week projection from the books' due days | any token |
 | `pending_approvals` | Invoices and proposals waiting for the CFO's Face ID, each with a link to approve it in Purser Cloud (read only) | any token |
 | `cfo_policy` | The rules every payment is held to, in plain words; the policy version in force; each agent's card limits; treasury settings | any token |
 | `spend_breakdown` | Money out by agent or by supplier, per currency, fees included, declines counted | any token |

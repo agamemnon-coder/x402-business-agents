@@ -1,6 +1,8 @@
 // GET /v1/dashboard: the console's start screen in one answer, every figure counted here from the company's own rows
 // (the transactions register, the invoices and the audit chain the runner pushed). Nothing is estimated or typed:
-//   cash      money in minus money out, day by day, in the main currency (moved rows only; fees count as out)
+//   cash      money in minus money out, day by day, in the main currency (moved rows only; fees count as out), and the
+//             cash position: the books' opening balance in that currency (openingCash) plus that net flow, which is
+//             the ledger's bank when every movement is booked (the demo company's Books, Cash & FX and Overview agree)
 //   rails     what moved out, by the rail it moved on
 //   spend     what moved out, by who started it: each agent's own card purchases (the register's authority names the
 //             agent), and supplier invoices paid with the CFO's approval
@@ -26,6 +28,17 @@ function weekOf(iso: string): string {
 
 interface Tx { at: string; direction: "in" | "out" | "internal"; flow: "in" | "out"; rail: string; currency: string; amount: string; moved: boolean; description: string; fee: { amount: string; currency: string } | null; approval: { required: boolean; authority: string; approved_at?: string | null }; invoice: { vendor: string; ap_id?: string | null } | null; counterparty: string }
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }
+
+/**
+ * The money that was there before Purser moved any, in one currency, as the books hold it: the bank lines (12xx) of the
+ * ledger entries against owner's equity (3000), the opening balances the runner books from its first balance read
+ * (src/accounting/books.ts openingLines) and an owner's funding; a reversal of one counts against it. 0 with none.
+ */
+export async function openingCash(db: TenantDb, currency: string): Promise<number> {
+  const lines = await db.select<{ entry_id: number; account: string; currency: string; debit_cents: number; credit_cents: number }>("ledger_lines", {}, { order: ["entry_id", "line_no"] });
+  const equity = new Set(lines.filter((l) => l.account === "3000").map((l) => l.entry_id));
+  return lines.filter((l) => equity.has(l.entry_id) && l.account.startsWith("12") && l.currency === currency).reduce((n, l) => n + l.debit_cents - l.credit_cents, 0);
+}
 
 const AGENTS = new Set(["sourcing", "support", "treasury", "checker", "coder", "payer", "reader", "claude"]);
 export const agentOf = (t: Pick<Tx, "approval" | "description">): string | null => /\bthe (\w+) agent\b/i.exec(`${t.approval.authority} ${t.description}`)?.[1]?.toLowerCase() ?? null;
@@ -93,7 +106,9 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
   const currency = [...byCur.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "EUR";
   const main = moved.filter((t) => t.currency === currency).sort((a, b) => a.at.localeCompare(b.at));
 
-  // Cash: the net of what moved, day by day, from the first movement to the last.
+  // Cash: the net of what moved, day by day, from the first movement to the last, and the cash position on each day
+  // (the books' opening balance plus that net).
+  const opening = await openingCash(db, currency);
   const days: { day: string; in: number; out: number; net: number }[] = [];
   let run = 0;
   if (main.length) {
@@ -161,8 +176,8 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
     currency,
     as_of: o.asOf ?? ([main.at(-1)?.at, audit.at(-1)?.ts].filter((x): x is string => !!x).sort().at(-1) ?? null),
     since: main[0]?.at ?? null,
-    money: { in: money(totalIn), out: money(totalOut), net: money(totalIn - totalOut), movements: main.length, other_currencies: [...byCur.keys()].filter((c) => c !== currency) },
-    cash: days.map((d) => ({ day: d.day, in: money(d.in), out: money(d.out), net: money(d.net) })),
+    money: { in: money(totalIn), out: money(totalOut), net: money(totalIn - totalOut), opening: money(opening), cash: money(opening + totalIn - totalOut), movements: main.length, other_currencies: [...byCur.keys()].filter((c) => c !== currency) },
+    cash: days.map((d) => ({ day: d.day, in: money(d.in), out: money(d.out), net: money(d.net), balance: money(opening + d.net) })),
     spend: [...spend.values()].sort((a, b) => b.cents - a.cents).map((s) => ({ key: s.key, label: s.label, amount: money(s.cents), count: s.count, declined: s.declined,
       ...(s.key === "invoices" ? { parts: { inbox: { count: parts.inbox.count, amount: money(parts.inbox.cents) }, outside: { count: parts.outside.count, amount: money(parts.outside.cents) }, fees: money(parts.fees) } } : {}) })),
     rails: [...rails.values()].sort((a, b) => b.cents - a.cents).map((r) => ({ rail: r.rail, amount: money(r.cents), count: r.count })),

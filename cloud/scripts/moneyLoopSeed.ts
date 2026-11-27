@@ -4,16 +4,17 @@
 // the demo's last day; then the 13-week forecast from that ledger
 // (src/treasury/advisor.ts), the FX advice on a stand-in indicative rate (labelled so), and the conversion it suggests
 // filed for the CFO's passkey, never approved. Then the snapshot the runner would push (src/treasury/cloudSnapshot.ts).
-// Its cash is the demo company's own net cash (on 12 Nov, from cloud/src/guest/seed.gen.ts), its payables the
-// two invoices that wait there (BTX-2026-24, ZV-4471) and a USD supplier invoice. Demo data: no real money, no real
-// company, no real customer.
+// Its cash per currency is the demo company's ledger bank on its last day (accounts 1200, 1201 and 1202 in
+// cloud/src/guest/seed.gen.ts: the opening balances its books hold, plus everything that moved), the figure its Books
+// and its Overview show; its payables the two invoices that wait there (BTX-2026-24, ZV-4471) and a USD supplier
+// invoice. Demo data: no real money, no real company, no real customer.
 import { writeFileSync } from "node:fs";
 import { openDb, type DB } from "../../src/db/open.js";
 import { postEntry } from "../../src/ledger/core.js";
 import { cashByCurrency } from "../../src/ledger/reports.js";
 import { bankAccountFor } from "../../src/config/gl.js";
 import { draftReminders } from "../../src/receivables/ar.js";
-import { toCents } from "../../src/lib/money.js";
+import { isBank } from "../../src/ledger/accounts.js";
 import { forecastInput, ledgerOpening, proposeFxConversion } from "../../src/treasury/advisor.js";
 import { cashForecast } from "../../src/treasury/forecastCore.js";
 import { fxAdvice, ratesNeeded, fxExposure, type IndicativeRate } from "../../src/treasury/fxCore.js";
@@ -60,26 +61,28 @@ for (const [id, merchant, cents, currency, day] of [
   ["ctx_demo_5", "Replyhub", 3800, "EUR", "2026-10-19"], ["ctx_demo_6", "Replyhub", 3800, "EUR", "2026-11-03"],
 ] as const) charge.run(id, merchant, cents, currency, at(day).toISOString(), at(day).toISOString());
 
-// The opening balances, so that the cash per currency on the demo's last day is the demo company's: in EUR its net cash
-// (money in minus money out, fees included, on every rail: what Ask Purser's cash_position reads from the same
-// transactions), and the USD and GBP Global Accounts' test money.
-const netCash = (currency: string) => {
-  let c = 0;
-  for (const b of SEED_BATCHES) for (const t of ((b as { transactions?: { direction: string; currency: string; moved: boolean; body: { amount: string; fee: { amount: string; currency: string } | null } }[] }).transactions ?? [])) {
-    if (!t.moved || t.direction === "internal" || t.currency !== currency) continue;
-    const fee = t.body.fee && t.body.fee.currency === currency ? toCents(t.body.fee.amount) : 0;
-    c += t.direction === "in" ? toCents(t.body.amount) : -(toCents(t.body.amount) + fee);
+// The opening balances, so that the cash per currency on the demo's last day is the demo company's own ledger bank:
+// what its books hold on 1200, 1201 and 1202 (their opening balances against owner's equity, 3000, and every movement
+// booked since). One figure for Books, Cash & FX and the Overview; none made up here.
+const ledgerBank = () => {
+  const by: Record<string, number> = {};
+  for (const b of SEED_BATCHES) for (const e of ((b as { ledger_entries?: { lines: { account: string; currency: string; debit_cents: number; credit_cents: number }[] }[] }).ledger_entries ?? [])) {
+    for (const l of e.lines) if (isBank(l.account) && l.currency !== "USDZ") by[l.currency] = (by[l.currency] ?? 0) + l.debit_cents - l.credit_cents;
   }
-  return c;
+  return by;
 };
-const TARGET: Record<string, number> = { EUR: netCash("EUR"), USD: 124_000, GBP: 86_000 };
+const TARGET = ledgerBank();
+if (!TARGET.EUR) throw new Error("the demo company's ledger holds no EUR bank balance");
 const now = Object.fromEntries(cashByCurrency(db).map((r) => [r.currency, r.balance_cents]));
 for (const [currency, want] of Object.entries(TARGET)) {
   const diff = want - (now[currency] ?? 0);
-  if (diff <= 0) throw new Error(`${currency}: the payments already exceed the demo's cash`);
+  if (diff < 0) throw new Error(`${currency}: the payments here exceed the demo company's ledger bank`);
+  if (diff === 0) continue;
   postEntry(db, { date: "2026-10-01", description: `Opening balance, ${currency} Global Account (demo, test money)`, created_by: "treasury", source_key: `demo:opening:${currency}`,
     lines: [{ account: bankAccountFor(currency), debit: diff, currency }, { account: "3000", credit: diff, currency }] }, at("2026-10-01"));
 }
+const read = Object.fromEntries(cashByCurrency(db).map((r) => [r.currency, r.balance_cents]));
+for (const [currency, want] of Object.entries(TARGET)) if (read[currency] !== want) throw new Error(`${currency}: ${read[currency]} here, ${want} in the demo company's ledger`);
 
 // The forecast, the advice on stand-in indicative rates (the runner reads Airwallex's; the demo reads none), and the
 // conversion it suggests, filed for the CFO's passkey and left waiting.

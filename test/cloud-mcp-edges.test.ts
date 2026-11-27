@@ -414,7 +414,7 @@ describe("the reading tools on the demo company", () => {
     expect(text(t)).toMatch(/\(start to 30 Nov 2026\)/);
     const cash = await tool(ctx({ company: "Northwind Outdoor" }), "cash_position", { weeks: 2 });
     expect((cash.structuredContent as { projection: unknown[] }).projection).toHaveLength(2);
-    expect(text(cash)).toMatch(/^Northwind Outdoor \(demo data\): net cash/);
+    expect(text(cash)).toMatch(/^Northwind Outdoor \(demo data\): cash /);
   });
 });
 
