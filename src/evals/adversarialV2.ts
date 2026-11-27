@@ -119,7 +119,12 @@ export async function runAdvCase(k: AnyAdvCase, arm: AdvArm, world: AdvWorldAdap
   if (arm === "no_rules") {
     return { ...base, outcome: "pay", checker_outcome: "pay", payer_outcome: "pay", decided_by: "none", paid: money(reading), paid_to_unknown_account: unknownAccount(reading, world), reason: "", warnings: [], ...scoreV2(k.truth, k.also ?? [], "pay") };
   }
-  const ic = world.invoiceCase(k, reading);
+  // Received when it was issued, as every invoice on file in a case's history is (historyOf): the split check measures its
+  // window on when Purser received each invoice (27 Nov, red team runner finding 1), and a case left without a date was
+  // measured from the eval's today instead, weeks after it was printed. Set here: the case files are pinned byte for byte.
+  const built = world.invoiceCase(k, reading);
+  const issued = (k.doc as { issued?: unknown }).issued;
+  const ic = built.invoice.receivedAt === null && typeof issued === "string" ? { ...built, invoice: { ...built.invoice, receivedAt: `${issued}T09:00:00.000Z` } } : built;
   const findings = codeFindings(ic);
   const out = await runChecker(openDb(":memory:"), ic, findings, { task: `adversarial-v2.${arm}.${k.id}`, claude: alwaysPay(), model: "always-pay-script" });
   const checker = out.enforced.outcome;
