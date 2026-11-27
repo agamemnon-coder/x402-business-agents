@@ -15,13 +15,15 @@ const ROOT = resolve(import.meta.dirname, "..");
 export const CHART_DIR = join(ROOT, "docs/assets/charts");
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// An attribute value also escapes both quotes, so a title can never end the attribute it sits in.
+const escAttr = (s: string) => esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const STYLE = `<style>
   .bg{fill:#ffffff}.t{fill:#1f2328;font:600 15px system-ui,-apple-system,Segoe UI,sans-serif}.l{fill:#1f2328;font:13px system-ui,-apple-system,Segoe UI,sans-serif}
   .s{fill:#59636e;font:12px system-ui,-apple-system,Segoe UI,sans-serif}.a{fill:#0969da}.b{fill:#bf8700}.g{stroke:#d1d9e0}.ln{stroke:#0969da;fill:none;stroke-width:2.5}
   @media (prefers-color-scheme: dark){.bg{fill:#0d1117}.t,.l{fill:#e6edf3}.s{fill:#9198a1}.a{fill:#4493f8}.b{fill:#d29922}.g{stroke:#3d444d}.ln{stroke:#4493f8}}
 </style>`;
 const svg = (w: number, h: number, title: string, body: string, note: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">\n${STYLE}\n` +
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${escAttr(title)}">\n${STYLE}\n` +
   `<rect class="bg" width="${w}" height="${h}" rx="8"/>\n<text class="t" x="20" y="30">${esc(title)}</text>\n${body}\n` +
   `<text class="s" x="20" y="${h - 14}">${esc(note)}</text>\n</svg>\n`;
 

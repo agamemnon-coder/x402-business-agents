@@ -11,6 +11,7 @@ import { TRY_VERIFY_CSP, TRY_VERIFY_PAGE } from "../src/servers/dashboard.js";
 import { pageResponse } from "../worker/src/core.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
 import { BASE, RP, call, challengeOf, desk, signBody, withPasskey } from "./support/trySign.js";
+import { scriptBlocks, scriptBody } from "./support/scriptBlocks.js";
 
 const verifyReceiptWeb = new Function(`${VERIFY_CORE}\nreturn verifyReceiptWeb;`)() as (r: unknown) => Promise<ReceiptResult>;
 
@@ -66,11 +67,13 @@ describe("the page: in the browser only, under a CSP that allows no connection",
     expect(html).toBe(TRY_VERIFY_PAGE);
     expect(html).toContain(VERIFY_LEAD);
     expect(VERIFY_LEAD).toBe("Don't trust our server: check it yourself.");
-    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    // The page's executable scripts: every block but its JSON data block.
+    const runs = scriptBlocks(html).filter((b) => !b.slice(0, b.indexOf(">")).includes('type="application/json"'));
+    const script = scriptBody(runs[0]!);
     expect(TRY_VERIFY_CSP).toContain(`script-src 'sha256-${createHash("sha256").update(script, "utf8").digest("base64")}'`);
     expect(TRY_VERIFY_CSP).toContain("connect-src 'none'");
     expect(TRY_VERIFY_CSP).not.toMatch(/unsafe-inline|unsafe-eval/);
-    expect(html.match(/<script>/g)).toHaveLength(1);
+    expect(runs).toHaveLength(1);
     // Nothing in it could reach a server: no fetch, beacon, XHR, socket or form.
     expect(script).not.toMatch(/fetch\(|sendBeacon|XMLHttpRequest|WebSocket|EventSource|\.submit\(/);
     expect(html).not.toMatch(/<form/);

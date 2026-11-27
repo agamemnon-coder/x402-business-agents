@@ -12,6 +12,7 @@
 // their own pool's day. A session is renewed per company (30 a minute), never per address, so a room on one Wi-Fi is
 // never turned away because of one device in it.
 import { failedAuthBlocked, noteFailedAuth, sessionToken } from "../auth.js";
+import { randomInt } from "node:crypto";
 import { randomToken, sameString, sha256Hex } from "../crypto.js";
 import type { EngineApi } from "../engine/api.js";
 import { bump } from "../auth.js";
@@ -162,7 +163,7 @@ export async function startCompany(a: { sql: Sql; engine: (tenantId: string) => 
   const hex = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const tenant = `${TRY_PREFIX}${hex}`;
   const user = `u_visitor_${hex}`;
-  const name = NAMES[crypto.getRandomValues(new Uint8Array(1))[0]! % NAMES.length]!;
+  const name = NAMES[randomInt(NAMES.length)]!; // uniform: no modulo bias
   const visitorToken = randomToken(32);
   const iso = now.toISOString();
   const expiresAt = new Date(now.getTime() + (a.config.hours ?? 24) * 3_600_000).toISOString();

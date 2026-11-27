@@ -302,7 +302,8 @@ describe("/proof tells one story (Max, 21 Nov, his mockup): the head, the stages
     // the list with a chip each, the panel with Open run, View logs, See code, Verify yourself).
     expect(FLOW_STEPS.map((x) => x.title)).toEqual(["Invoice", "Checks", "Policy", "Passkey (Face ID)", "One cent changed", "Rail", "Books", "Independent verification"]);
     const sec = /<section class="pstage"[\s\S]*?<\/section>/.exec(main)![0];
-    expect(sec).not.toMatch(/style=|<script| open[ >]/);
+    expect(sec).not.toMatch(/style=| open[ >]/);
+    expect(sec.toLowerCase()).not.toContain("<script");
     const wall = committedWall()!;
     const all = new Map(wall.groups.flatMap((g) => g.tiles).map((t) => [t.key, t] as const));
     const tabs = [...sec.matchAll(/<a role="tab" class="[a-z]+" id="pt-([a-z-]+)" href="#([a-z-]+)" aria-controls="([a-z-]+)" aria-selected="(true|false)"/g)];
