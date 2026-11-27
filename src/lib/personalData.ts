@@ -3,7 +3,7 @@
 // address. The runner takes them out of a payer's text before it goes (src/receivables/ar.ts referenceForCloud), and
 // Purser Cloud refuses a snapshot that still holds one (cloud/src/moneyLoop.ts): the same patterns on both sides.
 // The audit log keeps an account as its last four (accountsMaskedJson, applied by src/audit/log.ts to every payload it
-// writes): its rows go to Purser Cloud too.
+// writes) and an inbox sender as the domain only (senderDomain): its rows go to Purser Cloud too.
 
 import { IBAN_LENGTHS, ibanValid } from "./iban.js";
 
@@ -54,4 +54,10 @@ export function accountsMaskedJson<T>(value: T): T {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, ACCOUNT_KEY.test(k) && typeof v === "string" && v.replace(/[^A-Za-z0-9]/g, "").length > 4 ? lastFour(v) : accountsMaskedJson(v)])) as T;
   }
   return value;
+}
+
+/** An e-mail sender ("Anna Bakker <anna@example.com>") as its domain only ("@example.com"); null when it names no address. */
+export function senderDomain(from: string): string | null {
+  const domain = /@([A-Za-z0-9.-]+\.[A-Za-z0-9-]+)/.exec(from)?.[1];
+  return domain ? `@${domain.toLowerCase()}` : null;
 }

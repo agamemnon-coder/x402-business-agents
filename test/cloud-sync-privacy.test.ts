@@ -5,9 +5,14 @@
 // and amounts; the names stay in the runner's own tables. Breaks if a name, an e-mail or an IBAN of theirs reaches the
 // ledger entries, the transactions register, the audit rows or the money loop, or if a receipt booked earlier under its
 // payer's name stops reconciling. Test money only; every person here is made up.
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import { describe, expect, it } from "vitest";
 import { matchReceipt, openReceivable } from "../src/agents/receivables.js";
+import { ingestEmail } from "../src/ap/inbox.js";
+import type { Asker } from "../src/ap/read.js";
 import { audit, GENESIS, verifyAuditChain } from "../src/audit/log.js";
 import { ClaudeReader } from "../src/claude/reader.js";
 import { Tools } from "../src/claude/tools.js";
@@ -83,7 +88,8 @@ describe("a sync batch for Purser Cloud", () => {
 });
 
 // The audit rows travel too (src/cloudsync/client.ts batchesFor: audit_rows). A supplier's account is kept as its last
-// four there, as everywhere else in Purser ("…3000"). The full account stays in the runner's vendor tables, where the payee check and Verification of Payee read it.
+// four there, as everywhere else in Purser ("…3000"), and an inbox sender as the domain only. The full account stays in
+// the runner's vendor tables, where the payee check and Verification of Payee read it.
 const auditJson = (db: DB) => JSON.stringify(batchesFor(db, EMPTY, { now: NOW }).map((b) => b.audit_rows ?? []));
 const BERGTEX_IBAN = "DE89370400440532013000";
 const STOCKLINE_IBAN = "DE02120300000000202051";
@@ -123,5 +129,22 @@ describe("the audit rows in a sync batch", () => {
     expect(rows[0]!.payload_json).toContain(BERGTEX_IBAN);
     expect(rows[1]!.payload_json).not.toContain(STOCKLINE_IBAN);
     expect(rows[1]!.payload_json).toContain("…2051");
+  });
+
+  it("names an inbox sender by the domain only, when an e-mail's attachments are capped, refused or missing", async () => {
+    const db = openDb(":memory:");
+    const deps = { dir: mkdtempSync(join(tmpdir(), "privacy-inbox-")), reader: { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null }) } as Asker, now: () => NOW };
+    const b = "=_b";
+    // 21 attachments that are not PDFs: more than are taken in at once, each refused, and so no PDF filed at all.
+    const parts = Array.from({ length: 21 }, (_, i) => [`--${b}`, `Content-Type: application/pdf; name="i${i}.pdf"`, `Content-Disposition: attachment; filename="i${i}.pdf"`, "", `not a pdf ${i}`].join("\r\n"));
+    const raw = Buffer.from([`From: Anna Bakker <${EMAILS[0]}>`, "Subject: invoices", "MIME-Version: 1.0", `Content-Type: multipart/mixed; boundary="${b}"`, "", ...parts, `--${b}--`, ""].join("\r\n"));
+    expect(await ingestEmail(db, deps, raw)).toEqual([]);
+    const events = (db.prepare("SELECT event FROM audit_log").all() as { event: string }[]).map((r) => r.event);
+    for (const e of ["ap.email_attachments_capped", "ap.attachment_refused", "ap.email_without_pdf"]) expect(events).toContain(e);
+    const json = auditJson(db);
+    expect(json).not.toContain(EMAILS[0]);
+    expect(json).not.toContain("anna@");
+    expect(json).not.toContain("Bakker <");
+    expect(json).toContain('\\"from\\":\\"@bakker-outdoor.example\\"');
   });
 });
