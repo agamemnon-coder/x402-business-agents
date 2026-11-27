@@ -97,7 +97,7 @@ export function floorCents(db: DB, currency: string): number {
 }
 
 /** EUR already committed to other bills (Kit 11's treasury setting); no other currency carries commitments yet. */
-function commitmentsCents(db: DB, currency: string): number {
+export function commitmentsCents(db: DB, currency: string): number {
   return currency === "EUR" ? toCents(getSetting(db, "eur_obligations", "0.00")) : 0;
 }
 

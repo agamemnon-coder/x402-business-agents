@@ -35,7 +35,7 @@ import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
 import { scanTotalLine, scanView } from "./detail.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
-import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
+import { commitmentsCents, inFlightCents, payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
 import type { PlanGate, PlannedPayment } from "../payouts/planGate.js";
 import { readOnlyLedger, quoteFreeRail } from "../payouts/probe.js";
 import { MAX_REFERENCE, payableCurrency, referenceProblem } from "../payouts/routes.js";
@@ -162,21 +162,26 @@ function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, p
 const isPaidAlone = (x: PaidAlone | AloneDeclined | null): x is PaidAlone => !!x && "limit" in x;
 
 /**
- * Whether the cash check holds the payment just filed (an invoice payment's terms: its balances before, its floor and
- * commitments, its fee reserve, with the payouts in flight now): true when paying it from its own currency alone would
- * take that balance below its floor. Terms of another kind, or terms code cannot read, are never paid alone either.
+ * Whether the cash check holds the payment just filed: true when paying it from its own currency alone would take that
+ * balance below its floor (its terms' balances before, floor and commitments, its fee reserve, with the payouts in flight
+ * now), for an invoice payment and a supplier payment alike. 27 Nov (red team, runner finding 7): terms that convert
+ * another currency are the CFO's to sign, never the agent's alone; and terms of any other kind, or terms code cannot
+ * read, are held too (a supplier payment used to skip this check, its conversion included).
  */
 function cashHoldsFiled(db: DB, proposalId: string, inv: ApInvoiceRow, now: Date): boolean {
   const row = db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string; terms_json: string } | undefined;
-  if (!row) return true;
-  if (row.kind !== "invoice_payment") return false;
-  let t: { amount?: unknown; currency?: unknown; fee_max?: unknown; balances_before?: { eur_available?: unknown }; floors?: { eur_floor?: unknown; eur_obligations?: unknown } };
+  if (!row || (row.kind !== "invoice_payment" && row.kind !== "supplier_payment")) return true;
+  let t: { amount?: unknown; currency?: unknown; fee_max?: unknown; fee_reserve?: unknown; transfer_request_id?: unknown; conversion?: unknown; balances_before?: Record<string, unknown>; floors?: Record<string, unknown> };
   try { t = JSON.parse(row.terms_json) as typeof t; } catch { return true; }
+  if (t.conversion) return true;
   const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const cur = str(t.currency);
+  const position = row.kind === "invoice_payment"
+    ? { currency: cur, balance: str(t.balances_before?.eur_available), committed: str(t.floors?.eur_obligations), inFlight: fromCents(eurInFlightCents(db, undefined, proposalId)), floor: str(t.floors?.eur_floor) }
+    : { currency: cur, balance: str(t.balances_before?.[cur]), committed: fromCents(commitmentsCents(db, cur)), inFlight: fromCents(inFlightCents(db, cur, str(t.transfer_request_id), proposalId)), floor: str(t.floors?.[cur]) };
   const view = cashCheck({
-    invoice: { id: inv.id, invoiceNo: inv.invoice_no, payee: inv.vendor, iban: "", amount: str(t.amount), currency: str(t.currency), dueDate: inv.due_date ?? "" },
-    position: { currency: str(t.currency), balance: str(t.balances_before?.eur_available), committed: str(t.floors?.eur_obligations), inFlight: fromCents(eurInFlightCents(db, undefined, proposalId)), floor: str(t.floors?.eur_floor) },
-    feeReserve: str(t.fee_max), aloneLimit: aloneLimit(db), today: now.toISOString().slice(0, 10),
+    invoice: { id: inv.id, invoiceNo: inv.invoice_no, payee: inv.vendor, iban: "", amount: str(t.amount), currency: cur, dueDate: inv.due_date ?? "" },
+    position, feeReserve: str(row.kind === "invoice_payment" ? t.fee_max : t.fee_reserve), aloneLimit: aloneLimit(db), today: now.toISOString().slice(0, 10),
   });
   return view.outcome === "hold";
 }
