@@ -94,6 +94,15 @@ describe("the page's translator on the records' templates", () => {
       for (const id of f.text.match(/\b[A-Z]+-[\d-]+\b|\d+\.\d{2}/g) ?? []) expect(nl).toContain(id);
     }
     expect(english(row("card.decline_met", { proposal_id: "P-0001", source: "fallback" }).text)).toMatch(/ \(code's fallback, no model\)$/);
+    // Each detail src/agents/receivables.ts audits now, without the customer's name.
+    for (const d of ["NW-2026-119 paid in full, 1987.50 EUR", "NW-2026-120: paid 100.00 EUR, short by 20.00 EUR; the rest stays open and the customer is asked",
+      "NW-2026-121: paid 130.00 EUR, over by 10.00 EUR; the excess waits in suspense and a refund is the CFO's decision", "12.50 EUR names no open invoice: held in suspense until the CFO identifies it",
+      "12.50 USD for NW-2026-122, invoiced in EUR: held in suspense; the CFO decides whether to accept or return it"]) {
+      const nl = english(d);
+      expect(nl, d).not.toBe(d);
+      expect(bare(nl), d).not.toMatch(EN);
+      for (const id of d.match(/\b[A-Z]+-[\d-]+\b|\d+\.\d{2}/g) ?? []) expect(nl).toContain(id);
+    }
     expect(english("The CFO")).toBe("De CFO");
     expect(english("Purser's code")).toBe("De code van Purser");
   });

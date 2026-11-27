@@ -305,10 +305,13 @@ export const NL_PATTERNS: readonly (readonly [string, string])[] = [
   ["^(\\S+) from (.+) paid in full, (.+)$", "$1 van $2 volledig betaald, $3"],
   ["^(\\S+) from (.+): paid (.+), short by (.+); the rest stays open and the customer is asked$", "$1 van $2: $3 betaald, $4 te weinig; de rest blijft open en de klant krijgt de vraag"],
   ["^(\\S+) from (.+): paid (.+), over by (.+); the excess waits in suspense and a refund is the CFO's decision$", "$1 van $2: $3 betaald, $4 te veel; het teveel wacht op de tussenrekening en terugbetalen beslist de CFO"],
-  // The same without the customer's name, as the runner now writes it (no name reaches Purser Cloud).
+  // Each detail src/agents/receivables.ts audits (receivable.matched, receivable.escalated, money.in): without the
+  // customer's name, as the runner now writes it (no name reaches Purser Cloud).
   ["^(\\S+) paid in full, (.+)$", "$1 volledig betaald, $2"],
   ["^(\\S+): paid (.+), short by (.+); the rest stays open and the customer is asked$", "$1: $2 betaald, $3 te weinig; de rest blijft open en de klant krijgt de vraag"],
   ["^(\\S+): paid (.+), over by (.+); the excess waits in suspense and a refund is the CFO's decision$", "$1: $2 betaald, $3 te veel; het teveel wacht op de tussenrekening en terugbetalen beslist de CFO"],
+  ["^(\\S+ \\S+) names no open invoice: held in suspense until the CFO identifies it$", "$1 noemt geen openstaande factuur: wacht op de tussenrekening tot de CFO de betaling herkent"],
+  ["^(\\S+ \\S+) for (\\S+), invoiced in (\\S+): held in suspense; the CFO decides whether to accept or return it$", "$1 voor $2, gefactureerd in $3: wacht op de tussenrekening; de CFO beslist of het wordt aangenomen of teruggestuurd"],
   // The demo company's name, and a supplier the negotiation simulates.
   ["^(.+) \\(demo company\\)$", "$1 (demobedrijf)"],
   ["^(.+) \\(simulated supplier\\)$", "$1 (nagebootste leverancier)"],
