@@ -95,7 +95,7 @@ function ovAgo(at,now){const s=Math.max(0,(now-Date.parse(at))/1000);if(s<3600)r
 // connections catalogue, cloud/src/connections.ts), one row each, the product's own mark on a white tile, never
 // recoloured (Visa and T:0 as text), its kind of run as the catalogue says it; nothing planned. Each says so to a
 // screen reader; the four with a proof page on the site link to it.
-const OV_STACK=` + JSON.stringify(overviewStack()) + String.raw`;
+const OV_STACK=nxAll(` + JSON.stringify(overviewStack()) + String.raw`);
 const OV_PROOF={airwallex:'/airwallex',alta:'/alta','visa-airi':'/visa',claude:'/claude'};
 function ovRails(){
   const L=(k)=>{const x=typeof BRAND_LOGOS!=='undefined'&&BRAND_LOGOS[k];if(!x)return null;const i=el('img','');i.src=x.uri;i.alt='';i.decoding='async';return i};

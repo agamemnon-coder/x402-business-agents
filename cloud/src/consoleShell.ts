@@ -20,7 +20,7 @@ import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 export const SHELL_WORDS = {
   en: {
     g_money: "Payments", g_agents: "Agents", g_rails: "Integrations", b_overview: "Overview", b_money: "Money",
-    b_agents: "Agents", b_rails: "Connected", b_settings: "Settings", sections: "Sections", in_group: "Pages in {group}",
+    b_agents: "Agents", b_rails: "Connected", b_settings: "Settings", sections: "Sections", pages: "Pages", crumbs: "Breadcrumb", in_group: "Pages in {group}",
     demo_short: "Demo company · made-up data · test money", demo_leave: "Leave", due: "due {day}",
     per_month: "{amt} a month", flow_h: "How invoices flow to payment",
     flow_sub: "Where each of the {n} invoices is now, from the inbox to the books.", fl_received: "Received",
@@ -39,7 +39,7 @@ export const SHELL_WORDS = {
   },
   nl: {
     g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties", b_overview: "Overzicht", b_money: "Geld",
-    b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen", sections: "Onderdelen",
+    b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen", sections: "Onderdelen", pages: "Pagina's", crumbs: "Kruimelpad",
     in_group: "Pagina's in {group}", demo_short: "Demobedrijf · verzonnen gegevens · testgeld", demo_leave: "Verlaten",
     due: "vervalt {day}", per_month: "{amt} per maand", flow_h: "Van factuur naar betaling",
     flow_sub: "Waar elk van de {n} facturen nu staat, van de inbox tot de boeken.", fl_received: "Ontvangen",
@@ -86,7 +86,7 @@ const TAB_IC=` + json(TAB_ICONS) + String.raw`;
 for(const a of document.querySelectorAll('#tabs a[data-tab]'))a.prepend(ic(TAB_IC[a.dataset.tab]||'circle-dot'));
 for(const g of document.querySelectorAll('#tabs [data-sg]'))g.textContent=sw('g_'+g.dataset.sg);
 for(const a of document.querySelectorAll('#btabs a[data-group]')){const l=a.querySelector('.bl');if(l)l.textContent=sw('b_'+a.dataset.group)}
-{const b=$('#btabs');if(b)b.setAttribute('aria-label',sw('sections'));const s=$('#demo .dr-short');if(s)s.textContent=sw('demo_short');const o=$('#demo-out .lv');if(o)o.textContent=sw('demo_leave')}
+{const b=$('#btabs');if(b)b.setAttribute('aria-label',sw('sections'));for(const [id,k] of [['#tabs','pages'],['#crumbs','crumbs']]){const n=$(id);if(n)n.setAttribute('aria-label',sw(k))}const s=$('#demo .dr-short');if(s)s.textContent=sw('demo_short');const o=$('#demo-out .lv');if(o)o.textContent=sw('demo_leave')}
 const groupOf=(tab)=>NAV_GROUPS.find((g)=>g[1].includes(tab))||(tab==='archive'?NAV_GROUPS[1]:null);
 // The page a group opened last, so its tab goes back there.
 const LAST_IN={};
@@ -165,7 +165,8 @@ function agentStrip(agents){
   return el('div','astrip',[...rows,more])}
 
 // --- The Agents page: every agent in Purser ----------------------------------------------------------------------------
-const ROSTER=` + json(ROSTER) + String.raw`;
+// In Dutch, the roster's words as cloud/src/consoleNl.ts has them (its ids, models, switches and paths stay).
+const ROSTER=nxAll(` + json(ROSTER) + String.raw`);
 const REPO_BLOB=` + json(REPO_BLOB) + String.raw`;
 const TEAM_IC={sourcing:'link-2',payables:'receipt',treasury:'landmark',customers:'users',books:'file-check'};
 // A link to an agent's record (#/agents?a=id) opens its details and scrolls to it, once drawn.
