@@ -22,6 +22,7 @@ import { payApInvoice } from "../../src/ap/pay.js";
 import { DE, EN, NL } from "../fakes/apInvoices.js";
 import { pdfOf } from "../fakes/pdf.js";
 import { world } from "../support/rt4World.js";
+import { englishIn, visibleTexts } from "./dutchWords.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -1094,6 +1095,9 @@ async function guestPass() {
     // the agents' status, the activity feed, the connected rails and the flow.
     ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-ag a.as-row").count() >= 1 && await p.locator(".pflow-c").count() === 1,
       `${tag}: the dashboard's figures, queue, cash line, agents, feed and flow`);
+    // 27 Nov: one cash figure. The Overview's cash position is the ledger's EUR bank, as Books and Cash & FX show it.
+    { const k = ((await p.textContent(".ov-k a.ovk:first-child")) ?? "").replace(/\u00a0/g, " ");
+      ok(k.includes("EUR 49,881.33") && k.includes("EUR 35,072.99"), `${tag}: the Overview's cash position is the ledger's EUR bank, its opening balance said (${k.slice(0, 120)})`); }
     ok(await p.locator(".ov-hero, .ovg, canvas.pw-wave, canvas.ovg-c").count() === 0 && (await p.textContent("#view h1")) === "Overview", `${tag}: the page's own header, no headline or wave`);
     // 26 Nov, later (Max: "the globe small like a small connected thing"): a small card in the header, the demo company
     // in Amsterdam on a small Earth, a curve to four connections, each with its run as the catalogue records it.
@@ -1182,10 +1186,10 @@ async function moneyLoopPass() {
       await p.waitForSelector(".ml-prop.wait", { timeout: 20_000 });
       await settleOn(p);
       const cash = (await p.innerText("main")).replace(/\u00a0/g, " ");
-      ok(/Cash & FX/.test(cash) && cash.includes("EUR 14,808.34") && cash.includes("GBP 860.00") && cash.includes("USD 1,240.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
-      ok(cash.includes("Buy USD 2,160.00, selling at most EUR 2,009.26") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
+      ok(/Cash & FX/.test(cash) && cash.includes("EUR 49,881.33") && cash.includes("GBP 640.00") && cash.includes("USD 25,000.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
+      ok(cash.includes("Buy GBP 360.00, selling at most EUR 421.42") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
         `${tag}: the FX advisor's conversion above the threshold waits for the CFO's passkey, said in words`);
-      ok(/Below the threshold/.test(cash) && /about EUR 162\.26/.test(cash), `${tag}: a shortfall below the threshold is shown, with no conversion`);
+      ok(/about EUR 417\.24/.test(cash) && !/Below the threshold/.test(cash), `${tag}: the GBP shortfall is shown in EUR, and no currency is short below the threshold`);
       ok(await p.locator("main button", { hasText: /approve|pay|convert|goedkeur|betaal/i }).count() === 0 && await p.locator("main .ml-seg button").count() === 3, `${tag}: no button that approves, pays or converts; only the chart's three currencies`);
       ok(await p.locator(".ml-fc svg.chart.mlfc[role=img] > title").count() === 1 && await p.locator(".ml-fc svg.chart.mlfc .b.low").count() >= 1 && await p.locator(".ml-fc details.ctable").count() === 1, `${tag}: the 13-week forecast as a chart, titled, the weeks below the floor marked, its table one click away`);
       ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Cash & FX: nothing is wider than the screen`);
@@ -1205,6 +1209,59 @@ async function moneyLoopPass() {
     }
   }
   serverM.close();
+}
+
+await dutchPass();
+
+/**
+ * 27 Nov (the owner: English first, Dutch second): a guest who chose Nederlands in this browser walks every page of the
+ * demo company, each invoice, each agent's drawer, the company page and Ask Purser's dialog (its words only; no question
+ * is sent). No text a person sees or hears holds an English word, once names, codes, ids and amounts are out
+ * (test/browser/dutchWords.ts).
+ */
+async function dutchPass() {
+  const port = PORT + 400;
+  const ORIGIN = `http://localhost:${port}`;
+  const serverN = await serve(cloudEnv(ORIGIN, join(dir, "dutch-blobs")), port);
+  const c = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await c.addInitScript(() => { try { localStorage.setItem("purser.cloud.language", "nl"); } catch { /* the page still renders */ } });
+  const p = await c.newPage();
+  const errors: string[] = [];
+  p.on("pageerror", (e) => errors.push(String(e)));
+  await p.goto(`${ORIGIN}/#/sign-in`);
+  await p.waitForSelector("#guest");
+  await p.click("#guest");
+  await p.waitForURL(/#\/overview$/, { timeout: 20_000 });
+  await p.waitForSelector(".dash", { timeout: 20_000 });
+  ok((await p.evaluate(() => document.documentElement.lang)) === "nl", "Dutch: the guest's console is in Dutch");
+  const english: string[] = [];
+  const look = async (where: string) => { await settleOn(p); await p.waitForTimeout(600); await p.evaluate(() => { for (const d of document.querySelectorAll("details")) d.open = true; });
+    for (const s of englishIn(await visibleTexts(p))) english.push(`${where}: ${s}`); };
+  const open = async (hash: string) => { await p.goto(`${ORIGIN}/${hash}`); await look(hash); };
+  for (const tab of ["overview", "invoices", "receivables", "cash", "transactions", "books", "agents", "tokenisation", "airwallex", "connections", "claude", "settings", "company"]) await open(`#/${tab}`);
+  await p.goto(`${ORIGIN}/#/invoices`);
+  await settleOn(p);
+  for (const h of await p.locator("main a[href^='#/invoices/']").evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href") ?? ""))])) await open(h);
+  await p.goto(`${ORIGIN}/#/agents`);
+  await p.waitForSelector("button.dk-face");
+  for (let i = 0; i < await p.locator("button.dk-face").count(); i++) {
+    await p.locator("button.dk-face").nth(i).click();
+    await p.waitForSelector("dialog.dk-drawer[open]");
+    await look(`#/agents, card ${i + 1}`);
+    await p.keyboard.press("Escape");
+  }
+  // Ask Purser's dialog: the panel the console's button opens, its words only.
+  await p.goto(`${ORIGIN}/#/overview`);
+  await p.waitForSelector(".dash");
+  await p.click("#pask-fab");
+  const ask = p.frameLocator("#pask-panel iframe");
+  await ask.locator("#q").waitFor({ timeout: 20_000 });
+  const frame = p.frames().find((f) => /\/ask\?embed=1/.test(f.url()));
+  for (const s of frame ? englishIn(await visibleTexts(frame)) : ["(the dialog did not open)"]) english.push(`Ask Purser: ${s}`);
+  ok(english.length === 0, `Dutch: no English on any page, invoice, agent card or Ask Purser's dialog${english.length ? ` (${english.length}:\n      ${english.slice(0, 80).join("\n      ")})` : ""}`);
+  ok(errors.length === 0, `Dutch: no page errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
+  await c.close();
+  serverN.close();
 }
 
 await browser.close();

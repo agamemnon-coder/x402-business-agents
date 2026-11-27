@@ -369,6 +369,7 @@ export const WHY = {
       ruleLoose: "The same supplier and the invoice number written differently: a person checks it is not the same invoice.",
     },
     rejected_before: { head: "Held: a person rejected this invoice before.", rule: "A copy of a rejected invoice goes back to a person." },
+    negotiated_before: { head: "Held: this bill was agreed by negotiation under another number.", rule: "One bill is paid once: the bill as issued and its agreed invoice are the same bill, so a person decides." },
     possible_fraud: { head: "Held: the payee does not match the supplier on file.", rule: "Nothing is paid until a person checks with the supplier on a number already on file." },
     bank_details_changed: { head: "Held: the bank details changed." },
     account_name_mismatch: { head: "Held: the account holder is not the supplier." },

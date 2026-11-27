@@ -9,10 +9,11 @@
 // advisor filed for the CFO's passkey (proposals; their status, never a way to approve them), and the receivables:
 // invoices by number and amount, the payments matched to them, the review queue and the reminder steps. What never
 // goes: a customer's name or contact address, a payer's name, a reminder's text (src/receivables/ar.ts keeps those on
-// the runner). Read only; nothing here moves money or files anything.
+// the runner); a payment's reference to review goes without the names, accounts and e-mail addresses in it
+// (referenceForCloud). Read only; nothing here moves money or files anything.
 
 import type { DB } from "../db/open.js";
-import { agedDebtors, AR_BUCKETS, arInvoices, reviewQueue, type ArBucket } from "../receivables/ar.js";
+import { agedDebtors, AR_BUCKETS, arInvoices, referenceForCloud, reviewQueue, type ArBucket } from "../receivables/ar.js";
 import { toCents } from "../lib/money.js";
 import { fxThresholdCents, ledgerForecast } from "./advisor.js";
 import type { Forecast } from "./forecastCore.js";
@@ -98,7 +99,7 @@ export function moneyLoopSnapshot(db: DB, now: Date, advice?: FxAdvice, forecast
   const bucket = (d: number): ArBucket => (d <= 30 ? "0-30" : d <= 60 ? "31-60" : d <= 90 ? "61-90" : "90+");
   const payments = (db.prepare(`SELECT payment_id, currency, amount_cents, invoice_no, outcome, applied_cents, written_off_cents, suspense_cents, received_at FROM ar_payments ORDER BY received_at DESC, payment_id DESC LIMIT ?`)
     .all(MONEY_LOOP_LIMITS.payments) as MoneyLoopSnapshot["receivables"]["payments"]);
-  const review = reviewQueue(db).slice(-MONEY_LOOP_LIMITS.review).map((r) => ({ payment_id: r.payment_id, currency: r.currency, amount_cents: toCents(r.amount), reference: cut(r.reference, 140), reason: cut(r.reason, 300), created_at: r.created_at }));
+  const review = reviewQueue(db).slice(-MONEY_LOOP_LIMITS.review).map((r) => ({ payment_id: r.payment_id, currency: r.currency, amount_cents: toCents(r.amount), reference: cut(referenceForCloud(db, r.payment_id, r.reference), 140), reason: cut(r.reason, 300), created_at: r.created_at }));
   const dunning = (db.prepare(`SELECT d.invoice_no, d.stage, d.due_on FROM ar_dunning d JOIN ar_invoices i USING (invoice_no) WHERE i.status IN ('OPEN', 'PARTIAL') ORDER BY d.due_on DESC, d.invoice_no, d.stage LIMIT ?`)
     .all(MONEY_LOOP_LIMITS.dunning) as { invoice_no: string; stage: number; due_on: string }[]).reverse();
   return {

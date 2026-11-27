@@ -161,15 +161,16 @@ export function transactionRegister(db: DB): Register {
     }
   }
 
-  // Payments into the Global Accounts.
+  // Payments into the Global Accounts that the older matcher took (src/agents/receivables.ts). The register goes to
+  // Purser Cloud: these rows name the invoice only, and the payer's name stays in receipts on the runner.
   if (has(db, "receipts")) {
-    for (const r of db.prepare("SELECT deposit_id, currency, amount_cents, payer, invoice_no, outcome, received_at FROM receipts ORDER BY received_at, deposit_id").all() as
-      { deposit_id: string; currency: string; amount_cents: number; payer: string | null; invoice_no: string | null; outcome: string; received_at: string }[]) {
+    for (const r of db.prepare("SELECT deposit_id, currency, amount_cents, invoice_no, outcome, received_at FROM receipts ORDER BY received_at, deposit_id").all() as
+      { deposit_id: string; currency: string; amount_cents: number; invoice_no: string | null; outcome: string; received_at: string }[]) {
       drafts.push({
         id: `receipt:${r.deposit_id}`, at: r.received_at, direction: "in", rail: "airwallex_receipt", description: r.invoice_no ? `Payment of invoice ${r.invoice_no}` : "Payment with no matching invoice",
-        counterparty: r.payer ?? "", counterparty_account: null, amount: fromCents(r.amount_cents), currency: r.currency, eur_equivalent: r.currency === "EUR" ? fromCents(r.amount_cents) : null,
+        counterparty: "", counterparty_account: null, amount: fromCents(r.amount_cents), currency: r.currency, eur_equivalent: r.currency === "EUR" ? fromCents(r.amount_cents) : null,
         fee: null, moved: true, status: r.outcome, status_words: `received, ${words(r.outcome)}`,
-        invoice: r.invoice_no ? { ap_id: null, supplier_no: r.invoice_no, vendor: r.payer ?? "", document: null } : null,
+        invoice: r.invoice_no ? { ap_id: null, supplier_no: r.invoice_no, vendor: "", document: null } : null,
         approval: { required: false, authority: "money in: no approval needed", proposal_id: null, terms_sha256: null, sha: null },
         proof: r.deposit_id, book: { prefix: `receipt|${r.deposit_id}|`, expectCents: r.amount_cents },
       });

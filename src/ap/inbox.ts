@@ -9,6 +9,7 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
+import { senderDomain } from "../lib/personalData.js";
 import { apAgentsOn } from "../config/agents.js";
 import { VENDOR_GL } from "../config/gl.js";
 import { itemLines, servicePeriods } from "./period.js";
@@ -306,8 +307,11 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
   const mail = parseEml(raw);
   const results: IngestResult[] = [];
   const taken = mail.attachments.slice(0, MAX_EMAIL_ATTACHMENTS);
+  // The audit rows (which go to Purser Cloud) name the sender by the domain only; the document's own record keeps the
+  // whole sender, on the runner (ap_documents.meta_json). Nothing reads the sender back from the audit.
+  const sender = senderDomain(mail.from);
   if (mail.attachments.length > taken.length) {
-    audit(db, "system", "ap.email_attachments_capped", null, { attached: mail.attachments.length, filed: taken.length, from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200) });
+    audit(db, "system", "ap.email_attachments_capped", null, { attached: mail.attachments.length, filed: taken.length, from: sender, subject: mail.subject.slice(0, 200) });
   }
   for (const a of taken) {
     // One bad attachment does not stop the others: each refusal is recorded with its reason.
@@ -317,10 +321,10 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
         meta: { ...meta, from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200), date: mail.date.slice(0, 80), ...(mail.message_id ? { message_id: mail.message_id.slice(0, 200) } : {}) },
       }, 1));
     } catch (e) {
-      audit(db, "system", "ap.attachment_refused", null, { filename: a.filename.slice(0, 200), reason: (e as Error).message.slice(0, 300), from: mail.from.slice(0, 200) });
+      audit(db, "system", "ap.attachment_refused", null, { filename: a.filename.slice(0, 200), reason: (e as Error).message.slice(0, 300), from: sender });
     }
   }
-  if (results.length === 0) audit(db, "system", "ap.email_without_pdf", null, { from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200) });
+  if (results.length === 0) audit(db, "system", "ap.email_without_pdf", null, { from: sender, subject: mail.subject.slice(0, 200) });
   return results;
 }
 

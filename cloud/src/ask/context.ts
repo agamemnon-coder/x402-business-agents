@@ -10,6 +10,8 @@
 // agent cannot read it: it says so and explains from the docs. Any financial action goes through Purser's own workflow:
 // the panel can open the page where the CFO approves with Face ID, never act (ASK_NAV, the button's navigate message).
 
+import { ASK_CONTEXT_NL } from "./pageNl.js";
+
 export const ASK_CONTEXT_KINDS = ["overview", "invoices", "invoice", "transactions", "payment", "agents", "policy", "books", "audit", "proof"] as const;
 export type AskContextKind = (typeof ASK_CONTEXT_KINDS)[number];
 export interface AskContext { kind: AskContextKind; id?: string; demo?: boolean }
@@ -87,9 +89,12 @@ export const OPEN_APPROVAL_LABEL = "Open the page where the CFO approves";
 export const approvalHash = (c: AskContext | null): string | null =>
   !c ? null : c.kind === "invoice" && c.id ? `#/invoices/${c.id}` : c.kind === "invoices" || c.kind === "overview" || c.kind === "policy" ? "#/invoices?f=waiting_cfo" : null;
 
-/** The same, in the page's script (one source: the tables above as data). */
-export const CONTEXT_JS = `
-const QUICK = ${JSON.stringify({ labels: QUICK_LABELS, questions: QUICK_QUESTIONS, titles: TITLES, kinds: ASK_CONTEXT_KINDS, open: OPEN_APPROVAL, openLabel: OPEN_APPROVAL_LABEL })};
+/**
+ * The same, in the page's script (one source: the tables above as data). In Dutch (27 Nov) the labels and titles a
+ * person reads are ./pageNl.ts's; the questions stay the English ones the agent and its tools know.
+ */
+export const contextJs = (lang: "en" | "nl" = "en") => `
+const QUICK = ${JSON.stringify({ labels: QUICK_LABELS, questions: QUICK_QUESTIONS, titles: TITLES, kinds: ASK_CONTEXT_KINDS, open: OPEN_APPROVAL, openLabel: OPEN_APPROVAL_LABEL, ...(lang === "nl" ? ASK_CONTEXT_NL : {}) })};
 const CTX_ID = ${CONTEXT_ID.toString()};
 function parseCtx(o) {
   if (!o || typeof o !== 'object' || typeof o.kind !== 'string' || !QUICK.kinds.includes(o.kind)) return null;
@@ -104,3 +109,4 @@ function quickOf(c) {
 }
 function approvalOf(c) { return !c ? null : c.kind === 'invoice' && c.id ? '#/invoices/' + c.id : (c.kind === 'invoices' || c.kind === 'overview' || c.kind === 'policy') ? '#/invoices?f=waiting_cfo' : null; }
 `;
+export const CONTEXT_JS = contextJs("en");

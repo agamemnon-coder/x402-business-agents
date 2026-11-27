@@ -59,7 +59,9 @@ export function recordDeposits(db: DB, deposits: Deposit[], now = new Date()): D
   const fresh: Deposit[] = [];
   for (const d of deposits) {
     const last = db.prepare("SELECT json_extract(payload_json, '$.status') AS status FROM audit_log WHERE event IN ('awx_deposit.seen', 'awx_deposit.status') AND subject = ? ORDER BY seq DESC LIMIT 1").get(d.id) as { status: string } | undefined;
-    const payload = { global_account_id: d.globalAccountId, currency: d.currency, amount_cents: d.amountCents, status: d.status, payer: d.payer, reference: d.reference, created_at: d.createdAt };
+    // What the reconciliation needs, and no more: the audit rows go to Purser Cloud, so a payer's name and the
+    // reference they wrote (which can hold their name, account or address) are not recorded (GDPR Art. 5(1)(c)).
+    const payload = { currency: d.currency, amount_cents: d.amountCents, status: d.status };
     if (!last) { audit(db, "system", "awx_deposit.seen", d.id, payload, now); fresh.push(d); }
     else if (last.status !== d.status) audit(db, "system", "awx_deposit.status", d.id, { ...payload, was: last.status }, now);
   }
@@ -70,9 +72,10 @@ export function recordDeposits(db: DB, deposits: Deposit[], now = new Date()): D
 export function settledDeposits(db: DB): { id: string; currency: string; amountCents: number; label: string }[] {
   const rows = db.prepare(`SELECT subject, payload_json FROM audit_log a WHERE event IN ('awx_deposit.seen', 'awx_deposit.status')
     AND seq = (SELECT MAX(seq) FROM audit_log b WHERE b.subject = a.subject AND b.event IN ('awx_deposit.seen', 'awx_deposit.status')) ORDER BY seq`).all() as { subject: string; payload_json: string }[];
-  return rows.map((r) => ({ id: r.subject, p: JSON.parse(r.payload_json) as { currency: string; amount_cents: number; status: string; payer: string | null; reference: string | null } }))
+  // Rows recorded before 27 Nov 2026 hold the payer and the reference; they stay as they were, and are not shown here.
+  return rows.map((r) => ({ id: r.subject, p: JSON.parse(r.payload_json) as { currency: string; amount_cents: number; status: string } }))
     .filter((r) => r.p.status === "SETTLED")
-    .map((r) => ({ id: r.id, currency: r.p.currency, amountCents: r.p.amount_cents, label: `deposit${r.p.payer ? ` from ${r.p.payer}` : ""}${r.p.reference ? ` (${r.p.reference})` : ""}` }));
+    .map((r) => ({ id: r.id, currency: r.p.currency, amountCents: r.p.amount_cents, label: "deposit" }));
 }
 
 /** Reads the last `days` of deposits (≤ 31) and records them: what the hourly reconciliation runs before it compares. */

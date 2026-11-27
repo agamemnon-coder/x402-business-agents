@@ -1,9 +1,9 @@
 // Airwallex's statements and transfer words read strictly (src/airwallex/balanceHistory.ts, src/airwallex/deposits.ts,
 // src/airwallex/approvals.ts): lines and deposits with fields left out read as zero or empty; a list without items, a
 // full page without has_more and more pages than allowed stop with what is wrong; a currency asked for is sent; a
-// deposit is labelled with its payer and reference only where it has them; the sandbox answering no deposit id is
-// refused; every transfer status has its words, and a transfer Purser did not make is never followed. A recording
-// stand-in; no network.
+// deposit is labelled as one, never with its payer or reference (they are not recorded); the sandbox answering no
+// deposit id is refused; every transfer status has its words, and a transfer Purser did not make is never followed. A
+// recording stand-in; no network.
 import { describe, expect, it } from "vitest";
 import { describeTransferStatus, followTransfer, inAirwallexApproval } from "../src/airwallex/approvals.js";
 import { listBalanceHistory, toBalanceLine } from "../src/airwallex/balanceHistory.js";
@@ -46,11 +46,11 @@ describe("deposits", () => {
     await expect(listDeposits(api({ items: [{ id: "d" }], has_more: true }), W)).rejects.toThrow(`more than 5 pages of deposits in ${W.from} … ${W.to}; narrow the window`);
   });
 
-  it("a settled deposit is labelled with its payer and reference only where it has them", () => {
+  it("a settled deposit is labelled as a deposit, never with its payer or reference: they are not recorded", () => {
     const db = openDb(":memory:");
     const d = (id: string, payer: string | null, reference: string | null) => ({ id, globalAccountId: "ga_1", currency: "USD", amountCents: 100, status: "SETTLED", payer, reference, createdAt: null });
     recordDeposits(db, [d("d1", null, null), d("d2", "Ridgeline", null), d("d3", null, "NW-1")]);
-    expect(settledDeposits(db).map((x) => x.label)).toEqual(["deposit", "deposit from Ridgeline", "deposit (NW-1)"]);
+    expect(settledDeposits(db).map((x) => x.label)).toEqual(["deposit", "deposit", "deposit"]);
   });
 
   it("the sandbox answering no deposit id is refused", async () => {

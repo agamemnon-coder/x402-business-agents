@@ -7,7 +7,7 @@
 // vocabulary or a checked pattern, and assertSafeBody refuses the body if anything slipped through anyway.
 
 import type { DB } from "../db/open.js";
-import { sameLedgerInvoice, type LedgerParty } from "../lib/invoiceKey.js";
+import { negotiatedOriginal, sameBill, type LedgerParty } from "../lib/invoiceKey.js";
 import { fourEyes } from "../policy/fourEyes.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
@@ -172,12 +172,16 @@ export function proposalCheck(db: DB, p: ProposalLike): { check: Check; rule: st
         const r = db.prepare("SELECT vendor, iban_sha256 FROM invoices WHERE invoice_no = ?").get(no) as { vendor: string; iban_sha256: string } | undefined;
         return r ? { vendor: r.vendor, accountSha256: r.iban_sha256 } : {};
       };
+      // 27 Nov (red team, runner finding 2): and the bill as issued and a negotiation's agreed invoice of it are one bill.
       const self: LedgerParty = { ...party(t.invoice_no), ...(typeof t.vendor === "string" ? { vendor: t.vendor } : {}) };
-      const same = (no: string, vendor?: string | null) => sameLedgerInvoice(t.invoice_no as string, self, no, { ...party(no), ...(vendor ? { vendor } : {}) });
+      const n = t.negotiation as { original_invoice_no?: unknown } | undefined;
+      const mine = { no: t.invoice_no as string, party: self, original: typeof n?.original_invoice_no === "string" ? n.original_invoice_no : negotiatedOriginal(db, t.invoice_no as string) };
+      const same = (no: string, vendor?: string | null, original?: string | null) =>
+        sameBill(mine, { no, party: { ...party(no), ...(vendor ? { vendor } : {}) }, original: original === undefined ? negotiatedOriginal(db, no) : original });
       const otherPayout = (db.prepare("SELECT invoice_no FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(String(t.transfer_request_id ?? "")) as { invoice_no: string }[])
         .some((r) => same(r.invoice_no));
-      const otherProposal = (db.prepare("SELECT json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment') AND proposal_id <> ? AND status IN ('EXECUTING', 'EXECUTED')").all(p.proposal_id) as { invoice_no: string | null; vendor: string | null }[])
-        .some((r) => same(r.invoice_no ?? "", r.vendor));
+      const otherProposal = (db.prepare("SELECT json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor, json_extract(terms_json, '$.negotiation.original_invoice_no') AS original FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment') AND proposal_id <> ? AND status IN ('EXECUTING', 'EXECUTED')").all(p.proposal_id) as { invoice_no: string | null; vendor: string | null; original: unknown }[])
+        .some((r) => same(r.invoice_no ?? "", r.vendor, typeof r.original === "string" ? r.original : null));
       if (otherPayout || otherProposal) return { check: "fail", rule: "duplicate_invoice" };
     }
   }

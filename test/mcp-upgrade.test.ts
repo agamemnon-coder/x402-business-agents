@@ -159,10 +159,12 @@ describe("tools: titles, icons, annotations, output schemas", () => {
 });
 
 describe("the new read tools, on the demo company", () => {
-  it("cash_position: net cash from what moved, and a projection from due days that says what it is", async () => {
+  it("cash_position: the cash (the books' opening balance and what moved), and a projection from due days that says what it is", async () => {
     const r = await tool("cash_position");
     const s = r.structuredContent;
-    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", net_cash: "14808.34" });
+    // The cash is the ledger's EUR bank on the demo's last day, as Books and Cash & FX show it: the opening balance the
+    // books hold (owner's equity) plus net cash, money in minus money out since the first movement.
+    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", cash: "49881.33", opening_balance: "35072.99", net_cash: "14808.34" });
     expect(s.projection).toHaveLength(4);
     // The open payables: Zeeland's (EUR 484.00, due 17 Nov, accrued while its new supplier waits) in the first week, and
     // Bergtex's (EUR 1,309.00, due 23 Nov) in the second.
@@ -171,9 +173,10 @@ describe("the new read tools, on the demo company", () => {
     // in the first week, NW-2026-140 (due 25 Nov) in the second, NW-2026-141 (due 10 Dec) after these two.
     expect(s.open.receivables).toBe("7702.41");
     expect(s.projection[0]).toMatchObject({ expected_in: "2940.01", due_out: "484.00" });
-    expect(s.projection[1]).toMatchObject({ expected_in: "1550.00", due_out: "1309.00", projected_net_cash: (14808.34 + 2940.01 + 1550 - 1793).toFixed(2) });
-    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): net cash EUR 14,808\.34 as of 12 Nov 2026/);
-    expect(text(r)).toMatch(/not a bank balance/);
+    expect(s.projection[1]).toMatchObject({ expected_in: "1550.00", due_out: "1309.00", projected_net_cash: (49881.33 + 2940.01 + 1550 - 1793).toFixed(2) });
+    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): cash EUR 49,881\.33 as of 12 Nov 2026/);
+    expect(text(r)).toMatch(/Opening balance EUR 35,072\.99 plus net cash EUR 14,808\.34/);
+    expect(text(r)).toMatch(/not a model/);
     expect((await tool("cash_position", { weeks: 13 })).structuredContent.projection).toHaveLength(13);
   });
 
@@ -190,7 +193,8 @@ describe("the new read tools, on the demo company", () => {
     const r = await tool("cfo_policy");
     const s = r.structuredContent;
     expect(s.rules.join(" ")).toMatch(/exact terms.*Face ID/);
-    expect(s.policy_version).toMatchObject({ version: 3 });
+    // v2 is the CFO's GBP floor and FX threshold on day one (the demo's one policy, bf110c829), so the seed ends at v4.
+    expect(s.policy_version).toMatchObject({ version: 4 });
     expect(s.agent_cards).toEqual(expect.arrayContaining([expect.objectContaining({ agent: "sourcing", per_purchase: "30.00", per_month: "100.00" })]));
     expect(s.decisions.approved).toBeGreaterThan(0);
     expect(text(r)).toMatch(/Sourcing agent: EUR 30\.00 a purchase, EUR 100\.00 a month/);
@@ -239,7 +243,9 @@ describe("the new read tools, on the demo company", () => {
     const e = await tool("explain_payment", { id: card.id });
     expect(e.structuredContent.explanation.allowed_by).toMatch(/^No CFO approval was needed/);
     const incoming = (await tool("explain_payment", { id: "receipt:dep_demo_7" }));
-    expect(text(incoming)).toMatch(/^Summit Outfitters paid the company EUR 1,987\.50/);
+    // By invoice number: the payer's name stays on the runner.
+    expect(text(incoming)).toMatch(/^A customer paid the company EUR 1,987\.50 on \d+ Nov 2026 for invoice NW-2026-119/);
+    expect(text(incoming)).not.toMatch(/Summit/);
   });
 
   it("each answers in plain words first, short enough for a phone", async () => {

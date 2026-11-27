@@ -59,7 +59,7 @@ function agentRecord(a,demo,live,CV){
   const rules=el('div','rules',[el('div','',[el('h3','',t('cs.agents.may')),el('ul','can',a.may.map((x)=>el('li','',[ic('circle-check'),el('span','',x)])))]),
     el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
   const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','outs',a.decisions.map((d)=>{const o=OUTCOME[d.outcome]||OUTCOME.note;
-    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',[d.text.replace(/\s*\(code's fallback, no model\)$/,''),/fallback/.test(d.text)||/^Purser's code/.test(d.decided_by||'')?el('small','sub',' · '+t('cs.agents.by_code')):null]),el('time','num',day(d.at)),precedentList(d.precedent)])})):el('p','sub',t('cs.agents.no_decisions'))]);
+    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',[d.text.replace(/\s*\(code's fallback, no model\)$/,''),/fallback/.test(d.text)||/^(Purser's code|De code van Purser)\b/.test(d.decided_by||'')?el('small','sub',' · '+t('cs.agents.by_code')):null]),el('time','num',day(d.at)),precedentList(d.precedent)])})):el('p','sub',t('cs.agents.no_decisions'))]);
   // The technical record, one click away: the Claude model, its runs, the rails, who decided each of the newest decisions.
   const det=el('details','adet',[el('summary','',t('cs.agents.details')),el('div','agrid',[
     el('div','',[el('h3','',t('cs.agents.model')),a.models.length?el('p','mono',a.models.join(', ')):el('p','sub',t('cs.agents.no_model')),a.runs&&a.runs.total?el('p','sub',t('cs.agents.runs',{n:a.runs.total,k:a.runs.without_model})):null]),
@@ -280,7 +280,7 @@ function invoiceDoc(i,entries){
   // The cost lines (accounts 4 to 9) on either side: a credit note books them as credits, shown as a minus.
   const lines=accrual?accrual.lines.filter((l)=>/^[4-9]/.test(l.account)):[];
   const tb=el('tbody','');const lab=(td,l)=>{td.dataset.l=l;return td};
-  if(lines.length)for(const l of lines){const sg=l.debit_cents?1:-1;tb.append(el('tr','',[el('td','',[el('span','',l.memo||l.account),el('span','sub',t('cs.inv.account',{a:l.account})+(l.vat_code?' · '+vatWord(l.vat_code):''))]),lab(el('td','r num',cur(l.currency)+' '+cents(sg*(l.debit_cents||l.credit_cents))),t('cs.inv.net')),lab(el('td','r num',l.vat_cents?cur(l.currency)+' '+cents(sg*l.vat_cents):'–'),t('cs.inv.vat_amt'))]))}
+  if(lines.length)for(const l of lines){const sg=l.debit_cents?1:-1;tb.append(el('tr','',[el('td','',[el('span','',l.memo?data('memo',l.memo):l.account),el('span','sub',t('cs.inv.account',{a:l.account})+(l.vat_code?' · '+vatWord(l.vat_code):''))]),lab(el('td','r num',cur(l.currency)+' '+cents(sg*(l.debit_cents||l.credit_cents))),t('cs.inv.net')),lab(el('td','r num',l.vat_cents?cur(l.currency)+' '+cents(sg*l.vat_cents):'–'),t('cs.inv.vat_amt'))]))}
   else tb.append(el('tr','',[el('td','',[el('span','',t('cs.inv.whole')),el('span','sub',entries===null?t('loading'):entries.length?t('cs.inv.as_read'):t('cs.inv.not_booked'))]),lab(el('td','r num',r.subtotal?ma(c,r.subtotal):'–'),t('cs.inv.net')),lab(el('td','r num',r.tax?ma(c,r.tax):'–'),t('cs.inv.vat_amt'))]));
   const tot=el('dl','totals',[el('dt','',t('dt.subtotal')),el('dd','num',r.subtotal?ma(c,r.subtotal):'–'),el('dt','',t('dt.vat')),el('dd','num',r.tax?ma(c,r.tax):'–'),el('dt','grand',t('dt.total')),el('dd','grand num',ma(c,r.total||i.total))]);
   const meta=(k,v)=>v?el('div','',[el('span','',k),el('b','',v)]):null;
@@ -366,7 +366,7 @@ function sandboxCard(x){
   const share=lv.per_purchase&&lv.monthly?Math.round(toCents(lv.per_purchase)/toCents(lv.monthly)*100):null;
   const bar=share===null?null:(()=>{const m=el('span','lbar');const f=el('span','');f.style.width=Math.min(100,share)+'%';m.append(f);m.setAttribute('role','img');m.setAttribute('aria-label',t('cs.tok.share',{n:share}));return m})();
   const active=x.status==='ACTIVE';
-  return el('div','sbc',[el('div','bcard'+(active?'':' frozen'),[el('div','bct',[el('span','bcb','Airwallex'),el('span','bcs',[ic(active?'circle-check':'snowflake'),x.status.charAt(0)+x.status.slice(1).toLowerCase()])]),
+  return el('div','sbc',[el('div','bcard'+(active?'':' frozen'),[el('div','bct',[el('span','bcb','Airwallex'),el('span','bcs',[ic(active?'circle-check':'snowflake'),active?t('cs.cards.active'):NL&&x.status==='INACTIVE'?t('cs.cards.frozen'):x.status.charAt(0)+x.status.slice(1).toLowerCase()])]),
       el('span','bcchip'),el('div','bcn num',[el('span','bcd','•••• •••• •••• '),x.last4]),el('div','bcf',[el('span','',x.holder),el('span','bcbr',x.brand)])]),
     el('div','lims',[lv.per_purchase?limitRow('credit-card',t('cs.agents.lim_purchase'),C+amount(lv.per_purchase)):null,
       lv.monthly?limitRow('calendar-range',t('cs.agents.lim_month'),C+amount(lv.monthly),bar?el('div','limm',[bar,el('span','sub',t('cs.tok.share',{n:share}))]):null):null,

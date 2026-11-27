@@ -131,6 +131,9 @@ it is set, these proposals need the Face ID of **two different people**, each wi
 
 - an invoice payment above the threshold;
 - an outside agent's card with a monthly limit above it;
+- a currency conversion above it, valued in euros (what it buys or may sell in EUR; a conversion between two other
+  currencies always counts as above), together with the other conversions to the same currency that one person
+  approved within the split window (27 days, or the company's own); one conversion cut into parts is still one;
 - a supplier's new bank details, at any amount.
 
 ```mermaid

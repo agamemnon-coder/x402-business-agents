@@ -39,7 +39,9 @@ describe("every agent in Purser", () => {
   });
   it("is in the console's script, with its words in English and Dutch", () => {
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
-    expect(html).toContain("const ROSTER=[");
+    // In Dutch its words are cloud/src/consoleNl.ts's (27 Nov): the page puts the roster, Purser's own words, through nxOwn,
+    // which an English page skips.
+    expect(html).toContain("const ROSTER=nxOwn([");
     // 26 Nov: the Overview's Agent status card reads it (the count under the agents); the Agents page is the cards.
     expect(html).toContain("function agentStrip(agents)");
     expect(html).toContain('"act_more":"{n} agents in Purser"');

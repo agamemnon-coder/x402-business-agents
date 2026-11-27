@@ -188,14 +188,20 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
   // However punctuated ("BTX-2026-021", "BTX/2026/21", a zero-width space): the guard before money moves is the loose one.
   // And however filed: the inbox's "NUM · Supplier" and Kit 11's bare "NUM" for the same supplier are one invoice, in
   // both orders (red team round 3); the supplier of a bare number is the one its invoices row names.
+  // 27 Nov (red team, runner finding 2): a negotiation's agreed invoice ("<original>-<sha8>") and the bill as issued are
+  // one bill: a payout or proposal whose signed terms name this number as negotiation.original_invoice_no counts too.
   const self = { ...partyOf(db, invoiceNo), ...Object.fromEntries(Object.entries(who).filter(([, v]) => v)) } as LedgerParty;
-  const same = (no: string, vendor?: string | null) => sameLedgerInvoice(invoiceNo, self, no, { ...partyOf(db, no), ...(vendor ? { vendor } : {}) });
+  const mine = { no: invoiceNo, party: self, original: negotiatedOriginal(db, invoiceNo) };
+  const same = (no: string, vendor?: string | null, original?: string | null) =>
+    sameBill(mine, { no, party: { ...partyOf(db, no), ...(vendor ? { vendor } : {}) }, original: original === undefined ? negotiatedOriginal(db, no) : original });
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => same(r.invoice_no));
   if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
-  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor,
+    json_extract(terms_json, '$.negotiation.original_invoice_no') AS original FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; vendor: string | null; status: string }[]).find((r) => same(r.invoice_no ?? "", r.vendor));
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; vendor: string | null; original: string | null; status: string }[])
+    .find((r) => same(r.invoice_no ?? "", r.vendor, typeof r.original === "string" ? r.original : null));
   if (!p) return null;
   const n = label ?? p.invoice_no;
   switch (p.status) {
@@ -207,8 +213,19 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
 }
 
 // The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
-import { invoiceKey, sameLedgerInvoice, type LedgerParty } from "../lib/invoiceKey.js";
+import { invoiceKey, negotiatedOriginal, sameBill, type LedgerParty } from "../lib/invoiceKey.js";
 export { invoiceKey };
+
+/**
+ * Another live payout (not cancelled) for the same bill as these terms, or undefined: the same invoice however written or
+ * filed, or the bill as issued and a negotiation's agreed invoice of it (27 Nov, red team, runner finding 2). The
+ * executors ask it before any money moves, so at most one payout per bill is live, original or negotiated.
+ */
+export function otherPayoutForBill(db: DB, t: { transfer_request_id: string; invoice_no: string; vendor?: string; negotiation?: unknown }): { invoice_no: string; status: string } | undefined {
+  const mine = { no: t.invoice_no, party: { ...partyOf(db, t.invoice_no), ...(t.vendor ? { vendor: t.vendor } : {}) }, original: negotiationOf(t)?.original_invoice_no ?? negotiatedOriginal(db, t.invoice_no) };
+  return (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
+    .find((r) => sameBill({ no: r.invoice_no, party: partyOf(db, r.invoice_no), original: negotiatedOriginal(db, r.invoice_no) }, mine));
+}
 
 /** Who the payment ledger says an invoice number is from: its invoices row's supplier and account hash, if any. */
 export function partyOf(db: DB, invoiceNo: string): LedgerParty {
@@ -254,7 +271,10 @@ export async function proposeInvoicePayment(
     return { kind: "escalated", reason: check.reason, ...(check.fraud ? { fraud: check.fraud } : {}) };
   }
   // A second copy of an invoice (a reminder, a resend) is never paid twice: not after a payout, not while one waits.
-  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) });
+  // A negotiation's agreed invoice is the bill as issued, paid for less (27 Nov, red team, runner finding 2): the guard
+  // runs on the original's number too, so the bill is paid once, as issued or as agreed, and never negotiated twice.
+  const who = { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) };
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, who) ?? (negotiated ? invoiceAlreadyHandled(db, negotiated.original_invoice_no, now, undefined, who) : null);
   if (dup) {
     const reason = `${dup}; a second copy is not paid again. Options: check with ${check.name} whether this is a reminder, or reject the open proposal first if this copy replaces it`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);

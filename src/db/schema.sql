@@ -402,6 +402,19 @@ CREATE TABLE IF NOT EXISTS transfers (
 );
 -- Only one live payout per invoice can exist at any moment.
 CREATE UNIQUE INDEX IF NOT EXISTS one_live_transfer_per_invoice ON transfers(invoice_no) WHERE status NOT IN ('CANCELLED');
+-- And only one per bill (27 Nov, red team, runner finding 2): a negotiation's agreed invoice ("<original>-<sha8>", whose
+-- signed terms name the original as negotiation.original_invoice_no) and the bill as issued are one bill, paid once.
+-- Of the same supplier (red team round 2, finding E: another supplier's bill with the same number was refused): as the
+-- JS guards read it (src/lib/invoiceKey.ts sameLedgerInvoice), two bills are another supplier's only when both invoices
+-- rows are known and differ in name and in the account paid; otherwise they count as one supplier's. A ledger made with
+-- the earlier trigger gets this one when it is opened (src/db/migrate.ts prepareDb).
+CREATE TRIGGER IF NOT EXISTS one_live_transfer_per_bill BEFORE INSERT ON transfers
+WHEN NEW.status <> 'CANCELLED' AND EXISTS (SELECT 1 FROM transfers t WHERE t.status <> 'CANCELLED' AND t.request_id <> NEW.request_id
+  AND COALESCE((SELECT json_extract(p.terms_json, '$.negotiation.original_invoice_no') FROM proposals p WHERE json_extract(p.terms_json, '$.invoice_no') = t.invoice_no AND json_extract(p.terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1), t.invoice_no)
+    = COALESCE((SELECT json_extract(p.terms_json, '$.negotiation.original_invoice_no') FROM proposals p WHERE json_extract(p.terms_json, '$.invoice_no') = NEW.invoice_no AND json_extract(p.terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1), NEW.invoice_no)
+  AND NOT EXISTS (SELECT 1 FROM invoices a, invoices b WHERE a.invoice_no = t.invoice_no AND b.invoice_no = NEW.invoice_no
+    AND lower(trim(a.vendor)) <> lower(trim(b.vendor)) AND a.iban_sha256 <> b.iban_sha256))
+BEGIN SELECT RAISE(ABORT, 'one live payout per bill: this bill already has a payout, as issued or as negotiated'); END;
 
 -- Supplier payouts (src/executors/supplierPayment.ts): money an approved payment has spoken for that Airwallex's
 -- balances do not show yet (a conversion on its way, a payout not yet written). Counted by freeCents

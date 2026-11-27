@@ -5,6 +5,7 @@
 
 import PDFDocument from "pdfkit";
 import type { MonthData, ReceiptData, SuppliersData, YearData } from "./data.js";
+import { ACCOUNT_NAMES_NL } from "../ledger/accounts.js";
 import type { MonthPack } from "../ledger/pack.js";
 import type { VatOverview } from "../ledger/reports.js";
 
@@ -89,22 +90,8 @@ export const STAND_IN_STRINGS = {
 } as const;
 const words = (lang: Lang, bank: Bank) => (bank === "stand-in" ? { ...T[lang], ...STAND_IN_STRINGS[lang] } : T[lang]);
 
-/**
- * The chart's account names in Dutch, for the Dutch PDFs (screenshot pass S7); English stays as the chart has it. An
- * account without a Dutch name keeps its own.
- */
-export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
-  "1200": "Bank: Airwallex EUR (incl. bedrijfskaarten)", "1201": "Bank: Airwallex USD", "1202": "Bank: Airwallex GBP",
-  "1203": "Bank: Airwallex, overige valuta", "1210": "Bank: Metal-rekening (*USDZ, testnet)", "1220": "Bank: Metal clearing (*USDZ, testnet)",
-  "1300": "Debiteuren", "1510": "Te vorderen btw (inkoopfacturen)", "1515": "Terug te vragen buitenlandse btw (EU-teruggaaf)", "1590": "Kruisposten (tussen eigen rekeningen)", "1700": "Voorraad",
-  "2100": "Crediteuren (inkoopfacturen)", "2200": "Te betalen btw", "2210": "Af te dragen btw (aan klanten berekend)", "2900": "Nog niet geïdentificeerde ontvangsten",
-  "3000": "Eigen vermogen: beginsaldi en inbreng eigenaar", "3100": "Ingehouden winst",
-  "4000": "Omzet: voorraaddata aan winkeliers", "4100": "Terugbetalingen aan klanten", "4200": "Omzet: groothandel aan winkeliers",
-  "5000": "Ingekochte voorraaddata (warehouse-API)", "6100": "Softwareabonnementen (bedrijfskaarten)", "6150": "Advertenties (bedrijfskaarten)",
-  "6200": "Goederen van de fabrikant", "6300": "Reiskosten (taakkaarten)", "6350": "Datalicentie (Stockline, maandelijks)",
-  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet", "2150": "Gesimuleerde financier (testnet): financiering van factuurtokens",
-  "7100": "Financieringskosten: korting op gefinancierde facturen", "7900": "Koersverschillen, gerealiseerd (winst of verlies)",
-};
+// The chart's account names in Dutch live with the chart (src/ledger/accounts.ts); the PDFs and the console share them.
+export { ACCOUNT_NAMES_NL };
 
 /** Why an invoice is blocked, in Dutch, by the finding's code (the code's own words stay the English; red team S7). */
 export const BLOCK_REASONS_NL: Readonly<Record<string, string>> = {

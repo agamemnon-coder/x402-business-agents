@@ -57,6 +57,25 @@ describe("the agents view, from the company's audit rows", () => {
     expect(by.support!.card).toMatchObject({ per_purchase: "", per_month: null });
     expect(by.treasury).toMatchObject({ status: "active", card: null, models: [], runs: { total: 1, without_model: 1 } });
   });
+
+  // Review 153: a CFO pause writes no card event when the card already rests frozen (src/policy/cards.ts syncCard writes
+  // only on a change), so the card's events alone showed a paused agent as active. The policy says it.
+  it("an agent the CFO paused or stopped, or every agent under the emergency stop, is paused though its card writes nothing", async () => {
+    for (const a of ["sourcing", "support", "treasury"]) {
+      await audit("2026-11-01T09:00:00Z", "system", "card.issued", { agent: a, limits: "30.00 / 100.00" }, a);
+      await audit("2026-11-01T09:01:00Z", "system", "card.frozen", { agent: a, why: "frozen by default between approved purchases" }, a);
+    }
+    const status = async () => Object.fromEntries(((await agentsOf(new TenantDb(c.env.sql, t.id))) as { agents: Agent[] }).agents.map((a) => [a.id, [a.status, a.status_since]]));
+    expect(await status()).toEqual({ sourcing: ["active", "2026-11-01T09:00:00Z"], support: ["active", "2026-11-01T09:00:00Z"], treasury: ["active", "2026-11-01T09:00:00Z"] });
+    await audit("2026-11-02T09:00:00Z", "human", "policy.changed", { key: "pause.sourcing", from: "off", to: "on", proposal_id: "P-0001" }, "pause.sourcing");
+    await audit("2026-11-02T10:00:00Z", "human", "policy.changed", { key: "stop.support", from: "off", to: "on", proposal_id: "P-0002" }, "stop.support");
+    expect(await status()).toEqual({ sourcing: ["paused", "2026-11-02T09:00:00Z"], support: ["paused", "2026-11-02T10:00:00Z"], treasury: ["active", "2026-11-01T09:00:00Z"] });
+    // Resumed: the newest row is what holds.
+    await audit("2026-11-03T09:00:00Z", "human", "policy.changed", { key: "pause.sourcing", from: "on", to: "off", proposal_id: "P-0003" }, "pause.sourcing");
+    expect((await status()).sourcing).toEqual(["active", "2026-11-01T09:00:00Z"]);
+    await audit("2026-11-04T09:00:00Z", "human", "policy.changed", { key: "freeze", from: "off", to: "on", proposal_id: "P-0004" }, "freeze");
+    expect(await status()).toEqual({ sourcing: ["paused", "2026-11-04T09:00:00Z"], support: ["paused", "2026-11-02T10:00:00Z"], treasury: ["paused", "2026-11-04T09:00:00Z"] });
+  });
 });
 
 describe("what a decision came to", () => {

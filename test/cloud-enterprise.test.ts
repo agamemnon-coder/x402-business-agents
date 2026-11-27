@@ -192,7 +192,10 @@ describe("the console", () => {
     expect(MESSAGES.nl["cs.vat.PF_DE19"]).toBeTruthy();
     expect(html).toContain("l.account+(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')");
     // The account's name from the chart beside its number (the CFO review, 14 Nov).
-    expect(html).toMatch(/const ACCT=\{[^}]*"2100":"Accounts payable"/);
+    // 27 Nov: in both languages, the page's own picked once its language is known ("2100 Crediteuren" in Dutch).
+    expect(html).toMatch(/const ACCOUNTS=\{"en":\{[^}]*"2100":"Accounts payable"/);
+    expect(html).toMatch(/"nl":\{[^}]*"2100":"Crediteuren"/);
+    expect(html).toContain("const ACCT=ACCOUNTS[L.lang]||ACCOUNTS.en;");
     expect(html).not.toContain("l.vat_code?' · '+l.vat_code");
     expect(MESSAGES.en["cs.last_update"]).toBe("Last update from the runner");
   });

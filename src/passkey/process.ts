@@ -19,6 +19,7 @@ import { sealRefusal } from "./seal.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 import { securityKeyById } from "./securityKey.js";
 import { ensureSecondKeyTables, factorsOf, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
+import { personName } from "../lib/personName.js";
 
 /** One submission as the relay queued it. Only `ticket` and `body` are used; the body is checked from scratch. */
 export interface InboxItem {
@@ -202,7 +203,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
       if (result === "COSIGNED") {
         // One key of a high-risk payment: the other is still to come (the approval page says which, and why).
         const reasons = secondKeyReasons(db, current, now);
-        const f = reasons.length ? factorsOf(db, p.proposal_id, p.terms_sha256, pk.label) : null;
+        const f = reasons.length ? factorsOf(db, p.proposal_id, p.terms_sha256, personName(pk.label)) : null;
         if (f && !(f.passkey && f.securityKey)) return { status: "second_key", proposalId: p.proposal_id, message: secondKeyMessage(reasons, { passkey: !!f.passkey, securityKey: !!f.securityKey }) };
       }
       if (result === "COSIGNED") return { status: "cosigned", proposalId: p.proposal_id, message: `${p.proposal_id}: 1 of 2 approvals (${pk.label}); a second person must approve it with their own passkey` };

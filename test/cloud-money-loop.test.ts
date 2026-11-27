@@ -22,6 +22,7 @@ import { treasuryView } from "../src/treasury/view.js";
 import { batchesFor, pushToCloud } from "../src/cloudsync/client.js";
 import { MoneyLoopSnapshot } from "../cloud/src/moneyLoop.js";
 import { DEMO_MONEY_LOOP } from "../cloud/src/guest/moneyLoop.gen.js";
+import { SEED_BATCHES } from "../cloud/src/guest/seed.gen.js";
 import { DEMO_END, DEMO_TENANT } from "../cloud/src/guest/guest.js";
 import { cashPosition } from "../cloud/src/claude/insight.js";
 import { TenantDb } from "../cloud/src/tenant.js";
@@ -152,12 +153,24 @@ describe("GET /v1/treasury and GET /v1/receivables", () => {
     const key = (g.json as { session: string }).session;
     const tr = (await get("/v1/treasury", key)).json as { demo: boolean; test_money: boolean; treasury: MoneyLoopSnapshot & { approval: string } };
     expect(tr.demo && tr.test_money).toBe(true);
-    expect(tr.treasury.cash.find((x) => x.currency === "EUR")!.cents).toBe(1_480_834);
+    // The demo company's ledger bank on its last day (test/cloud-money-loop.test.ts, "the demo company's cash").
+    expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.cents]))).toEqual({ EUR: 4_988_133, USD: 2_500_000, GBP: 64_000 });
+    // Its floors and FX threshold are the demo company's own policy, as its audit log records the CFO setting them: one
+    // policy for the demo (EUR 25,000.00 and USD 20,000.00 from awx-1, GBP 1,000.00 and the EUR 400.00 threshold).
+    const policy: Record<string, string> = {};
+    for (const b of SEED_BATCHES) for (const r of (b.audit_rows ?? []) as { event: string; subject: string; payload_json: string }[]) {
+      if (r.event === "setting.changed") policy[r.subject] = (JSON.parse(r.payload_json) as { after: string }).after;
+    }
+    const cents = (v: string | undefined) => Math.round(Number(v) * 100);
+    expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.floor_cents]))).toEqual({ EUR: cents(policy.eur_floor), USD: cents(policy.usd_floor), GBP: cents(policy["floor.GBP"]) });
+    expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.floor_cents]))).toEqual({ EUR: 2_500_000, USD: 2_000_000, GBP: 100_000 });
+    expect(tr.treasury.fx.threshold_eur_cents).toBe(cents(policy["treasury.fx_threshold_eur"]));
     const waiting = tr.treasury.fx.proposals.filter((p) => p.status === "PENDING_APPROVAL");
     expect(waiting).toHaveLength(1);
     expect(tr.treasury.fx.exposures.find((e) => e.currency === waiting[0]!.buy_currency)).toMatchObject({ decision: "proposal" });
     expect(waiting[0]!.sell_currency === "EUR" ? waiting[0]!.indicative_sell_cents : 0).toBeGreaterThanOrEqual(tr.treasury.fx.threshold_eur_cents!);
-    expect(tr.treasury.fx.exposures.some((e) => e.decision === "below_threshold")).toBe(true);
+    // GBP is under its floor by GBP 360.00, about EUR 417.24 at the stand-in rate: above the CFO's threshold, so proposed.
+    expect(waiting[0]).toMatchObject({ buy_currency: "GBP", buy_cents: 36_000, sell_currency: "EUR", indicative_sell_cents: 41_724 });
     const ar = (await get("/v1/receivables", key)).json as { demo: boolean; receivables: MoneyLoopSnapshot["receivables"] };
     expect(ar.demo).toBe(true);
     expect(ar.receivables.invoices.filter((i) => i.status === "OPEN" || i.status === "PARTIAL").length).toBeGreaterThanOrEqual(4);
@@ -221,10 +234,32 @@ describe("the demo company's books and its Receivables page", () => {
       expect(t, p.payment_id).toMatchObject({ direction: "in", currency: p.currency, amount: (p.amount_cents / 100).toFixed(2), reconciliation: "matched" });
       expect(JSON.stringify(t)).not.toMatch(AR_NAMES);
     }
-    // The Cash & FX page's EUR is the demo company's net cash, the payments for these invoices included.
-    const cash = (await cashPosition(new TenantDb(c.env.sql, DEMO_TENANT), new Date(DEMO_END))) as { net_cash: string };
+    // The Cash & FX page's EUR is the demo company's cash, the payments for these invoices included.
+    const cash = (await cashPosition(new TenantDb(c.env.sql, DEMO_TENANT), new Date(DEMO_END))) as { cash: string };
     const tr = ((await c.req("GET", "/v1/treasury", { key })).json as { treasury: MoneyLoopSnapshot }).treasury;
-    expect((tr.cash.find((x) => x.currency === "EUR")!.cents / 100).toFixed(2)).toBe(cash.net_cash);
+    expect((tr.cash.find((x) => x.currency === "EUR")!.cents / 100).toFixed(2)).toBe(cash.cash);
+  });
+});
+
+describe("the demo company's cash", () => {
+  let c: TestCloud;
+  beforeEach(() => { c = testCloud(); });
+  afterEach(() => c.close());
+
+  it("is one figure per currency: the ledger's bank on the demo's last day, Cash & FX, the Overview and Ask Purser", async () => {
+    const key = ((await c.req("POST", "/v1/auth/guest", { key: null })).json as { session: string }).session;
+    const balance = (await c.req("GET", "/v1/reports/balance", { key })).json as { by_currency: Record<string, { accounts: { account: string; cents: number }[] }> };
+    const bank: Record<string, number> = {};
+    for (const [currency, b] of Object.entries(balance.by_currency)) for (const a of b.accounts) if (a.account.startsWith("12") && currency !== "USDZ") bank[currency] = (bank[currency] ?? 0) + a.cents;
+    const tr = ((await c.req("GET", "/v1/treasury", { key })).json as { treasury: MoneyLoopSnapshot }).treasury;
+    expect(Object.fromEntries(tr.cash.map((x) => [x.currency, x.cents]))).toEqual(bank);
+    // The Overview shows its main currency's cash position: the books' opening balance plus what moved since.
+    const d = (await c.req("GET", "/v1/dashboard", { key })).json as { currency: string; money: { opening: string; net: string; cash: string }; cash: { balance: string }[] };
+    expect(d.money.cash).toBe((bank[d.currency]! / 100).toFixed(2));
+    expect(d.cash.at(-1)!.balance).toBe(d.money.cash);
+    expect(Math.round(Number(d.money.opening) * 100) + Math.round(Number(d.money.net) * 100)).toBe(bank[d.currency]);
+    const p = (await cashPosition(new TenantDb(c.env.sql, DEMO_TENANT), new Date(DEMO_END))) as { currency: string; cash: string };
+    expect(p.cash).toBe((bank[p.currency]! / 100).toFixed(2));
   });
 });
 

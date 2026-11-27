@@ -15,11 +15,27 @@ export function invoiceKey(invoiceNo: string): string {
  * A payment reference's words, normalised as invoiceKey normalises a number (Unicode, invisible characters, upper case,
  * any dash as "-") but split wherever a character cannot be part of an invoice number (spaces, punctuation other than
  * "-" and "/"), with a dash or slash at a word's ends dropped. Review of 26 Nov: a reference names an invoice only as a
- * whole word, so "NW-1077" never names NW-10.
+ * whole word, so "NW-1077" never names NW-10. Each run of a word's "/"-separated parts is a word too (review 153: the
+ * SWIFT form "/INV/NW-R-101" names NW-R-101), so a number with "/" in it still matches whole, and a "-" never splits one.
  */
 export function referenceTokens(reference: string): string[] {
-  return reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
+  return [...new Set(referenceWords(reference).flat())];
+}
+
+/**
+ * referenceTokens word by word: for each word of the reference, every number it names (itself and each run of its
+ * "/"-separated parts). Red team round 2 (finding C): "NW/7, NW/7/2" names NW/7 by a word of its own, which only the
+ * words tell apart from "NW/7/2" alone, whose parts name NW/7 too.
+ */
+export function referenceWords(reference: string): string[][] {
+  const words = reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
     .split(/[^\p{L}\p{N}/-]+/u).map((t) => t.replace(/^[-/]+|[-/]+$/g, "")).filter(Boolean);
+  return words.map((w) => {
+    const out = new Set<string>([w]);
+    const parts = w.split("/").map((t) => t.replace(/^-+|-+$/g, "")).filter(Boolean);
+    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j <= parts.length; j++) out.add(parts.slice(i, j).join("/"));
+    return [...out];
+  });
 }
 
 /** Whether a payment reference names this invoice number as a whole word. */
@@ -103,4 +119,32 @@ export function sameLedgerInvoice(a: string, aParty: LedgerParty, b: string, bPa
   if (!xv || !yv) return true;
   if (skeleton(xv) === skeleton(yv)) return true;
   return !!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256;
+}
+
+/** The one ledger read negotiatedOriginal makes (a better-sqlite3 handle; no import, so the Worker bundles this file). */
+export interface LedgerReader { prepare(sql: string): { get(...params: unknown[]): unknown } }
+
+/**
+ * The bill a payment-ledger number pays when it is a negotiation's agreed invoice (src/negotiate/rails.ts agreedInvoiceNo:
+ * "<original>-<sha8>"): the original number its signed terms name, negotiation.original_invoice_no; else null. 27 Nov
+ * (red team, runner finding 2): the bill as issued and its agreed invoice are one bill, paid once.
+ */
+export function negotiatedOriginal(db: LedgerReader, invoiceNo: string): string | null {
+  const r = db.prepare(`SELECT json_extract(terms_json, '$.negotiation.original_invoice_no') AS o FROM proposals
+    WHERE kind IN ('invoice_payment', 'supplier_payment') AND json_extract(terms_json, '$.invoice_no') = ?
+      AND json_extract(terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1`).get(invoiceNo) as { o?: unknown } | undefined;
+  return typeof r?.o === "string" && r.o ? r.o : null;
+}
+
+/** One entry of the payment ledger as the duplicate guards compare it: its number, who it is from, and its bill's original number when it is an agreed invoice. */
+export interface LedgerBill { no: string; party: LedgerParty; original: string | null }
+
+/**
+ * Whether two ledger entries pay the same bill: the same invoice (sameLedgerInvoice), or one is a negotiation's agreed
+ * invoice of the other, or both are agreed invoices of one original (27 Nov, red team, runner finding 2).
+ */
+export function sameBill(a: LedgerBill, b: LedgerBill): boolean {
+  const xs = a.original ? [a.no, a.original] : [a.no];
+  const ys = b.original ? [b.no, b.original] : [b.no];
+  return xs.some((x) => ys.some((y) => sameLedgerInvoice(x, a.party, y, b.party)));
 }

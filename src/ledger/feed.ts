@@ -86,7 +86,7 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
   // stored terms still hash to what the CFO signed. A refused key is left as it stands: nothing posted, nothing reversed.
   const refusals = new Map<string, string>();
   const held = new Set<string>();
-  const lines = [...openingLines(db, moved), ...moved];
+  const lines = [...openingLines(db, moved, { arBooked: true }), ...moved]; // the receivables payments are booked here (ar:pay)
   const want = new Map<string, { date: string; description: string; doc_ref: string; pair: LineInput[]; coded?: boolean }>();
   const seen = new Map<string, number>();
   const invoiceOf = db.prepare("SELECT invoice_no FROM transfers WHERE request_id = ?");

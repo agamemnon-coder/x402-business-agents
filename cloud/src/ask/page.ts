@@ -17,7 +17,8 @@ import { ATTACH_MAX_BYTES, ATTACH_TYPES } from "./attach.js";
 import { ASK_COPY, QUESTION_MAX } from "./core.js";
 import { BRAND_LOGOS } from "../brandLogos.gen.js";
 import { AIRWALLEX_LOGO_SRC } from "../../../src/ui/builtOn.js";
-import { ASK_CONTEXT_KINDS, ASK_NAV, CONTEXT_ID, CONTEXT_JS, OPEN_APPROVAL, OPEN_APPROVAL_LABEL, approvalHash, contextLabel, parseContext, quickActions, type AskContext } from "./context.js";
+import { ASK_CONTEXT_KINDS, ASK_NAV, CONTEXT_ID, OPEN_APPROVAL, OPEN_APPROVAL_LABEL, approvalHash, contextJs, contextLabel, parseContext, quickActions, type AskContext } from "./context.js";
+import { ASK_CONNECTIONS_NL, ASK_CONTEXT_NL, ASK_PAGE_COPY_NL, ASK_READS_NL, ASK_SKILLS_NL } from "./pageNl.js";
 
 export const ASK_PATH = "/ask";
 export const ASK_BUTTON_PATH = "/ask/button.js";
@@ -133,6 +134,11 @@ export const ASK_PAGE_COPY = {
   copy: "Copy",
   copied: "Copied",
 } as const;
+
+/** The page's words in either language: English (ASK_PAGE_COPY) or Dutch (./pageNl.ts, every key of the English). */
+type AskCopy = { readonly [K in keyof typeof ASK_PAGE_COPY]: (typeof ASK_PAGE_COPY)[K] extends string ? string : { readonly [J in keyof (typeof ASK_PAGE_COPY)[K]]: string } };
+const COPY: Record<"en" | "nl", AskCopy> = { en: ASK_PAGE_COPY, nl: ASK_PAGE_COPY_NL satisfies AskCopy };
+type Lang = "en" | "nl";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
@@ -782,37 +788,39 @@ if (CFG.embed) q.focus();
  * first paint; the script redraws it as the person moves. 26 Nov (Max: "busy"): the four chips went; the page's quick
  * actions are the empty state's suggestions.
  */
-function ctxBar(c: AskContext | null, embed: boolean): string {
-  const C = ASK_PAGE_COPY;
+function ctxBar(c: AskContext | null, embed: boolean, lang: Lang = "en"): string {
+  const C = COPY[lang], nl = lang === "nl";
   const hash = embed ? approvalHash(c) : null;
-  const go = hash && ASK_NAV.test(hash) ? `<button type="button" class="qa-go" aria-label="${esc(OPEN_APPROVAL_LABEL)}">${esc(OPEN_APPROVAL)}</button>` : "";
-  return `<div class="ctxbar" id="ctxbar"${c ? "" : " hidden"}><p class="ctx-now"><span class="ctx-k">${esc(C.viewing)}</span> <b id="ctxl">${c ? esc(contextLabel(c)) : ""}</b> <span class="ctx-d" id="ctxd">${c ? esc(`· ${c.demo ? C.demoCompany : C.ownCompany}`) : ""}</span></p>${go}</div>`;
+  const go = hash && ASK_NAV.test(hash) ? `<button type="button" class="qa-go" aria-label="${esc(nl ? ASK_CONTEXT_NL.openLabel : OPEN_APPROVAL_LABEL)}">${esc(nl ? ASK_CONTEXT_NL.open : OPEN_APPROVAL)}</button>` : "";
+  const label = (x: AskContext) => (nl ? `${ASK_CONTEXT_NL.titles[x.kind]}${x.id && (x.kind === "invoice" || x.kind === "payment") ? ` ${x.id}` : ""}` : contextLabel(x));
+  return `<div class="ctxbar" id="ctxbar"${c ? "" : " hidden"}><p class="ctx-now"><span class="ctx-k">${esc(C.viewing)}</span> <b id="ctxl">${c ? esc(label(c)) : ""}</b> <span class="ctx-d" id="ctxd">${c ? esc(`· ${c.demo ? C.demoCompany : C.ownCompany}`) : ""}</span></p>${go}</div>`;
 }
 
 /** The header's strip: what the agent reads from, each with its mark, a dot and what it is (its title and, for a screen reader, its words). */
-function conns(live: boolean): string {
-  const C = ASK_PAGE_COPY;
+function conns(live: boolean, lang: Lang = "en"): string {
+  const C = COPY[lang], nl = lang === "nl";
   // 26 Nov (Max: "Reads from is too busy, only the symbols"): the marks alone, each named in its title and for a screen reader.
   return `<ul class="cx" aria-label="${esc(C.reads)}">${ASK_CONNECTIONS.map((x) => {
-    const what = x.key === "claude" ? (live ? "live, answers here" : "off here: docs only") : x.what;
+    const what = x.key === "claude" ? (nl ? ASK_CONNECTIONS_NL[live ? "claude_live" : "claude_off"] : live ? "live, answers here" : "off here: docs only") : nl ? ASK_CONNECTIONS_NL[x.key] ?? x.what : x.what;
     const mark = x.key === "t0" ? `<span class="t0" aria-hidden="true">T:0</span>` : `<i class="m m-${x.key}" aria-hidden="true"></i>`;
     return `<li title="${esc(`${x.name}: ${what}`)}">${mark}<span class="sr">${esc(`${x.name}: ${what}`)}</span><b class="d${x.key === "claude" ? (live ? " on" : " off") : ""}"${x.key === "claude" ? ' id="cxd"' : ""} aria-hidden="true"></b></li>`;
   }).join("")}</ul>`;
 }
 
 /** The page: the chat, standalone (the site's header) or embedded (?embed=1, a bar with a close button). `live`: Claude answers here now. */
-export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null; waiting?: number | null }): string {
-  const C = ASK_PAGE_COPY;
+export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null; waiting?: number | null; lang?: Lang }): string {
+  const lang: Lang = o.lang === "nl" ? "nl" : "en", nl = lang === "nl";
+  const C = COPY[lang];
   const live = o.live ?? false;
   const ctx = o.context ?? null;
   const app = !o.embed;
-  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, nav: ASK_NAV.source, ticons: TOOL_ICON, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
+  const script = SCRIPT.replace("__CONTEXT__", () => contextJs(lang)).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, nav: ASK_NAV.source, ticons: TOOL_ICON, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
   // The status: "Claude connected · live" only when Claude answers here now; else docs-only mode, said as plainly.
   const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}<span class="logo" aria-hidden="true">${icon("feather", 18)}</span><div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
     + `<button class="ib" id="tterm" type="button" aria-pressed="false" aria-controls="term" aria-label="${esc(C.termLabel)}" title="${esc(C.term)}">${icon("term", 18)}</button>`
     + (app ? `<button class="ib pt" id="ptog" type="button" aria-controls="detail" aria-expanded="false" aria-label="${esc(C.canRead)}" title="${esc(C.canRead)}">${icon("layers", 18)}</button>` : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
-    + `${conns(live)}</header>`;
+    + `${conns(live, lang)}</header>`;
   // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
   const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 16)}<span>${esc(x.label)}</span></button></li>`).join("");
   // In the floating panel (embed), 26 Nov (Max: "Claude-like; at most 3 suggestions, only on the empty state"): a small
@@ -820,10 +828,10 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
   // that page (./context.ts); else jury mode (21 Nov, Max): three questions about Purser. The script redraws them as the
   // person moves; signed in to their own company the greeting is the console's.
   const own = o.embed && !!ctx && !ctx.demo;
-  const ctxButtons = ctx ? quickActions(ctx).map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}" data-k="${x.key}"><span>${esc(x.label)}</span></button></li>`).join("") : "";
+  const ctxButtons = ctx ? quickActions(ctx).map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}" data-k="${x.key}"><span>${esc(nl ? ASK_CONTEXT_NL.labels[x.key] : x.label)}</span></button></li>`).join("") : "";
   // 26 Nov (Max: "a real agent: skills, integrations"): the panel opens on its skills, each one of its read-only tools,
   // the page's three quick actions over them when it is opened from a page of Purser Cloud, and one line on its limits.
-  const skillButtons = ASK_SKILLS.map((x) => `<li><button class="sk t-${x.tone}" type="button" data-q="${esc(x.q)}" data-tool="${x.tool}"><span class="ki">${icon(x.icon, 16)}</span><b>${esc(x.name)}</b><small>${esc(x.line)}</small></button></li>`).join("");
+  const skillButtons = ASK_SKILLS.map((x) => { const w = (nl && ASK_SKILLS_NL[x.tool]) || x; return `<li><button class="sk t-${x.tone}" type="button" data-q="${esc(x.q)}" data-tool="${x.tool}"><span class="ki">${icon(x.icon, 16)}</span><b>${esc(w.name)}</b><small>${esc(w.line)}</small></button></li>`; }).join("");
   const helloBlock = o.embed
     ? `<section class="hello" id="hello" aria-labelledby="hh"><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p>`
       + `<div class="forpage"><h3>${esc(C.forPage)}</h3><ul class="acts ctx" id="sugctx" aria-label="${esc(C.quick)}">${ctxButtons}</ul></div>`
@@ -838,7 +846,7 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
     + `<section class="convos" aria-labelledby="cvh"><h2 id="cvh">${esc(C.convos)}</h2><p class="kept">${esc(C.convosKept)}</p><ol class="cv" id="convos"></ol></section>`
     + `<details class="co"><summary><span class="av" aria-hidden="true">N</span>${esc(C.company)}${icon("down", 16).replace("<svg", '<svg class="down"')}</summary><p>${esc(C.companyDemo)} <a href="/#/sign-in">${esc(C.companySignIn)}</a></p></details></nav>`;
   // The detail panel: what the agent can read, the sources cited so far and a drop zone, until an invoice is opened.
-  const detailPanel = `<aside class="detail" id="detail" aria-label="${esc(C.detail)}"><section><h3>${esc(C.canRead)}</h3><ul class="reads2">${READS.map(([i, w]) => `<li>${icon(i, 16)}${esc(w)}</li>`).join("")}</ul><p class="rnote">${esc(C.readNote)}</p></section>`
+  const detailPanel = `<aside class="detail" id="detail" aria-label="${esc(C.detail)}"><section><h3>${esc(C.canRead)}</h3><ul class="reads2">${READS.map(([i, en], k) => [i, nl ? ASK_READS_NL[k] ?? en : en] as const).map(([i, w]) => `<li>${icon(i, 16)}${esc(w)}</li>`).join("")}</ul><p class="rnote">${esc(C.readNote)}</p></section>`
     + `<section><h3>${esc(C.recent)}</h3><ol class="rsrc" id="rsrc"><li class="empty">${esc(C.recentEmpty)}</li></ol></section>`
     + `<section><button class="dz" id="dz" type="button">${icon("upload", 22)}<span>${esc(C.dropHere)}</span><small>${esc(C.attachHint)}</small></button></section></aside>`;
   const composer = `<form class="composer" id="ask" autocomplete="off"><div class="drop" id="drop" hidden>${esc(C.drop)}</div>`
@@ -851,7 +859,7 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
     + `<p class="ferr" id="ferr" role="alert" hidden></p><p class="foot" id="foot">${esc(C.privacy)}</p></form>`;
   const icons = (["file", "check", "face", "ext", "x", "eye", "layers", "docs", "swap", "books", "wallet", "clock", "shield", "bot", "trail", "chain", "spark", "arrow"] as const).map((k) => `<template id="ic-${k}">${icon(k, k === "check" ? 14 : 16)}</template>`).join("");
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${ICON_LINKS}
+<html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${ICON_LINKS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
@@ -860,8 +868,8 @@ ${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the quest
 <main id="main" class="app">
 <div class="shell">${app ? side : ""}
 <section class="convo">${bar}
-<div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="Conversation"></div><section class="term" id="term" aria-label="${esc(C.termLabel)}" hidden><div class="th"><span><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>${esc(C.termHead)}</span><button type="button" id="tcopy">${esc(C.copy)}</button></div><pre id="tout" tabindex="0"></pre></section></div>
-${ctxBar(ctx, o.embed)}
+<div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="${nl ? "Gesprek" : "Conversation"}"></div><section class="term" id="term" aria-label="${esc(C.termLabel)}" hidden><div class="th"><span><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>${esc(C.termHead)}</span><button type="button" id="tcopy">${esc(C.copy)}</button></div><pre id="tout" tabindex="0"></pre></section></div>
+${ctxBar(ctx, o.embed, lang)}
 ${composer}</section>${app ? detailPanel : ""}</div>
 </main>
 <template id="mark">${icon("feather", 14)}</template><template id="fileicon">${icon("file", 14)}</template>${icons}
@@ -882,7 +890,9 @@ export const askCsp = (n: string) =>
  * Its style carries the page's nonce (read from its own tag, else from the page's nonce'd script).
  */
 export const ASK_BUTTON_JS = `{ // Ask Purser's button (cloud/src/ask/page.ts): one floating button; the chat opens in a dialog, framed from this page's own origin (the site passes /ask through).
-const C = ${json({ fab: ASK_PAGE_COPY.fab, close: ASK_PAGE_COPY.close, title: ASK_PAGE_COPY.title })};
+// The host page's language (the console says lang="nl" when a person chose Nederlands): the button's words and the panel's.
+const ASK_NL = document.documentElement.lang === 'nl';
+const C = ${json({ en: { fab: ASK_PAGE_COPY.fab, close: ASK_PAGE_COPY.close, title: ASK_PAGE_COPY.title }, nl: { fab: ASK_PAGE_COPY_NL.fab, close: ASK_PAGE_COPY_NL.close, title: ASK_PAGE_COPY_NL.title } })}[ASK_NL ? 'nl' : 'en'];
 const ORIGIN = location.origin;
 const NAV = ${ASK_NAV.toString()}, KINDS = ${json(ASK_CONTEXT_KINDS)}, CID = ${CONTEXT_ID.toString()};
 // The page the person views, as the host page says it (data-ask-kind, data-ask-id, data-ask-demo on <body>), checked.
@@ -934,7 +944,7 @@ body>#pask-fab[aria-expanded="true"]::after{opacity:0}
       panel.id = 'pask-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', C.title);
       const f = document.createElement('iframe');
       const cx = ctxNow(), qs = cx ? '&ctx=' + encodeURIComponent(cx.kind) + (cx.id ? '&id=' + encodeURIComponent(cx.id) : '') + (cx.demo ? '&demo=1' : '') : '';
-      f.src = ORIGIN + '/ask?embed=1' + qs; f.title = C.title; f.setAttribute('allow', 'clipboard-write');
+      f.src = ORIGIN + '/ask?embed=1' + qs + (ASK_NL ? '&lang=nl' : ''); f.title = C.title; f.setAttribute('allow', 'clipboard-write');
       panel.append(f);
       document.body.append(panel);
       f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (e) {} });
@@ -980,7 +990,8 @@ export function askPageResponse(url: URL, live = false, waiting: number | null =
   const p = url.searchParams;
   // The console's page, from the button's address (?ctx=invoice&id=…&demo=1): checked, or none.
   const context = parseContext({ kind: p.get("ctx"), id: p.get("id") ?? undefined, demo: p.get("demo") === "1" });
-  return new Response(askPage(n, { embed: p.get("embed") === "1", live, context, waiting }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
+  // The person's language, as the console's button passes it (?lang=nl); English otherwise.
+  return new Response(askPage(n, { embed: p.get("embed") === "1", live, context, waiting, lang: p.get("lang") === "nl" ? "nl" : "en" }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
 }
 
 /** GET /ask/button.js: the module, cached an hour, loadable by this origin's pages. */

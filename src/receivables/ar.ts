@@ -28,7 +28,8 @@ import { RECEIVABLES } from "../ledger/accounts.js";
 import { postEntry } from "../ledger/core.js";
 import { salesInvoice, settleOpenItem } from "../ledger/documents.js";
 import { vatOn } from "../ledger/vat.js";
-import { invoiceKey, referenceTokens, unknownInvoiceWord } from "../lib/invoiceKey.js";
+import { invoiceKey, referenceWords, unknownInvoiceWord } from "../lib/invoiceKey.js";
+import { withoutAccountsOrAddresses, withoutNames } from "../lib/personalData.js";
 import { matchReceipt, namesReceivable, type Deposit } from "../agents/receivables.js";
 import { fromCents } from "../lib/money.js";
 
@@ -110,23 +111,32 @@ export async function issueInvoice(db: DB, inv: NewArInvoice, links: Pick<Airwal
 /**
  * The invoice a reference names (rule 1), or why none can be chosen. A reference names an invoice only as a whole word
  * (review of 26 Nov: "NW-1077" named NW-10 and paid it); one that names a number shaped like ours that is not on file
- * ("NW-1077") goes to review, never to the amount rule.
+ * ("NW-1077") goes to review, never to the amount rule; so does one that names two or more different invoices.
  */
 function named(db: DB, reference: string | null): { inv: ArInvoice } | { review: string } | null {
   if (!reference) return null;
-  const words = referenceTokens(reference);
+  const perWord = referenceWords(reference);
   const all = arInvoices(db);
-  const hits = all.filter((i) => words.includes(invoiceKey(i.invoice_no))).sort((a, b) => b.invoice_no.length - a.invoice_no.length);
+  const found = all.filter((i) => perWord.some((w) => w.includes(invoiceKey(i.invoice_no))));
+  // A number that is only a "/"-part of a longer one named ("NW/7" in "NW/7/2") is that one, not a second invoice; but
+  // only when every word that names it names a longer one on file too (red team round 2, finding C: "NW/7, NW/7/2"
+  // names NW/7 as a word of its own, so two invoices are named and a person decides).
+  const within = (a: string, b: string) => a !== b && `/${b}/`.includes(`/${a}/`);
+  const partOnly = (k: string) => perWord.filter((w) => w.includes(k)).every((w) => found.some((o) => within(k, invoiceKey(o.invoice_no)) && w.includes(invoiceKey(o.invoice_no))));
+  const hits = found.filter((i) => !partOnly(invoiceKey(i.invoice_no)));
   if (!hits.length) {
     const unknown = unknownInvoiceWord(reference, all.map((i) => i.invoice_no));
     return unknown ? { review: `the reference names ${unknown}, which is not an invoice on file` } : null;
   }
-  if (hits[1] && hits[1].invoice_no.length === hits[0]!.invoice_no.length) return { review: `the reference names ${hits.length} invoices` };
+  // Two different invoices named ("NW-10 / NW-100"): which one is paid is a person's call, never the longer number's.
+  if (hits.length > 1) return { review: `the reference names ${hits.length} invoices: ${hits.map((i) => i.invoice_no).sort().join(", ")}` };
   return { inv: hits[0]! };
 }
 
 /** Matches one incoming payment and books it, once per payment id. */
-export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+export function matchPayment(db: DB, payment: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+  // "eur" is EUR (red team, review 153: the ledger refused it, and again on every poll).
+  const p = { ...payment, currency: payment.currency.trim().toUpperCase() };
   if (!Number.isSafeInteger(p.amount_cents) || p.amount_cents <= 0) throw new Error("a payment is whole cents above zero");
   return db.transaction(() => {
     const seen = db.prepare("SELECT outcome, invoice_no, rule, applied_cents, written_off_cents, suspense_cents FROM ar_payments WHERE payment_id = ?").get(p.payment_id) as MatchResult | undefined;
@@ -182,7 +192,8 @@ export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): Matc
  * invoices and the reference names one of them or none of the older receivables' (src/agents/receivables.ts, which
  * books cash basis through the journal); else the older matcher, exactly as before.
  */
-export function routeDeposit(db: DB, d: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+export function routeDeposit(db: DB, deposit: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+  const d = { ...deposit, currency: deposit.currency.trim().toUpperCase() }; // "eur" is EUR, for either matcher
   const p = { payment_id: d.deposit_id, currency: d.currency, amount_cents: d.amount_cents, reference: d.reference, payer: d.payer, received_at: d.received_at };
   const ar = (): { by: "ar"; outcome: string; detail: string } => { const r = matchPayment(db, p, now); return { by: "ar", outcome: r.outcome, detail: `${r.invoice_no ?? "no invoice"}: ${r.rule}` }; };
   if (db.prepare("SELECT 1 FROM ar_payments WHERE payment_id = ?").get(d.deposit_id)) return ar();
@@ -269,6 +280,22 @@ export function draftReminders(db: DB, asOf: string, now = new Date()): DunningD
   }
   return db.prepare(`SELECT d.invoice_no, d.stage, d.due_on, d.draft, d.created_at FROM ar_dunning d JOIN ar_invoices i USING (invoice_no)
     WHERE i.status IN ('OPEN', 'PARTIAL') ORDER BY d.due_on, d.invoice_no, d.stage`).all() as DunningDraft[];
+}
+
+/**
+ * A payment's reference as it may leave the runner (the money loop's review queue, src/treasury/cloudSnapshot.ts): the
+ * payer writes it, so it can carry their name, their bank account or an e-mail address. Every IBAN and e-mail address,
+ * however written, is taken out, and so is every name the runner knows for it: the payer's (whole, and each word of
+ * three letters or more) and every customer's on file. What is left (an order number, an invoice number, a month)
+ * still helps a person find the payment; the reference itself stays in ar_payments here.
+ */
+export function referenceForCloud(db: DB, paymentId: string, reference: string): string {
+  const payer = (db.prepare("SELECT payer FROM ar_payments WHERE payment_id = ?").get(paymentId) as { payer: string | null } | undefined)?.payer ?? "";
+  const customers = (db.prepare("SELECT customer FROM ar_invoices").all() as { customer: string }[]).map((r) => r.customer);
+  const hasOld = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'receivables'").get();
+  if (hasOld) customers.push(...(db.prepare("SELECT customer FROM receivables").all() as { customer: string }[]).map((r) => r.customer));
+  // Each name whole, next to any letter (src/lib/personalData.ts withoutNames: "Émile Ørsted" too, not only ASCII).
+  return withoutNames(withoutAccountsOrAddresses(reference), [payer, ...customers, ...payer.split(/[\s,.;:]+/).filter((w) => w.length >= 3)]).replace(/\s{2,}/g, " ").trim();
 }
 
 /** An address shown masked (j…@example.com), for a console or a page; the stored one is never logged. */

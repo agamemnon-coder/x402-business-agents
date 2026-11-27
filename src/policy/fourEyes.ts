@@ -1,7 +1,8 @@
 // E1, four eyes: which proposals need the Face ID of two different people. Set by the CFO policy
 // (approval.four_eyes_eur); off until the CFO sets it. Above the threshold: an invoice payment, a supplier payment (in
-// euros: supplierPaymentEur), and an outside
-// agent's card whose monthly limit is above it; at any amount, a supplier's new bank details and a change of the
+// euros: supplierPaymentEur), an FX conversion (in euros: fxConversionEur), and an outside
+// agent's card whose monthly limit is above it (a conversion with the others to its currency one person approved within
+// the split window: fxPartsEurCents); at any amount, a supplier's new bank details and a change of the
 // agents' on-chain mandates (Kit 11's rebalance within the 20.00 total).
 
 import type { DB } from "../db/open.js";
@@ -9,6 +10,8 @@ import { toCents } from "../lib/money.js";
 import type { ProposalRow } from "./approvals.js";
 import { sodChanges } from "./policySod.js";
 import { policyValue } from "./rules.js";
+import { checkWindows } from "../world/settings.js";
+import { SPLIT_DAYS } from "../config/checkNumbers.js";
 
 export const FOUR_EYES_KEY = "approval.four_eyes_eur";
 
@@ -23,6 +26,52 @@ export function supplierPaymentEur(termsJson: string): string | null {
   const c = paymentEurCents(JSON.parse(termsJson) as PaymentTerms);
   return c === null ? null : (c / 100).toFixed(2);
 }
+
+/**
+ * An FX conversion in euros, for the thresholds (27 Nov, red team, runner finding 3: four eyes and the second key never
+ * applied to one, so one person sold USD 300,000 for EUR 250,000): what it buys when it buys EUR, the most it may sell
+ * when it sells EUR; null for a pair without EUR or an amount that is not money, which counts as over.
+ */
+export function fxConversionEur(termsJson: string): string | null {
+  const t = JSON.parse(termsJson) as { buy_currency?: string; buy_amount?: string; sell_currency?: string; sell_max?: string };
+  const eur = t.buy_currency === "EUR" ? t.buy_amount : t.sell_currency === "EUR" ? t.sell_max : undefined;
+  return money(eur) ? eur! : null;
+}
+
+/**
+ * The other FX conversions to the same currency as these terms that were approved within the split window (the company's
+ * ap.split_days, else SPLIT_DAYS) without what a rule asks (`signedAsAsked` reads the approval's approver), in euro
+ * cents; null when one of them states no euro value (counted as over). Red team round 2 (FX split): one EUR 250,000
+ * conversion cut into three under the thresholds was bought by one person. On Purser's clock, as approveWithinLimit's
+ * total to a payee (src/policy/approvals.ts aloneToPayee): when these terms are approved, the window ends at that
+ * approval and only parts approved before it count, so an executor asking again judges it as it was approved.
+ */
+export function fxPartsEurCents(db: DB, termsJson: string, now: Date, signedAsAsked: (approver: string) => boolean): number | null {
+  const t = JSON.parse(termsJson) as { proposal_id?: string; buy_currency?: string };
+  const self = typeof t.proposal_id === "string" ? t.proposal_id : "";
+  const mine = db.prepare("SELECT rowid AS r, created_at FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(self) as { r: number; created_at: string } | undefined;
+  const until = mine ? mine.created_at : now.toISOString();
+  const days = checkWindows(db).splitDays ?? SPLIT_DAYS;
+  const since = new Date(Date.parse(until) - days * 86_400_000).toISOString();
+  const rows = db.prepare(`SELECT p.terms_json, a.approver FROM proposals p JOIN approvals a ON a.proposal_id = p.proposal_id
+    WHERE p.kind = 'fx_conversion' AND a.decision = 'APPROVED' AND a.created_at >= ? AND a.created_at <= ? AND p.proposal_id != ?
+      AND p.status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'FAILED') AND (? IS NULL OR a.rowid < ?)`)
+    .all(since, until, self, mine?.r ?? null, mine?.r ?? null) as { terms_json: string; approver: string }[];
+  let cents = 0;
+  for (const r of rows) {
+    if (signedAsAsked(r.approver)) continue;
+    let other: { buy_currency?: string };
+    try { other = JSON.parse(r.terms_json) as typeof other; } catch { return null; }
+    if (other.buy_currency !== t.buy_currency) continue;
+    const eur = fxConversionEur(r.terms_json);
+    if (eur === null) return null;
+    cents += toCents(eur);
+  }
+  return cents;
+}
+
+/** An approval two different people gave (decide() joins their approvals with " + "). */
+export const cosigned = (approver: string): boolean => approver.includes(" + ");
 
 interface PaymentTerms { amount?: string; currency?: string; platform_fee?: { amount?: string; currency?: string } | null; conversion?: { sell_currency?: string; sell_amount?: string; buy_amount?: string } | null }
 const money = (s: string | undefined) => typeof s === "string" && /^\d+\.\d{2}$/.test(s);
@@ -48,17 +97,17 @@ function lineEurCents(kind: string, terms: PaymentTerms): number | null {
 }
 
 /** `value`: the policy to read the threshold from; the one in force unless the simulator replays a proposed one (src/policy/simulate.ts). */
-export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">, value: (key: string) => string = (key) => policyValue(db, key)): boolean {
+export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">, value: (key: string) => string = (key) => policyValue(db, key), now = new Date()): boolean {
   // Block 1: the account's owners are two passkeys with a threshold of two; Purser asks for both as the chain will.
   if (p.kind === "owners_execute") return true;
   // Segregation of duties (src/policy/policySod.ts): a policy change that loosens above the CFO's threshold for it.
-  if (p.kind === "policy_change" && sodChanges(db, p.terms_json).length > 0) return true;
+  if (p.kind === "policy_change" && sodChanges(db, p.terms_json, now).length > 0) return true;
   const v = value(FOUR_EYES_KEY);
   // A batch needs two people when any of its lines would on its own (one Face ID never approves what needs two), and
   // when its lines together are above the threshold (red team 6: three lines under it, EUR 4,617.20 in all, one person).
   if (p.kind === "payment_batch") {
     const lines = (JSON.parse(p.terms_json) as { lines?: { kind: string; terms: PaymentTerms }[] }).lines ?? [];
-    if (lines.some((l) => fourEyes(db, { kind: l.kind, terms_json: JSON.stringify(l.terms) }, value))) return true;
+    if (lines.some((l) => fourEyes(db, { kind: l.kind, terms_json: JSON.stringify(l.terms) }, value, now))) return true;
     if (v === "") return false;
     let sum = 0;
     for (const l of lines) {
@@ -79,6 +128,13 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">, va
   if (p.kind === "supplier_payment") {
     const eur = supplierPaymentEur(p.terms_json);
     return eur === null || over(eur);
+  }
+  if (p.kind === "fx_conversion") {
+    const eur = fxConversionEur(p.terms_json);
+    if (eur === null || over(eur)) return true;
+    // With the parts one person approved within the split window (red team round 2, FX split).
+    const parts = fxPartsEurCents(db, p.terms_json, now, cosigned);
+    return parts === null || toCents(eur) + parts > threshold;
   }
   if (p.kind === "agent_onboard") return over(t.card?.monthly);
   if (p.kind === "task_card") return over(t.amount);

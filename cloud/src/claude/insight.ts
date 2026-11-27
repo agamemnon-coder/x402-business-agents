@@ -4,7 +4,7 @@
 // pushed). Nothing is estimated beyond what each answer says it is, and nothing here writes.
 
 import { agentName } from "../../../src/config/brand.js";
-import { agentOf, feedLine } from "../dashboard.js";
+import { agentOf, feedLine, openingCash } from "../dashboard.js";
 import { report } from "../read.js";
 import type { TenantDb } from "../tenant.js";
 
@@ -36,9 +36,11 @@ function mainCurrency(rows: TxBody[]): string {
 }
 
 /**
- * Cash: what moved in and out, in the main currency, up to today, and a projection by week from the books' own open items
- * (receivables expected in, payables due out, by their due days). A projection from due days, not a model and not a
- * bank balance: an overdue item counts in the first week, a late payer or a new invoice is not foreseen.
+ * Cash: what moved in and out, in the main currency, up to today; the cash position (the books' opening balance in that
+ * currency, owner's equity, plus that net: the ledger's bank when every movement is booked, the figure Cash & FX and the
+ * Overview show); and a projection by week from it and the books' own open items (receivables expected in, payables due
+ * out, by their due days). A projection from due days, not a model: an overdue item counts in the first week, a late
+ * payer or a new invoice is not foreseen.
  */
 export async function cashPosition(db: TenantDb, now: Date, weeks = 4): Promise<Json> {
   const rows = await txs(db);
@@ -53,7 +55,8 @@ export async function cashPosition(db: TenantDb, now: Date, weeks = 4): Promise<
   const q = new URLSearchParams({ as_of: today });
   const pay = (await report(db, "payables", q, now)) as Open, rec = (await report(db, "receivables", q, now)) as Open;
   const projection: { week_from: string; week_to: string; expected_in: string; due_out: string; net: string; projected_net_cash: string }[] = [];
-  let run = inC - outC;
+  const opening = await openingCash(db, currency);
+  let run = opening + inC - outC;
   for (let w = 0; w < weeks; w++) {
     const from = addDays(today, w * 7 + (w === 0 ? 0 : 1)), to = addDays(today, (w + 1) * 7);
     const inWeek = (d: string) => (w === 0 ? d <= to : d >= from && d <= to);
@@ -64,10 +67,11 @@ export async function cashPosition(db: TenantDb, now: Date, weeks = 4): Promise<
   }
   return {
     currency, as_of: today, since: moved[0]?.at ?? null,
+    cash: money(opening + inC - outC), opening_balance: money(opening),
     net_cash: money(inC - outC), money_in: money(inC), money_out: money(outC), movements: moved.length, net_flow_last_30_days: money(flow30),
     open: { receivables: money(rec.items.filter((x) => x.currency === currency).reduce((n, x) => n + x.open_cents, 0)), payables: money(pay.items.filter((x) => x.currency === currency).reduce((n, x) => n + x.open_cents, 0)) },
     projection,
-    basis: "Net cash is money in minus money out (fees included) on every rail since the first movement Purser recorded, not a bank balance. The projection adds the books' open receivables and payables by due day; overdue items fall in the first week.",
+    basis: "Cash is the books' opening balance (owner's equity) plus net cash, which is money in minus money out (fees included) on every rail since the first movement Purser recorded. The projection starts from the cash and adds the books' open receivables and payables by due day; overdue items fall in the first week.",
   };
 }
 
@@ -183,7 +187,8 @@ export async function auditTrail(db: TenantDb, t: TxBody): Promise<Json> {
 export function explain(t: TxBody, trail: Json): { sentence: string; lines: string[]; data: Json } {
   const amount = `${t.currency} ${Number(t.amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const when = new Date(t.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  const verb = t.direction === "in" ? `${t.counterparty} paid the company ${amount}` : t.direction === "out" ? `The company paid ${t.counterparty} ${amount}` : `${amount} moved between the company's own accounts`;
+  // Money in from a customer names the invoice only (the runner keeps the payer's name): "A customer" says who.
+  const verb = t.direction === "in" ? `${t.counterparty || "A customer"} paid the company ${amount}` : t.direction === "out" ? `The company paid ${t.counterparty || "a payee"} ${amount}` : `${amount} moved between the company's own accounts`;
   const why = t.invoice ? `for invoice ${t.invoice.supplier_no ?? t.invoice.ap_id ?? ""}${t.invoice.ap_id ? ` (${t.invoice.ap_id})` : ""}` : t.description ? `for ${t.description}` : "";
   const ap = t.approval;
   const allowed = ap.required

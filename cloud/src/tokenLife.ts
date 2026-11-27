@@ -161,7 +161,7 @@ function tlCompare(){
 function tlTokens(V,A){
   const vic=el('li','tl-tk vic',[el('span','tl-tkk',tw('t_vic')),el('code','','token_type '+(V.token.type||'DPAN')+(V.card.last4?' · '+tw('test_card',{l:V.card.last4}):'')),
     el('span','tl-tkd',tlMoney(V.purchase.currency,V.purchase.amount)+' · '+V.purchase.merchant),el('span','obadge ok',[ic('circle-check'),tw('used_once')])]);
-  const ag=A.tokens.map((x)=>{const on=x.status==='active';return el('li','tl-tk',[el('span','tl-tkk',tw('t_agent')+' · '+(x.agent.charAt(0).toUpperCase()+x.agent.slice(1))),el('code','',x.id+' ··'+x.last4+' · '+tw('card',{l:x.card_last4})),
+  const ag=A.tokens.map((x)=>{const on=x.status==='active';return el('li','tl-tk',[el('span','tl-tkk',tw('t_agent')+' · '+(NL&&(ROSTER.find((r)=>r.id===x.agent)||{}).name||x.agent.charAt(0).toUpperCase()+x.agent.slice(1))),el('code','',x.id+' ··'+x.last4+' · '+tw('card',{l:x.card_last4})),
     el('span','tl-tkd',[x.per_purchase?tw('per',{amt:tlMoney(x.currency,x.per_purchase)}):null,x.per_month?' · '+tw('month',{amt:tlMoney(x.currency,x.per_month)}):null,x.mccs.length?' · '+tw('mcc',{m:x.mccs.join(', ')}):null,x.expires_at?' · '+tw('until',{d:day(x.expires_at)}):null]),
     el('span','tl-tkb',[el('span','obadge '+(on?'ok':'bad'),[ic(on?'circle-check':'ban'),tw(on?'active':'revoked')]),x.used?el('span','sub',tw('used_n',{n:x.used})):null,x.refused.length?el('span','sub',tw('refused_n',{n:x.refused.length})+': '+x.refused.join(', ')):null])])});
   return el('section','card panel tl-sec',[el('h2','',tw('tok_h')),el('p','sub',tw('tok_sub')),el('ul','tl-tks',[vic,...ag]),el('p','fine',[A.label+' · ',A.record?ext(A.record,tw('record')):null])])}

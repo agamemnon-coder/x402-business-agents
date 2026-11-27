@@ -27,6 +27,7 @@ import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments, type AloneDecl
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
+import { invoiceKey } from "../lib/invoiceKey.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
 import { audit, verifyAuditChain } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -207,7 +208,7 @@ export interface NegotiatedFacts {
 function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
   const codes = new Set(inv.findings.map((f) => f.code));
   const out: NonNullable<InvoiceView["checks_passed"]> = [];
-  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before"].some((c) => codes.has(c))) out.push("not_paid_before");
+  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before", "negotiated_before"].some((c) => codes.has(c))) out.push("not_paid_before");
   if (inv.vendor && payableAccount(inv.reading) !== null && !codes.has("possible_fraud") && !codes.has("new_supplier")) out.push("bank_on_file", "known_supplier");
   return out;
 }
@@ -669,16 +670,17 @@ export class EngineHost {
    * The CFO's rule for high-risk payments (src/policy/secondKey.ts): a policy_change proposal of its keys only, which the
    * CFO then approves with Face ID like any proposal (POST /v1/engine/proposals/{id}/approve); approved, it is applied.
    * `by`: the signed-in person who asks, as their passkey is labelled, signed in as its proposer (who never approves it;
-   * above the CFO's segregation-of-duties threshold a loosening without one is refused).
+   * above the CFO's segregation-of-duties threshold a loosening without one is refused); `byId`: that person's id, as
+   * passkeyFinish's `person`, so their own key is refused by id too, whatever its label says (approve).
    */
-  proposeSecondKey(changes: { key: string; to: string }[], by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+  proposeSecondKey(changes: { key: string; to: string }[], by?: string, byId?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
       if (!changes.length || changes.some((c) => !(SECOND_KEY_KEYS as readonly string[]).includes(c.key))) return { ok: false as const, reason: `only these settings: ${SECOND_KEY_KEYS.join(", ")}` };
       // Only what changes: the page sends every trigger as it stands on screen.
       const real = changes.filter((c) => policyValue(this.deps.db, c.key) !== c.to);
       if (!real.length) return { ok: false as const, reason: "nothing changes: the rule already says this" };
       try {
-        const p = proposePolicyChange(this.deps.db, { changes: real, reason: "The CFO's rule for high-risk payments: Face ID and a security key", ...(by !== undefined ? { signedInAs: by } : {}) }, "human", this.now());
+        const p = proposePolicyChange(this.deps.db, { changes: real, reason: "The CFO's rule for high-risk payments: Face ID and a security key", ...(by !== undefined ? { signedInAs: by } : {}), ...(byId !== undefined ? { signedInId: byId } : {}) }, "human", this.now());
         return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
       } catch (e) { return { ok: false as const, reason: message(e) }; }
     });
@@ -691,12 +693,12 @@ export class EngineHost {
    * immediately before each create, and so does the rail. Both directions are audited as policy.changed. `by` as for
    * proposeSecondKey.
    */
-  emergencyStop(on: boolean, by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+  emergencyStop(on: boolean, by?: string, byId?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db } = this.deps;
       if (stopState(db).on === on) return { ok: false as const, reason: on ? "the emergency stop is already on" : "the emergency stop is not on" };
       try {
-        const p = proposePolicyChange(db, { changes: [{ key: STOP_KEY, to: on ? "on" : "off" }], reason: on ? "The CFO pulls the emergency stop: nothing is paid until it is lifted" : "The CFO lifts the emergency stop", ...(by !== undefined ? { signedInAs: by } : {}) }, "human", this.now());
+        const p = proposePolicyChange(db, { changes: [{ key: STOP_KEY, to: on ? "on" : "off" }], reason: on ? "The CFO pulls the emergency stop: nothing is paid until it is lifted" : "The CFO lifts the emergency stop", ...(by !== undefined ? { signedInAs: by } : {}), ...(byId !== undefined ? { signedInId: byId } : {}) }, "human", this.now());
         return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
       } catch (e) { return { ok: false as const, reason: message(e) }; }
     });
@@ -864,6 +866,8 @@ export class EngineHost {
       // A key in its cooling-off (added by replacement, endorsement or co-signature, or after a recovery) approves
       // nothing yet. Only a signature that verifies is written to the audit log: anyone may send a key's id.
       const keyId = credentialIdOf(a.credential);
+      const own = keyId ? this.ownProposal(a.proposal_id, keyId) : null;
+      if (own) return { status: "refused", message: own, settled: null };
       const cooling = keyId ? this.coolingOf(keyId, now) : null;
       if (cooling && keyId) {
         const pk = passkeyById(db, keyId);
@@ -884,6 +888,27 @@ export class EngineHost {
       if (a.hold) return { status: out.status, message: out.message, settled: null, held: true };
       return { status: out.status, message: out.message, settled: await this.pay(out.proposalId) };
     });
+  }
+
+  /**
+   * Why this key's person may not approve this policy change, by the Cloud's id for them (passkeyFinish's `person`), or
+   * null (red team round 2, finding B): they proposed it (its signed proposed_by_id), or another key of theirs already
+   * co-signed it. A name is free text, compared as src/lib/personName.ts reads it in decide(); an id is not.
+   */
+  private ownProposal(proposalId: string, keyId: string): string | null {
+    const { db } = this.deps;
+    const p = db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string; terms_json: string } | undefined;
+    if (!p || p.kind !== "policy_change") return null;
+    let t: { proposed_by_id?: unknown; proposed_by?: unknown };
+    try { t = JSON.parse(p.terms_json) as typeof t; } catch { return null; }
+    db.exec(PASSKEY_PEOPLE);
+    const personOf = (cred: string) => (db.prepare("SELECT person FROM engine_passkey_people WHERE credential_id = ?").get(cred) as { person: string } | undefined)?.person ?? null;
+    const me = personOf(keyId);
+    if (!me) return null;
+    if (typeof t.proposed_by_id === "string" && t.proposed_by_id === me) return `You proposed ${proposalId}${typeof t.proposed_by === "string" ? ` (as ${t.proposed_by})` : ""}, so you cannot approve it (segregation of duties); another person approves it with their own passkey. Nothing was changed.`;
+    const cosigned = db.prepare("SELECT credential_id FROM cosignatures WHERE proposal_id = ?").all(proposalId) as { credential_id: string }[];
+    if (cosigned.some((c) => c.credential_id !== keyId && personOf(c.credential_id) === me)) return `You already approved ${proposalId} with another key; a second person must approve it with their own passkey. Nothing was changed.`;
+    return null;
   }
 
   /**
@@ -1113,6 +1138,14 @@ export class EngineHost {
       if (r.vendor !== o.vendor || r.currency !== o.currency || !r.invoice_no.startsWith(`${o.invoice_no}-`))
         return { ok: false as const, reason: `${r.id} is not the agreed replacement of ${o.id}` };
     }
+    // 27 Nov (red team, runner finding 2): one bill is paid once, as issued or as agreed. Another invoice from this supplier
+    // that is this bill (its number as issued, or another negotiation's agreed "<original>-<sha8>"), not rejected or
+    // blocked, means this agreed invoice is not recorded (agreed() then withdraws it): on the seeded scene, with no
+    // original named, a second negotiation of one bill filed a second payable invoice for it.
+    const bill = invoiceKey(o?.invoice_no ?? n.original_invoice_no);
+    const twin = (db.prepare("SELECT id, invoice_no, status FROM ap_invoices WHERE id NOT IN (?, ?) AND status NOT IN ('rejected', 'blocked') AND vendor = ?").all(r.id, o?.id ?? "", r.vendor) as { id: string; invoice_no: string; status: string }[])
+      .find((x) => { const k = invoiceKey(x.invoice_no); return k === bill || (k.startsWith(`${bill}-`) && /^[0-9A-F]{8}$/.test(k.slice(bill.length + 1))); });
+    if (twin) return { ok: false as const, reason: `${twin.id} (${twin.invoice_no}, ${twin.status.replace(/_/g, " ")}) is already this bill; one bill is paid once` };
     const off = c(n.original_amount) - c(r.total);
     const facts = {
       original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,

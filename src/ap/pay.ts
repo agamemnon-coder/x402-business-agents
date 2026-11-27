@@ -10,7 +10,7 @@ import { apAgentsOn } from "../config/agents.js";
 import { followPayouts, liveRequestId, type FollowOptions } from "../payouts/follow.js";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import type { BillsRail } from "../airwallex/bills.js";
-import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
+import { proposeInvoicePayment, type InvoiceOutcome, type NegotiatedPayment } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, returnedPayout, returnEntries, reversalEntries, SINK_TOOK, type BookkeepingSink } from "./books.js";
@@ -35,7 +35,7 @@ import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
 import { scanTotalLine, scanView } from "./detail.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
-import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
+import { commitmentsCents, inFlightCents, payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
 import type { PlanGate, PlannedPayment } from "../payouts/planGate.js";
 import { readOnlyLedger, quoteFreeRail } from "../payouts/probe.js";
 import { MAX_REFERENCE, payableCurrency, referenceProblem } from "../payouts/routes.js";
@@ -97,11 +97,34 @@ async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApI
   const document = scan
     ? { total_line: scanTotalLine(inv, scan), currency: inv.currency, reason: transferReason(inv.gl_account) }
     : { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
+  // An invoice agreed by negotiation carries what was agreed into the signed terms (red team round 2, finding D: on /try
+  // the bill as issued was paid again, as no guard could link its number to the agreed invoice's).
+  const negotiated = negotiatedFacts(db, id);
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
   const plan = (on: DB, rail: AirwallexRail & PayoutRail, gate?: PlanGate): Promise<PayOutcome> => payoutBeneficiary(on, r.vendor) || r.currency !== "EUR"
-    ? proposeSupplierPayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, gate)
-    : proposeInvoicePayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, gate);
+    ? proposeSupplierPayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, gate, undefined, negotiated)
+    : proposeInvoicePayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, gate, undefined, negotiated);
   return { inv, text, plan };
+}
+
+/**
+ * What a negotiation agreed for this inbox invoice, as its ap.negotiated record holds it (src/engine/host.ts
+ * recordNegotiated), in the form the payment's signed terms carry (terms.negotiation, src/agents/euroBill.ts); undefined
+ * when the invoice was not agreed by negotiation. The pay-by day and the offers chain's head are the agreement's own; an
+ * agreement kept without a transcript names its last signed offer, or else itself.
+ */
+export function negotiatedFacts(db: DB, invoiceId: string): NegotiatedPayment | undefined {
+  const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.negotiated' AND subject = ? ORDER BY seq DESC LIMIT 1").get(invoiceId) as { payload_json: string } | undefined;
+  if (!row) return undefined;
+  const f = JSON.parse(row.payload_json) as { original_invoice_no?: unknown; original_amount?: unknown; agreed_amount?: unknown; discount?: unknown; agreement_sha256?: unknown; agreement?: unknown; offers?: unknown };
+  let agreement: { pay_by?: unknown; transcript_sha256?: unknown } = {};
+  try { if (typeof f.agreement === "string") agreement = JSON.parse(f.agreement) as typeof agreement; } catch { /* below: no pay-by day, so the payment is refused */ }
+  const str = (x: unknown) => (typeof x === "string" ? x : "");
+  const offers = Array.isArray(f.offers) ? f.offers.filter((x): x is string => typeof x === "string") : [];
+  return {
+    agreement_sha256: str(f.agreement_sha256), transcript_sha256: str(agreement.transcript_sha256) || offers.at(-1) || str(f.agreement_sha256),
+    original_invoice_no: str(f.original_invoice_no), original_amount: str(f.original_amount), agreed_amount: str(f.agreed_amount), discount: str(f.discount), pay_by: str(agreement.pay_by),
+  };
 }
 
 /** A payment approved by code within the CFO's limit to pay alone (payAlone): who decided, and code's rule in words. */
@@ -162,21 +185,26 @@ function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, p
 const isPaidAlone = (x: PaidAlone | AloneDeclined | null): x is PaidAlone => !!x && "limit" in x;
 
 /**
- * Whether the cash check holds the payment just filed (an invoice payment's terms: its balances before, its floor and
- * commitments, its fee reserve, with the payouts in flight now): true when paying it from its own currency alone would
- * take that balance below its floor. Terms of another kind, or terms code cannot read, are never paid alone either.
+ * Whether the cash check holds the payment just filed: true when paying it from its own currency alone would take that
+ * balance below its floor (its terms' balances before, floor and commitments, its fee reserve, with the payouts in flight
+ * now), for an invoice payment and a supplier payment alike. 27 Nov (red team, runner finding 7): terms that convert
+ * another currency are the CFO's to sign, never the agent's alone; and terms of any other kind, or terms code cannot
+ * read, are held too (a supplier payment used to skip this check, its conversion included).
  */
 function cashHoldsFiled(db: DB, proposalId: string, inv: ApInvoiceRow, now: Date): boolean {
   const row = db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string; terms_json: string } | undefined;
-  if (!row) return true;
-  if (row.kind !== "invoice_payment") return false;
-  let t: { amount?: unknown; currency?: unknown; fee_max?: unknown; balances_before?: { eur_available?: unknown }; floors?: { eur_floor?: unknown; eur_obligations?: unknown } };
+  if (!row || (row.kind !== "invoice_payment" && row.kind !== "supplier_payment")) return true;
+  let t: { amount?: unknown; currency?: unknown; fee_max?: unknown; fee_reserve?: unknown; transfer_request_id?: unknown; conversion?: unknown; balances_before?: Record<string, unknown>; floors?: Record<string, unknown> };
   try { t = JSON.parse(row.terms_json) as typeof t; } catch { return true; }
+  if (t.conversion) return true;
   const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const cur = str(t.currency);
+  const position = row.kind === "invoice_payment"
+    ? { currency: cur, balance: str(t.balances_before?.eur_available), committed: str(t.floors?.eur_obligations), inFlight: fromCents(eurInFlightCents(db, undefined, proposalId)), floor: str(t.floors?.eur_floor) }
+    : { currency: cur, balance: str(t.balances_before?.[cur]), committed: fromCents(commitmentsCents(db, cur)), inFlight: fromCents(inFlightCents(db, cur, str(t.transfer_request_id), proposalId)), floor: str(t.floors?.[cur]) };
   const view = cashCheck({
-    invoice: { id: inv.id, invoiceNo: inv.invoice_no, payee: inv.vendor, iban: "", amount: str(t.amount), currency: str(t.currency), dueDate: inv.due_date ?? "" },
-    position: { currency: str(t.currency), balance: str(t.balances_before?.eur_available), committed: str(t.floors?.eur_obligations), inFlight: fromCents(eurInFlightCents(db, undefined, proposalId)), floor: str(t.floors?.eur_floor) },
-    feeReserve: str(t.fee_max), aloneLimit: aloneLimit(db), today: now.toISOString().slice(0, 10),
+    invoice: { id: inv.id, invoiceNo: inv.invoice_no, payee: inv.vendor, iban: "", amount: str(t.amount), currency: cur, dueDate: inv.due_date ?? "" },
+    position, feeReserve: str(row.kind === "invoice_payment" ? t.fee_max : t.fee_reserve), aloneLimit: aloneLimit(db), today: now.toISOString().slice(0, 10),
   });
   return view.outcome === "hold";
 }

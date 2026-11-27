@@ -266,13 +266,18 @@ describe("the windows: configurable, with defaults chosen against the evals' fal
     expect(codeFindings(c).find((f) => f.code === "possible_split")!.detail).toContain("within 27 days");
     const narrow = { ...c, policy: { ...c.policy, windows: { splitDays: 14 } } };
     expect(codes(narrow)).not.toContain("possible_split");
-    // A month apart: a supplier's monthly invoices are no split.
-    expect(codes(caseOf(bergtex("400.00"), { history: [prior({ issueDate: "2026-10-17" })] }))).not.toContain("possible_split");
+    // Received a month apart: a supplier's monthly invoices are no split (27 Nov, runner finding 1: measured on when
+    // Purser received each, never on the dates the supplier prints).
+    expect(codes(caseOf(bergtex("400.00"), { history: [prior({ issueDate: "2026-10-17", receivedAt: "2026-10-17T09:00:00.000Z" })] }))).not.toContain("possible_split");
+    expect(codes(caseOf(bergtex("400.00"), { history: [prior({ issueDate: "2026-10-17" })] }))).toContain("possible_split");
   });
 
-  it("invoices for different months printed on both are no split, and no duplicate", () => {
+  it("invoices for different months printed on both are no duplicate; received a month apart, no split", () => {
     const dec = bergtex("595.00", [], { items: ["Storage December 2026"] });
-    expect(codes(caseOf(dec, { history: [prior({ total: "595.00", issueDate: "2026-11-09", period: ["2026-11"] })] }))).toEqual([]);
+    expect(codes(caseOf(dec, { history: [prior({ total: "595.00", issueDate: "2026-10-09", receivedAt: "2026-10-09T09:00:00.000Z", period: ["2026-11"] })] }))).toEqual([]);
+    // 27 Nov (red team, runner finding 1): the months a supplier prints never exempt a part from the split check; received
+    // within its window, the two are added up and the CFO decides.
+    expect(codes(caseOf(dec, { history: [prior({ total: "595.00", issueDate: "2026-11-09", period: ["2026-11"] })] }))).toEqual(["possible_split"]);
     // The same month, or a month the earlier one does not print: the checks stand.
     expect(codes(caseOf(dec, { history: [prior({ total: "595.00", issueDate: "2026-11-09", period: ["2026-12"] })] }))).toContain("possible_duplicate");
     expect(codes(caseOf(dec, { history: [prior({ total: "595.00", issueDate: "2026-11-09" })] }))).toContain("possible_duplicate");

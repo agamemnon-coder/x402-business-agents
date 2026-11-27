@@ -43,7 +43,7 @@ export interface Finding {
   twin_of?: string;
   /** possible_fraud only: the signals that make it suspicious (a changed account, a lookalike name), each with its reason. */
   signals?: { code: string; detail: string; asked?: string; on_file?: string }[];
-  /** duplicate, possible_duplicate and rejected_before: the earlier invoice it matches (14 Nov: /try shows it side by side). */
+  /** duplicate, possible_duplicate, rejected_before and negotiated_before: the earlier invoice it matches (14 Nov: /try shows it side by side). */
   of?: string;
 }
 
@@ -94,6 +94,8 @@ export interface HistoryInvoice {
   period?: string[] | null;
   /** The lines it billed, as printed (src/ap/period.ts itemLines; [] when it printed none); absent or null: not known. */
   lines?: string[] | null;
+  /** A negotiation's agreed invoice: the number of the bill as issued that it replaces (its ap.negotiated record); absent: none. */
+  negotiatedFrom?: string | null;
 }
 
 /** What a contract or a purchase order says the invoice should be. */
@@ -479,6 +481,15 @@ function examine(c: InvoiceCase): Examined {
         f.push({ code: "rejected_before", level: "review", of: rejected.id, detail: `${rejected.id}, invoice ${rejected.invoiceNo} from ${rejected.vendor}, was rejected by a person${why ? ` (${why})` : ""}; a person decides whether this copy is any different` });
       }
     }
+    // The bill as issued of an invoice agreed by negotiation, from the same supplier (red team round 2, finding D: on /try it
+    // was filed ready and paid beside its agreed invoice): one bill, so a person decides; never paid alone or filed ready.
+    if (!f.some((x) => x.code === "duplicate")) {
+      const agreed = others
+        .filter((x) => x.state !== "rejected" && x.state !== "blocked" && !!x.negotiatedFrom)
+        .filter(sameParty)
+        .find((x) => sameInvoiceNo(x.negotiatedFrom!, r.invoice_no));
+      if (agreed) f.push({ code: "negotiated_before", level: "review", of: agreed.id, detail: `${agreed.id}, invoice ${agreed.invoiceNo} from ${agreed.vendor}, is this bill as agreed by negotiation (${agreed.state.replace(/_/g, " ")}); one bill is paid once, so a person decides about this copy as issued` });
+    }
     // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team
     // C; round 2 widened a week to 45 days, past a month). A monthly invoice for the same amount (rent, a subscription)
     // therefore waits for a person once: their clearance is kept per pair (clearPossibleDuplicate in src/ap/inbox.ts).
@@ -519,20 +530,22 @@ function examine(c: InvoiceCase): Examined {
     }
   }
 
-  // 19 Nov (adversarial eval v2: six invoices cut to stay under the limit were paid alone): one supplier's invoices dated
-  // within the split window of this one, paid or still to be paid, each within the agent's limit, are added up. When this
-  // one is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming the others.
-  // A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid; one that prints
-  // another month than this one is the supplier's regular billing, not a part (eval v3).
+  // 19 Nov (adversarial eval v2: six invoices cut to stay under the limit were paid alone): one supplier's invoices
+  // received within the split window of this one, paid or still to be paid, each within the agent's limit, are added up.
+  // When this one is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming
+  // the others. A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid.
+  // 27 Nov (red team, runner finding 1): the window is measured on Purser's own clock, when each invoice was received,
+  // never on the dates or the months the supplier prints: four parts of one bill printed 30 days apart and received the
+  // same day were each paid alone. A supplier's monthly invoices, received a month apart, still fall outside it.
   const limit = c.policy.aloneLimit;
   if (limit && MONEY.test(r.total) && limitRule(limit, r.currency, r.total).rule === null) {
     const key = r.invoice_no ? invoiceKey(r.invoice_no) : null;
+    const received = day(c.invoice.receivedAt ?? c.today);
     const parts = others.filter(sameParty)
       // Each part is itself within the limit: one above it went to the CFO on its own, so nothing was cut to avoid it.
       .filter((x) => x.state !== "rejected" && x.state !== "blocked" && !x.blockedAsDuplicate && x.currency === r.currency && MONEY.test(x.total) && limitRule(limit, x.currency, x.total).rule === null)
       .filter((x) => !key || invoiceKey(x.invoiceNo) !== key)
-      .filter((x) => !periodsDiffer(periods, x.period))
-      .filter((x) => Math.abs(day(x.issueDate || x.receivedAt) - issued) <= win.splitDays * DAY_MS);
+      .filter((x) => Math.abs(day(x.receivedAt) - received) <= win.splitDays * DAY_MS);
     const sum = parts.reduce((n, x) => n + toCents(x.total), toCents(r.total));
     if (parts.length && sum > toCents(limit.amount)) {
       const shown = parts.slice(0, SPLIT_SHOWN).map((x) => `${x.id} (invoice ${x.invoiceNo || "with no number"}, ${money(x.currency, x.total)}, ${(x.issueDate || x.receivedAt).slice(0, 10)})`);
@@ -861,7 +874,7 @@ export const CHECKER_TEXT_LIMIT = 20_000;
 export const FINDING_CODES = [
   "no_text", "missing_fields", "no_bank_details", "iban_invalid", "bank_details_invalid", "country_not_paid", "currency_not_paid",
   "sum_mismatch", "totals_mismatch", "credit_note", "ambiguous_total", "duplicate", "possible_duplicate", "rejected_before",
-  "possible_fraud", "new_supplier", "payee_blocked", "account_currency", "unusual_amount", "overdue",
+  "negotiated_before", "possible_fraud", "new_supplier", "payee_blocked", "account_currency", "unusual_amount", "overdue",
   "bank_details_changed", "lookalike_vendor", "mixed_scripts", "account_name_mismatch", "bank_change_language", "pressure_language",
   "instructions_in_document", "amount_not_expected", "reminder", "possible_split", "text_not_read", "other",
 ] as const;
@@ -1013,7 +1026,7 @@ function historyAnswer(x: Examined): string {
     const list = shown.map((h) => `${h.id}: invoice ${h.invoiceNo || "(no number)"}, ${money(h.currency, h.total) || "no total"}, ${h.issueDate || h.receivedAt.slice(0, 10)}, ${h.state.replace(/_/g, " ")}`);
     said.push(`${rows.length > shown.length ? "The latest of this supplier's other invoices" : "This supplier's other invoices"} in the inbox: ${list.join("; ")}.`);
   }
-  const found = detailsOf(x.findings, "duplicate", "possible_duplicate", "rejected_before", "unusual_amount", "possible_split");
+  const found = detailsOf(x.findings, "duplicate", "possible_duplicate", "rejected_before", "negotiated_before", "unusual_amount", "possible_split");
   said.push(found.length ? closed(`Code's checks: ${found.join("; ")}`) : "Code's duplicate checks found no copy of this invoice.");
   return said.join(" ");
 }

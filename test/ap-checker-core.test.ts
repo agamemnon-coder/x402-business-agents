@@ -714,8 +714,11 @@ describe("eval v2 gaps, closed in code", () => {
 
     it("asks nothing when the parts stay within the limit, fall outside the window, or cannot be paid", () => {
       expect(codes(caseOf(part("10.00"), { ...LIMIT_1000, history: [prior({})] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-20" })] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-21" })] }))).toContain("possible_split");
+      // 27 Nov (red team, runner finding 1): the window is on when each was received (this one: today, 8 November), never
+      // on the dates the supplier prints.
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ receivedAt: "2026-10-11T09:00:00.000Z" })] }))).not.toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ receivedAt: "2026-10-12T09:00:00.000Z" })] }))).toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-08-01", receivedAt: "2026-11-08T08:00:00.000Z" })] }))).toContain("possible_split");
       for (const state of ["rejected", "blocked"] as const) expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ state })] })), state).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ currency: "USD" })] }))).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ vendor: "Someone Else GmbH", accountKey: "DE02120300000000202051" })] }))).not.toContain("possible_split");

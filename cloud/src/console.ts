@@ -15,7 +15,8 @@ import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "..
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { localAsset } from "./localAssets.js";
-import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
+import { ACCOUNT_NAMES_NL, LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
+import { NL_DATA_PATHS, NL_EXACT, NL_JS, NL_PATTERNS } from "./consoleNl.js";
 import { AIRWALLEX_LOGO_PATH, AIRWALLEX_LOGO_SRC, builtOnBadge } from "../../src/ui/builtOn.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
 import { ASSET_VERSIONS, DAY_CACHE, IMMUTABLE_CACHE, type VersionedAsset } from "../../src/ui/assetVersions.js";
@@ -427,8 +428,9 @@ ${SIGNIN_HERO}
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
 const LS=__CATALOGUES__;
-// The chart's account names, beside each number in a journal (the CFO review, 14 Nov): "2100 Accounts payable".
-const ACCT=__ACCOUNTS__;
+// The chart's account names, beside each number in a journal (the CFO review, 14 Nov): "2100 Accounts payable"; in
+// Dutch, "2100 Crediteuren" (27 Nov). Picked once the page's language is known, below.
+const ACCOUNTS=__ACCOUNTS__;
 // English unless Dutch was chosen on purpose: the person's own language (on their account), else a choice made in this
 // page (kept in this browser). The company's language is not a reason: the cloud stores Dutch for every new company
 // by default, so it cannot tell a choice from the default. The key older pages wrote (on their own, not on a
@@ -436,6 +438,7 @@ const ACCT=__ACCOUNTS__;
 const langOf=(saved,person)=>person==='nl'||person==='en'?person:saved==='nl'?'nl':'en';
 const PREF=(()=>{try{return localStorage.getItem('purser.cloud.language')}catch(e){return null}})();
 const L=LS[langOf(PREF,null)];
+const ACCT=ACCOUNTS[L.lang]||ACCOUNTS.en;
 __I18N__
 __EVENT_LINE__
 document.documentElement.lang=L.lang;
@@ -447,12 +450,14 @@ document.querySelector('#testchip').title=t('test.title');
 for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
 const IC=__ICONS__;
 const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
+const NL_DATA_PATHS=__NL_PATHS__;
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
 const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
-// The day the figures stand at: today, or the demo company's own last day (me() sets it), so nothing reads as overdue
-// against a clock the demo never reached (v1.5.2 sweep: due 17 and 23 Nov read late on 27 Nov).
+// The day the figures stand at: today, or the demo company's own last day (me() sets it, and back to today once the
+// person leaves the demo without a reload: review 153), so nothing reads as overdue against a clock the demo never
+// reached (v1.5.2 sweep: due 17 and 23 Nov read late on 27 Nov).
 let today=new Date().toISOString().slice(0,10);
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
@@ -489,7 +494,10 @@ async function api(path,o){
   // paints an error over the sign-in.
   if(r.status===401&&!o.token&&(S||sessionEnded)){if(S){forget();S=null;ME=null;notice=t('cs.session_ended');sessionEnded=true;go('#/sign-in')}throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
-  const j=await r.json().catch(()=>({error:r.statusText}));
+  let j=await r.json().catch(()=>({error:r.statusText}));
+  // A Dutch page reads Purser's own English in Dutch (cloud/src/consoleNl.ts): the sentence fields of a few read-only
+  // answers (NL_DATA_FIELDS), as they arrive, and an error's words always. Nothing it sends back or signs is translated.
+  if(NL&&j&&typeof j==='object'){if(r.ok&&(!o.method||o.method==='GET')&&NL_DATA_PATHS.test(path))j=nxAll(j,nlFields(path));else if(typeof j.error==='string')j.error=nx(j.error)}
   // The server asks for the passkey again: one Face ID prompt, then the same request once more.
   if(r.status===403&&j.code==='step_up_required'&&!o.token&&!o.stepped&&S){await stepUp();return api(path,Object.assign({},o,{stepped:true}))}
   // The answer's code and body go with the error (a new approval key's endorsement asks for a second step).
@@ -525,7 +533,8 @@ function shell(){
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
 function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.language',lang)}catch(e){}if(lang!==L.lang)location.reload()}
-async function me(){if(!ME){ME=await api('/v1/me');if(ME.demo&&ME.demo.as_of)today=String(ME.demo.as_of).slice(0,10);const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
+// me(): the demo company's name in the page's language ("Northwind Outdoor (demobedrijf)"), a company's own name stays.
+async function me(){if(!ME){ME=await api('/v1/me');if(NL&&ME.demo&&ME.tenant&&ME.tenant.name)ME.tenant.name=nx(ME.tenant.name);today=ME.demo&&ME.demo.as_of?String(ME.demo.as_of).slice(0,10):new Date().toISOString().slice(0,10);const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>{const g=groupWords();return el('div','head',[el('div','',[g?el('span','eyebrow',g):null,el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null])};
 
@@ -1174,8 +1183,8 @@ async function transactionsView(q0){
   if(q0&&q0.get){const r=q0.get('rail'),f=q0.get('from'),to=q0.get('to');if(r&&RAILS.some(([k])=>k&&k===r))q.set('rail',r);if(f&&iso.test(f))q.set('from',f);if(to&&iso.test(to))q.set('to',to)}
   const sel=(opts,key)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;s.append(o)}s.onchange=()=>{if(s.value)q.set(key,s.value);else q.delete(key);load()};return s};
   const curIn=el('input','field');curIn.placeholder='EUR';curIn.maxLength=4;curIn.onchange=()=>{const v=curIn.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
-  const from=el('input','field');from.type='date';from.setAttribute('aria-label','From date');from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
-  const to=el('input','field');to.type='date';to.setAttribute('aria-label','To date');to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
+  const from=el('input','field');from.type='date';from.setAttribute('aria-label',t('cs.tx.from_date'));from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
+  const to=el('input','field');to.type='date';to.setAttribute('aria-label',t('cs.tx.to_date'));to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
   const csv=btn('CSV','','download');csv.onclick=()=>download('/v1/transactions/export.csv?'+q.toString(),'transactions.csv').catch(e=>{if(!(e instanceof Expired))list.before(note(e.message,'bad'))});
   const tiles=el('div','tiles');const list=el('div','card list');
   const railSel=sel(RAILS,'rail');railSel.value=q.get('rail')||'';from.value=q.get('from')||'';to.value=q.get('to')||'';
@@ -1243,7 +1252,7 @@ function journalTable(items,empty,newest){
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
 function exportsCard(){
   const box=el('div','card panel exports');const out=el('div','');out.setAttribute('role','status');
-  const files=[['xero','bills','Xero · bills'],['xero','journals','Xero · journals'],['quickbooks','bills','QuickBooks Online · bills'],['exact','bills','Exact Online · inkoop'],['exact','journals','Exact Online · memoriaal']];
+  const files=[['xero','bills',NL?'Xero · inkoopfacturen':'Xero · bills'],['xero','journals',NL?'Xero · memoriaal':'Xero · journals'],['quickbooks','bills',NL?'QuickBooks Online · inkoopfacturen':'QuickBooks Online · bills'],['exact','bills','Exact Online · inkoop'],['exact','journals','Exact Online · memoriaal']];
   const row=el('div','row2 wrap-row');
   for(const [f,k,label] of files){const b=btn(label,'','download');b.onclick=async()=>{b.disabled=true;try{await download('/v1/export/csv/'+f+'/'+k,'purser-'+k+'-'+f+'.csv')}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};row.append(b)}
   box.append(el('h2','',t('cs.books.exports')),el('p','sub',t('cs.books.exports_sub')),row,out);return box}
@@ -2038,10 +2047,11 @@ const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
   // Both languages' words (the console's only) as JSON: the script picks English unless the person chose Dutch.
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
-  const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
+  const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), ...(lang === "nl" ? { data: DATA_NL, x: NL_EXACT, p: NL_PATTERNS } : { data: {} }) });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + RATIONALE_WORDS_JS + "\n" + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + MONEY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const names = (lang: "nl" | "en") => Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, (lang === "nl" ? ACCOUNT_NAMES_NL[k] ?? v : v).replace(/\s*\(.*\)$/, "")]));
+  const accounts = JSON.stringify({ en: names("en"), nl: names("nl") }).replace(/</g, "\\u003c");
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS + NL_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__NL_PATHS__", () => NL_DATA_PATHS.toString()).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + RATIONALE_WORDS_JS + "\n" + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + MONEY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

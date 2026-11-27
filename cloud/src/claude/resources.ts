@@ -24,7 +24,7 @@ export async function listResources(c: ResourceCtx): Promise<Resource[]> {
   const fixed: Resource[] = [
     { uri: "purser://connection", name: "connection", title: "What this connection can do", description: "This token's scope, what no AI can do here, and how a proposal reaches the CFO. Read it first.", mimeType: "text/markdown" },
     { uri: "purser://company/overview", name: "company-overview", title: "Company overview", description: "Money in and out, net cash by day, spend, invoices by state, the newest decisions.", mimeType: "application/json" },
-    { uri: "purser://cash", name: "cash", title: "Cash and its projection", description: "Net cash and a 4-week projection from due days (not a bank balance).", mimeType: "application/json" },
+    { uri: "purser://cash", name: "cash", title: "Cash and its projection", description: "Cash (the books' opening balance plus net cash) and a 4-week projection from due days.", mimeType: "application/json" },
     { uri: "purser://approvals/pending", name: "pending-approvals", title: "What waits for the CFO", description: "Invoices and proposals waiting for the CFO's Face ID, with where to approve them.", mimeType: "application/json" },
     { uri: "purser://policy", name: "cfo-policy", title: "The CFO's policy, in plain words", description: "The rules every payment is held to, the policy version, agents' card limits.", mimeType: "text/markdown" },
     ...BOOKS.map((r) => ({ uri: `purser://books/${r}`, name: `books-${r}`, title: BOOK_WORDS[r]!, description: `${BOOK_WORDS[r]!}, computed from the ledger.`, mimeType: "application/json" })),
