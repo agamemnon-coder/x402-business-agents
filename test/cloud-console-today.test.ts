@@ -24,7 +24,7 @@ describe("the console's day", () => {
   it("is the demo's last day in the demo, and the real day again once the person leaves it", async () => {
     const real = new Date().toISOString().slice(0, 10);
     const answers = [{ demo: { as_of: "2026-10-31T23:59:59Z" }, user: null }, { demo: null, user: { language: null } }];
-    const ctx = createContext({ api: async () => answers.shift(), langOf: () => "en", PREF: null, L: { lang: "en" }, useLanguage: () => undefined, ME: null });
+    const ctx = createContext({ api: async () => answers.shift(), langOf: () => "en", PREF: null, L: { lang: "en" }, useLanguage: () => undefined, ME: null, NL: false, nx: (x: string) => x });
     new Script(`${line("let today=")}\nvar ME=null;\n${line("async function me(){")}\nglobalThis.me=me;globalThis.day=()=>today;globalThis.leave=()=>{ME=null};`).runInContext(ctx);
     const c = ctx as unknown as { me: () => Promise<unknown>; day: () => string; leave: () => void };
     expect(c.day()).toBe(real);

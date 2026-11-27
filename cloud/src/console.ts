@@ -533,9 +533,8 @@ function shell(){
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
 function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.language',lang)}catch(e){}if(lang!==L.lang)location.reload()}
-async function me(){if(!ME){ME=await api('/v1/me');
-  // The demo company's name in the page's language ("Northwind Outdoor (demobedrijf)"); a company's own name stays.
-  if(NL&&ME.demo&&ME.tenant&&ME.tenant.name)ME.tenant.name=nx(ME.tenant.name);today=ME.demo&&ME.demo.as_of?String(ME.demo.as_of).slice(0,10):new Date().toISOString().slice(0,10);const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
+// me(): the demo company's name in the page's language ("Northwind Outdoor (demobedrijf)"), a company's own name stays.
+async function me(){if(!ME){ME=await api('/v1/me');if(NL&&ME.demo&&ME.tenant&&ME.tenant.name)ME.tenant.name=nx(ME.tenant.name);today=ME.demo&&ME.demo.as_of?String(ME.demo.as_of).slice(0,10):new Date().toISOString().slice(0,10);const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>{const g=groupWords();return el('div','head',[el('div','',[g?el('span','eyebrow',g):null,el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null])};
 
