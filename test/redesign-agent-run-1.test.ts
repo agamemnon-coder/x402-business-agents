@@ -4,6 +4,7 @@
 // run's file is read as agent run 1's for this test's file system only; nothing is written.
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 vi.mock("node:fs", async (orig) => {
   const fs = await orig<typeof import("node:fs")>();
@@ -23,7 +24,7 @@ const P = await import("../src/redesign/partners.js");
 
 const raw = JSON.parse(readFileSync(new URL("../docs/demo/agent-run.json", import.meta.url), "utf8")) as { run: string; proof: { face_id: number; chain_refusals: number } };
 const notes = JSON.parse(readFileSync(new URL("../docs/demo/agent-run-notes.json", import.meta.url), "utf8")) as { flows: { transfer_id: string; decided: string }[] };
-const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+const text = (html: string) => textOutsideTags(withoutBlocks(html, ["script", "style"], " ")).replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe("the pages, played from agent run 1's record", () => {
   const run = agentRun();

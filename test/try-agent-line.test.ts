@@ -23,6 +23,7 @@ import type { RecordedAgents } from "../src/try/recorded.js";
 import { StandInAdvisor } from "./support/adviceStandIn.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
 import { TEST_RATE, call, sqlOver, t0, walkAgents, type Proposal } from "./support/trySign.js";
+import { scriptBlocks, scriptBody } from "./support/scriptBlocks.js";
 
 type Voiced = Proposal & { says: string; voice: null | { source: string; label: string; model: string | null; request_id: string | null; why: string | null } };
 const reader = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0.004, model: "stand-in", ms: 300 });
@@ -387,7 +388,8 @@ describe("the emergency switch: TRY_SIGN_AGENTS=off (or the old TRY_SIGN_HAIKU=o
 describe("the reason is text on the page, never markup", () => {
   it("the page puts it (and its label and why) in text nodes only; the only markup it sets is its own icons", () => {
     const html = trySignPage();
-    const js = /<script[^>]*>([\s\S]*?)<\/script>/.exec(html.slice(html.indexOf("run-data")))?.[1] ?? "";
+    const block = scriptBlocks(html.slice(html.indexOf("run-data")))[0];
+    const js = block ? scriptBody(block) : "";
     expect(js.length).toBeGreaterThan(1000);
     expect(js).toContain('n.appendChild(typeof k === "string" ? document.createTextNode(k) : k)');
     // innerHTML (or outerHTML, insertAdjacentHTML, document.write) only for the fixed icon set.

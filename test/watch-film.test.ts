@@ -15,12 +15,13 @@ import { FILM_WATCH_CSP, FILM_WATCH_PAGE, WATCH_PAGE } from "../src/servers/dash
 import { header } from "../src/redesign/ui.js";
 import { NAV_MAIN, navHtml } from "../src/ui/nav.js";
 import { pageResponse } from "../worker/src/core.js";
+import { textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 const SITE = "https://x.test";
 const ID = "AbCdEfGhIj_";
 const none = filmWatchPage({ id: null });
 const withFilm = filmWatchPage({ id: ID });
-const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+const text = (html: string) => textOutsideTags(withoutBlocks(html, ["script", "style"], " ")).replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const placed = resolveCut(WALKTHROUGH);
 
 describe("/watch without the film (as today)", () => {

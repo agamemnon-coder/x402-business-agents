@@ -3,6 +3,7 @@
 // file is hidden from this test's file system only; nothing is written.
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 vi.mock("node:fs", async (orig) => {
   const fs = await orig<typeof import("node:fs")>();
@@ -19,7 +20,7 @@ const P = await import("../src/redesign/partners.js");
 
 interface Stand { run: string; snapshot: { agent_stats: { decisions: number; by_claude: number; fallback: number }[]; decisions: { proposal_id: string; by: string | null }[] } }
 const stand = JSON.parse(readFileSync(new URL(`../${STAND_IN_FILE}`, import.meta.url), "utf8")) as Stand;
-const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+const text = (html: string) => textOutsideTags(withoutBlocks(html, ["script", "style"], " ")).replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe("without the main run's record, the pages play the newest dry run", () => {
   const run = agentRun();

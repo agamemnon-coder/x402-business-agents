@@ -24,6 +24,7 @@ import { pageResponse } from "../worker/src/core.js";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
 import { ORIGIN as CLOUD_ORIGIN, RP as CLOUD_RP, testCloud } from "./support/cloud.js";
+import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 
 const record = approvalPageRecord();
 const pages = buildPages();
@@ -65,12 +66,12 @@ describe("each phone page has a strict, hash-based CSP", () => {
     it(`${name}: one inline script and one inline stylesheet, each allowed by its SHA-256 only; nothing else runs`, () => {
       const html = pages[name];
       const csp = pages.csp[name];
-      const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
+      const scripts = scriptBlocks(html).map((b) => [b, b.slice("<script".length, b.indexOf(">")), scriptBody(b)] as const);
       const styles = [...html.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style>/g)];
       expect(scripts.map((s) => s[1])).toEqual([' type="module"']); // no src: the page loads no other script
       expect(styles.map((s) => s[1])).toEqual([""]);
       // The markup around them: no handler, style attribute, frame or address of anyone else's.
-      const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/g, "");
+      const markup = withoutBlocks(html, ["script", "style"]);
       expect(markup).not.toMatch(/\son\w+=|\sstyle=|="\s*javascript:|<iframe|<object|<embed|https?:\/\//i);
       const directives = Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d.split(" ").slice(1)]));
       expect(directives["default-src"]).toEqual(["'none'"]);
