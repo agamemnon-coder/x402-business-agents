@@ -110,23 +110,29 @@ export async function issueInvoice(db: DB, inv: NewArInvoice, links: Pick<Airwal
 /**
  * The invoice a reference names (rule 1), or why none can be chosen. A reference names an invoice only as a whole word
  * (review of 26 Nov: "NW-1077" named NW-10 and paid it); one that names a number shaped like ours that is not on file
- * ("NW-1077") goes to review, never to the amount rule.
+ * ("NW-1077") goes to review, never to the amount rule; so does one that names two or more different invoices.
  */
 function named(db: DB, reference: string | null): { inv: ArInvoice } | { review: string } | null {
   if (!reference) return null;
   const words = referenceTokens(reference);
   const all = arInvoices(db);
-  const hits = all.filter((i) => words.includes(invoiceKey(i.invoice_no))).sort((a, b) => b.invoice_no.length - a.invoice_no.length);
+  const found = all.filter((i) => words.includes(invoiceKey(i.invoice_no)));
+  // A number that is only a "/"-part of a longer one named ("NW/7" in "NW/7/2") is that one, not a second invoice.
+  const within = (a: string, b: string) => a !== b && `/${b}/`.includes(`/${a}/`);
+  const hits = found.filter((i) => !found.some((o) => within(invoiceKey(i.invoice_no), invoiceKey(o.invoice_no))));
   if (!hits.length) {
     const unknown = unknownInvoiceWord(reference, all.map((i) => i.invoice_no));
     return unknown ? { review: `the reference names ${unknown}, which is not an invoice on file` } : null;
   }
-  if (hits[1] && hits[1].invoice_no.length === hits[0]!.invoice_no.length) return { review: `the reference names ${hits.length} invoices` };
+  // Two different invoices named ("NW-10 / NW-100"): which one is paid is a person's call, never the longer number's.
+  if (hits.length > 1) return { review: `the reference names ${hits.length} invoices: ${hits.map((i) => i.invoice_no).sort().join(", ")}` };
   return { inv: hits[0]! };
 }
 
 /** Matches one incoming payment and books it, once per payment id. */
-export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+export function matchPayment(db: DB, payment: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+  // "eur" is EUR (red team, review 153: the ledger refused it, and again on every poll).
+  const p = { ...payment, currency: payment.currency.trim().toUpperCase() };
   if (!Number.isSafeInteger(p.amount_cents) || p.amount_cents <= 0) throw new Error("a payment is whole cents above zero");
   return db.transaction(() => {
     const seen = db.prepare("SELECT outcome, invoice_no, rule, applied_cents, written_off_cents, suspense_cents FROM ar_payments WHERE payment_id = ?").get(p.payment_id) as MatchResult | undefined;
@@ -182,7 +188,8 @@ export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): Matc
  * invoices and the reference names one of them or none of the older receivables' (src/agents/receivables.ts, which
  * books cash basis through the journal); else the older matcher, exactly as before.
  */
-export function routeDeposit(db: DB, d: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+export function routeDeposit(db: DB, deposit: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+  const d = { ...deposit, currency: deposit.currency.trim().toUpperCase() }; // "eur" is EUR, for either matcher
   const p = { payment_id: d.deposit_id, currency: d.currency, amount_cents: d.amount_cents, reference: d.reference, payer: d.payer, received_at: d.received_at };
   const ar = (): { by: "ar"; outcome: string; detail: string } => { const r = matchPayment(db, p, now); return { by: "ar", outcome: r.outcome, detail: `${r.invoice_no ?? "no invoice"}: ${r.rule}` }; };
   if (db.prepare("SELECT 1 FROM ar_payments WHERE payment_id = ?").get(d.deposit_id)) return ar();

@@ -129,8 +129,18 @@ describe("segregation of duties for policy changes", () => {
     expect(approveSigned(db, p.proposal_id, now, "max")).toBe("PENDING_APPROVAL");
     expect(() => carla(p.proposal_id)).toThrow(/Carla CFO proposed/);
     expect(approveSigned(db, p.proposal_id, now, "anna")).toBe("APPROVED");
-    for (const bad of ["", "max (passkey 1234)", "max + anna", "treasury", "a\nb"]) {
+    // A name is read as approvals read an approver (the part before " ("), trimmed, up to the Cloud's 120 characters.
+    for (const [name, as] of [["max (Finance)", "max"], [" Lena Berg ", "Lena Berg"], ["y".repeat(120), "y".repeat(120)], ["extern accountant", "extern accountant"]] as const) {
+      const q = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2700.00" }], reason: "test", signedInAs: name }, "human", now);
+      expect(JSON.parse(q.terms_json), JSON.stringify(name)).toMatchObject({ proposed_by: as });
+    }
+    for (const bad of ["", " (Finance)", "y".repeat(121), "max + anna", "treasury", "Treasury (Finance)", "ext:mallory", "a\nb"]) {
       expect(() => proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2700.00" }], reason: "test", signedInAs: bad }, "human", now), JSON.stringify(bad)).toThrow(/not a signed-in person's name/);
+    }
+    // A tightening needs no proposer, so no name ever keeps a person from it (review 153: the emergency stop).
+    for (const name of ["", "max + anna", "treasury", "y".repeat(121)]) {
+      const q = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "900.00" }], reason: "test", signedInAs: name }, "human", now);
+      expect(JSON.parse(q.terms_json).proposed_by, JSON.stringify(name)).toBeUndefined();
     }
   });
 

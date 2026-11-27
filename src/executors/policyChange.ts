@@ -32,12 +32,14 @@ const PERSON = /^[a-z][a-z0-9-]{1,30}$/;
 const NOT_PEOPLE = new Set(["system", "claude", "sourcing", "support", "treasury", "customer", "human", "owner-signer", "awx-executor", "payer", "checker", "learning", "controller"]);
 
 /**
- * A signed-in person's name, as the Cloud labels their approval passkey (their display name): what approvals.ts
- * compares the approver with, so it may not hold what an approver string uses to join people (" (", " + ").
+ * A signed-in person's name, as the Cloud labels their approval passkey (their display name, 1 to 120 characters), read
+ * the way approvals.ts reads an approver: the part before " (", trimmed. So "Jane Doe (Finance)" proposes as "Jane Doe",
+ * whom her passkey's approval ("Jane Doe (Finance) (passkey …)") is compared as. Asked only where segregation of duties
+ * applies; there an agent's or the system's name, or one joining people (" + "), is refused: no proposer passes as a person.
  */
 function signedInName(name: string): string {
-  const n = name.trim();
-  if (!n || n.length > 80 || n !== name || [...n].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f) || n.includes(" (") || n.includes(" + ") || NOT_PEOPLE.has(n.toLowerCase()) || n.startsWith("ext")) {
+  const n = name.split(" (")[0]!.trim();
+  if (!n || name.length > 120 || [...name].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f) || n.includes(" + ") || NOT_PEOPLE.has(n.toLowerCase()) || n.toLowerCase().startsWith("ext:")) {
     throw new Error(`not a signed-in person's name: ${JSON.stringify(name)}`);
   }
   return n;
@@ -69,11 +71,12 @@ export function proposePolicyChange(db: DB, req: { changes: { key: string; to: s
   const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
-  const signedIn = req.signedInAs !== undefined ? signedInName(req.signedInAs) : undefined;
   const sod = sodChanges(db, JSON.stringify({ changes }));
-  // The signed-in person is the proposer where segregation of duties needs one; below the threshold (or with it off) a
-  // change asked for in the Cloud stays one person's to ask for and approve, as before.
-  const by = req.proposedBy ?? (sod.length ? signedIn : undefined);
+  // The signed-in person is the proposer where segregation of duties needs one, and only there is the name read: below
+  // the threshold (or with it off), and for any tightening such as pulling the stop, a change asked for in the Cloud
+  // stays one person's to ask for and approve, and no name ever refuses it.
+  const signedIn = sod.length && req.signedInAs !== undefined ? signedInName(req.signedInAs) : undefined;
+  const by = req.proposedBy ?? signedIn;
   if (by === undefined && createdBy === "human" && sod.length) {
     throw new Error(`segregation of duties applies (${sod.map((c) => `${c.key}: ${c.why}`).join("; ")}): name who proposes it, who then cannot approve it (--by <person> on the command line; in Purser Cloud, the signed-in person)`);
   }
