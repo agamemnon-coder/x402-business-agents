@@ -65,6 +65,9 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const a = payload(r).agent;
     if (r.event === "card.issued" && typeof a === "string" && KNOWN.has(a)) ids.add(a);
   }
+  // The newest policy.changed row per key (its subject): what the CFO's policy says now.
+  const policyNow = new Map<string, Audit>();
+  for (const r of audit) if (r.event === "policy.changed" && r.subject) policyNow.set(r.subject, r);
   const order = [...Object.keys(AGENT_DISPLAY), ...Object.keys(AP_AGENT_DISPLAY)];
   const agents = [...ids].sort((x, y) => order.indexOf(x) - order.indexOf(y)).map((id) => {
     const mine = audit.filter((r) => r.actor === id || payload(r).agent === id || (r.event.startsWith("card.") && r.subject === id));
@@ -74,7 +77,12 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const raised = [...mine].reverse().find((r) => r.event === "card.limit_changed");
     // A card resting frozen between approved purchases (src/policy/cards.ts, frozen by default) is not a paused agent.
     const statusRow = [...mine].reverse().find((r) => ["card.frozen", "card.thawed", "card.closed"].includes(r.event) && !(r.event === "card.frozen" && /^frozen by default/.test(String(payload(r).why ?? ""))));
-    const status = statusRow?.event === "card.closed" ? "revoked" : statusRow?.event === "card.frozen" ? "paused" : "active";
+    // The CFO's pause or stop of this agent, or the emergency stop, as the newest synced policy row says (as stopRefusesCard
+    // in ./app.ts reads it): a pause writes no card event when the card already rests frozen (review 153).
+    const held = [`pause.${id}`, `stop.${id}`, "freeze"].map((k) => policyNow.get(k)).filter((r): r is Audit => !!r && payload(r).to === "on");
+    const cardStatus = statusRow?.event === "card.closed" ? "revoked" : statusRow?.event === "card.frozen" ? "paused" : "active";
+    const status = cardStatus === "active" && held.length ? "paused" : cardStatus;
+    const since = cardStatus === "active" && held.length ? held.map((r) => r.ts).sort()[0]! : statusRow?.ts ?? issued?.ts ?? null;
     const models = new Set<string>();
     for (const r of mine) { const m = payload(r).model; if (typeof m === "string" && m.startsWith("claude-")) models.add(m); }
     const moved = txs.filter((t) => t.direction === "out" && !t.invoice && agentOf(t) === id);
@@ -95,7 +103,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
       may: CAN[id]?.may ?? [], may_not: CAN[id]?.may_not ?? [],
       card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts, month: asOfMonth || null, spent_month: asOfMonth ? (spentMonth / 100).toFixed(2) : null } : null,
       rails, spent: moved.filter((t) => t.moved).length, declined: moved.filter((t) => !t.moved).length,
-      status, status_since: statusRow?.ts ?? issued?.ts ?? null,
+      status, status_since: since,
       runs: { total: runs.length, without_model: fallbackRuns },
       decisions,
       learning: learnMonth ? learningOf(cases, id, learnMonth, issued && perPurchase ? [{ key: `card.${id}.per_tx`, label: `${agentName(id)}'s card: most per purchase`, value: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) }] : [], agentName) : null,
