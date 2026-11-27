@@ -193,7 +193,8 @@ describe("the new read tools, on the demo company", () => {
     const r = await tool("cfo_policy");
     const s = r.structuredContent;
     expect(s.rules.join(" ")).toMatch(/exact terms.*Face ID/);
-    expect(s.policy_version).toMatchObject({ version: 3 });
+    // v2 is the CFO's GBP floor and FX threshold on day one (the demo's one policy, bf110c829), so the seed ends at v4.
+    expect(s.policy_version).toMatchObject({ version: 4 });
     expect(s.agent_cards).toEqual(expect.arrayContaining([expect.objectContaining({ agent: "sourcing", per_purchase: "30.00", per_month: "100.00" })]));
     expect(s.decisions.approved).toBeGreaterThan(0);
     expect(text(r)).toMatch(/Sourcing agent: EUR 30\.00 a purchase, EUR 100\.00 a month/);

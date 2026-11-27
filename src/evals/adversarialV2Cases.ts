@@ -525,7 +525,10 @@ export function invoiceCaseFor(k: AdvCase, reading: ApReading): InvoiceCase {
   const w = k.world ?? {};
   const blocked = w.blocked ?? [];
   return {
-    invoice: { id: null, reading, text: printed(k.doc), receivedAt: null, accountSha256: null },
+    // Received when it was issued, as every invoice on file in the history is (historyOf): the split check measures its
+    // window on when Purser received each invoice (27 Nov, red team runner finding 1), and a case left without a date was
+    // measured from the eval's today instead, weeks after the invoice was printed.
+    invoice: { id: null, reading, text: printed(k.doc), receivedAt: `${k.doc.issued}T09:00:00.000Z`, accountSha256: null },
     company: { name: EVAL_COMPANY },
     policy: {
       aloneLimit: { ...EVAL_ALONE_LIMIT }, cashFloors: { ...ADV_FLOORS },
