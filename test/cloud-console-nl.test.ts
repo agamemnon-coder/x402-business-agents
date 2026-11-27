@@ -161,6 +161,18 @@ describe("the page's translator leaves synced text as it is", () => {
     expect(page.nxAll({ supplier: "Other (simulated supplier)" }, page.nlFields("/v1/negotiation/recorded")).supplier).toBe("Other (nagebootste leverancier)");
   });
 
+  // v1.5.4: on the Agents page, a task mandate with one payee shows that payee alone as the authority map's "to", and a
+  // payee named Metal or Other was shown as the catalogue's word. A task mandate's payees are names; other rows' "to" stay sentences.
+  it("a task mandate's payee on the authority map stays as synced, and only a label after it is translated", () => {
+    const task = (to: string) => ({ what: "Task: restock (supplier payment)", rail: "Airwallex", per_payment: "x", in_all: "x", from: "x", to, when: "x", under: "task_mandate.m1, granted by cfo (passkey)", needs_cfo: "x" });
+    const map = { authority_map: { agents: [{ agent: "treasury", name: "Treasury agent", rows: [
+      { ...task("x"), what: "Supplier payments alone", to: "only a task mandate's payees", under: "ap.alone_eur" }, task("Metal"), task("Other"), task("Stockline (test payee)"),
+    ] }] } };
+    const nm = page.nxAll(map, page.nlFields("/v1/authority-map"));
+    expect(nm.authority_map.agents[0]!.rows.map((r) => r.to)).toEqual(["alleen de begunstigden van een taakmandaat", "Metal", "Other", "Stockline (testbegunstigde)"]);
+    expect(nm.authority_map.agents[0]!.name).not.toBe("Treasury agent");
+  });
+
   it("an answer with no list of sentence fields is not translated at all", () => {
     const synced = { ids: ["P-0001", "a".repeat(64)], synced: ["Metal", "Other", "Sourcing", "Airlines", "⟦1850.00⟧"], feed: ["Paid 1.00 EUR at Other on its own card, within its limit"] };
     expect(page.nxAll(synced)).toEqual(synced);
