@@ -1,5 +1,4 @@
 import { CONFUSABLES, skeleton } from "../policy/fraudCore.js";
-import type { DB } from "../db/open.js";
 
 /** Any dash, with the spaces around it: one "-" in an invoice number as compared. */
 const DASH = /\s*[‐-―−﹘﹣－-]\s*/g;
@@ -106,12 +105,15 @@ export function sameLedgerInvoice(a: string, aParty: LedgerParty, b: string, bPa
   return !!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256;
 }
 
+/** The one ledger read negotiatedOriginal makes (a better-sqlite3 handle; no import, so the Worker bundles this file). */
+export interface LedgerReader { prepare(sql: string): { get(...params: unknown[]): unknown } }
+
 /**
  * The bill a payment-ledger number pays when it is a negotiation's agreed invoice (src/negotiate/rails.ts agreedInvoiceNo:
  * "<original>-<sha8>"): the original number its signed terms name, negotiation.original_invoice_no; else null. 27 Nov
  * (red team, runner finding 2): the bill as issued and its agreed invoice are one bill, paid once.
  */
-export function negotiatedOriginal(db: Pick<DB, "prepare">, invoiceNo: string): string | null {
+export function negotiatedOriginal(db: LedgerReader, invoiceNo: string): string | null {
   const r = db.prepare(`SELECT json_extract(terms_json, '$.negotiation.original_invoice_no') AS o FROM proposals
     WHERE kind IN ('invoice_payment', 'supplier_payment') AND json_extract(terms_json, '$.invoice_no') = ?
       AND json_extract(terms_json, '$.negotiation.original_invoice_no') IS NOT NULL LIMIT 1`).get(invoiceNo) as { o?: unknown } | undefined;
