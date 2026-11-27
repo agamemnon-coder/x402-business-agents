@@ -70,7 +70,7 @@ export function proposePolicyChange(db: DB, req: { changes: { key: string; to: s
   checkChanges(db, changes);
   if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
   const signedIn = req.signedInAs !== undefined ? signedInName(req.signedInAs) : undefined;
-  const sod = sodChanges(db, JSON.stringify({ changes }));
+  const sod = sodChanges(db, JSON.stringify({ changes }), now);
   // The signed-in person is the proposer where segregation of duties needs one; below the threshold (or with it off) a
   // change asked for in the Cloud stays one person's to ask for and approve, as before.
   const by = req.proposedBy ?? (sod.length ? signedIn : undefined);

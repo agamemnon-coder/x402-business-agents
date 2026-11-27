@@ -214,7 +214,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     }
     // Segregation of duties (src/policy/policySod.ts): whoever proposed a policy change never approves it, with one
     // person or two; loosening above the CFO's threshold for it needs two people (four eyes, below).
-    const sod = args.decision === "APPROVED" && p.kind === "policy_change" ? sodChanges(db, p.terms_json) : [];
+    const sod = args.decision === "APPROVED" && p.kind === "policy_change" ? sodChanges(db, p.terms_json, now) : [];
     const sodWhy = sod.length ? { threshold_eur: sodThreshold(db), loosens: sod.map((c) => ({ key: c.key, from: c.from, to: c.to, why: c.why })) } : null;
     const rule = sodWhy ? "segregation of duties: this loosens the CFO policy above the threshold" : "four eyes";
     if (args.decision === "APPROVED" && p.kind === "policy_change") {
@@ -225,7 +225,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       if (sodWhy && proposer === "human") throw new Error(`${p.proposal_id} has no proven proposer, so nobody can tell its proposer from its approver (segregation of duties: this loosens the CFO policy above the threshold); propose it again naming who proposes it (--by <person>, or signed in to Purser Cloud)`);
       if (person === proposer) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
     }
-    if (args.decision === "APPROVED" && fourEyes(db, p)) {
+    if (args.decision === "APPROVED" && fourEyes(db, p, undefined, now)) {
       // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
       // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (${rule})`);
