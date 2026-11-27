@@ -15,11 +15,19 @@ export function invoiceKey(invoiceNo: string): string {
  * A payment reference's words, normalised as invoiceKey normalises a number (Unicode, invisible characters, upper case,
  * any dash as "-") but split wherever a character cannot be part of an invoice number (spaces, punctuation other than
  * "-" and "/"), with a dash or slash at a word's ends dropped. Review of 26 Nov: a reference names an invoice only as a
- * whole word, so "NW-1077" never names NW-10.
+ * whole word, so "NW-1077" never names NW-10. Each run of a word's "/"-separated parts is a word too (review 153: the
+ * SWIFT form "/INV/NW-R-101" names NW-R-101), so a number with "/" in it still matches whole, and a "-" never splits one.
  */
 export function referenceTokens(reference: string): string[] {
-  return reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
+  const words = reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
     .split(/[^\p{L}\p{N}/-]+/u).map((t) => t.replace(/^[-/]+|[-/]+$/g, "")).filter(Boolean);
+  const out = new Set<string>();
+  for (const w of words) {
+    out.add(w);
+    const parts = w.split("/").map((t) => t.replace(/^-+|-+$/g, "")).filter(Boolean);
+    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j <= parts.length; j++) out.add(parts.slice(i, j).join("/"));
+  }
+  return [...out];
 }
 
 /** Whether a payment reference names this invoice number as a whole word. */

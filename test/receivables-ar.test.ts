@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import { openReceivable } from "../src/agents/receivables.js";
+import { referenceTokens } from "../src/lib/invoiceKey.js";
 import { trialBalance } from "../src/ledger/reports.js";
 import { agedDebtors, arBucket, dunningDates, draftReminders, issueInvoice, matchPayment, reviewQueue, retireDoneLinks, routeDeposit, toleranceCents, type IncomingPayment } from "../src/receivables/ar.js";
 import { ledgerForecast } from "../src/treasury/advisor.js";
@@ -149,6 +150,29 @@ describe("matching a payment", () => {
     expect(routeDeposit(db, dep("d-1", "Payment NW-R-1011", 124_000), now)).toMatchObject({ by: "ar", outcome: "REVIEW" });
     expect(db.prepare("SELECT status FROM receivables WHERE invoice_no = 'NW-R-101'").get()).toEqual({ status: "OPEN" });
     expect(routeDeposit(db, dep("d-2", "payment nw-r-101.", 124_000), now)).toMatchObject({ by: "receivables", outcome: "MATCHED" });
+  });
+
+  // Review 153: a word keeps its "/", so the SWIFT remittance form "/INV/<number>" became "INV/<number>" and named nothing.
+  it("a reference in the SWIFT form /INV/<number> names the invoice, in both matchers, and still only as a whole word", async () => {
+    expect(referenceTokens("/INV/NW-R-101")).toEqual(expect.arrayContaining(["INV/NW-R-101", "NW-R-101"]));
+    expect(referenceTokens("Ref/NW-2026-131")).toEqual(expect.arrayContaining(["NW-2026-131"]));
+    expect(referenceTokens("/INV/NW/2026/7/")).toEqual(expect.arrayContaining(["NW/2026/7"]));
+    expect(referenceTokens("/INV/NW-1077")).not.toContain("NW-10");
+    // The older matcher (src/agents/receivables.ts).
+    const old = openDb(":memory:");
+    openReceivable(old, { invoice_no: "NW-R-101", customer: "Alpenweg Sport AG", currency: "EUR", amount_cents: 124_000, due_date: "2026-12-01" }, now);
+    const dep = { deposit_id: "d-1", global_account_id: "ga", currency: "EUR", amount_cents: 124_000, reference: "/INV/NW-R-101", payer: "x", received_at: "2026-11-26T08:00:00Z" };
+    expect(routeDeposit(old, dep, now)).toMatchObject({ by: "receivables", outcome: "MATCHED" });
+    // This module: two open invoices of the same amount, so only the reference can tell them apart; then a partial payment.
+    const db = openDb(":memory:");
+    for (const no of ["NW-1001", "NW-1002", "NW/2026/7"]) await issueInvoice(db, { invoice_no: no, customer: "Alpenweg Sport AG", currency: "EUR", net_cents: 100_000, vat_code: "S0", issue_date: "2026-11-01", due_date: "2026-12-01" }, null, now);
+    expect(matchPayment(db, pay("p-1", "EUR", 100_000, "/INV/NW-1002"), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW-1002" });
+    expect(matchPayment(db, pay("p-2", "EUR", 40_000, "/INV/NW-1001"), now)).toMatchObject({ outcome: "PARTIAL", invoice_no: "NW-1001", applied_cents: 40_000 });
+    expect(matchPayment(db, pay("p-3", "EUR", 100_000, "Ref/NW/2026/7"), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW/2026/7" });
+    expect(matchPayment(db, pay("p-4", "EUR", 60_000, "/INV/NW-1001-B"), now)).toMatchObject({ outcome: "REVIEW", invoice_no: null });
+    expect(db.prepare("SELECT invoice_no, paid_cents, status FROM ar_invoices ORDER BY invoice_no").all()).toEqual([
+      { invoice_no: "NW-1001", paid_cents: 40_000, status: "PARTIAL" }, { invoice_no: "NW-1002", paid_cents: 100_000, status: "PAID" }, { invoice_no: "NW/2026/7", paid_cents: 100_000, status: "PAID" },
+    ]);
   });
 });
 
