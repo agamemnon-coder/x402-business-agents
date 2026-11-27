@@ -3,6 +3,7 @@
 
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import type { DB } from "../db/open.js";
+import { accountsMaskedJson } from "../lib/personalData.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { sha256Hex } from "../lib/terms.js";
 import { MONEY_EVENTS, currentOrigin, parseOrigin } from "../provenance/origin.js";
@@ -52,8 +53,11 @@ export function audit(db: DB, actor: Actor, event: string, subject: string | nul
       event,
       subject: subject === null ? null : redactSecrets(subject),
       // Round-trip through jcs so the stored text is exactly what was hashed. No credential is ever stored: the
-      // log feeds the dashboard and the public relay (an error from viem, for one, quotes the RPC URL).
-      payload_json: jcs(redactJson(payload)),
+      // log feeds the dashboard and the public relay (an error from viem, for one, quotes the RPC URL). No full account
+      // either: the rows go to Purser Cloud, so an IBAN is kept as its last four (src/lib/personalData.ts). The runner's
+      // vendor tables keep the whole account, where the payee check and Verification of Payee read it; nothing reads
+      // one back from here. Rows written before stay as they were, hashed into the chain.
+      payload_json: jcs(accountsMaskedJson(redactJson(payload))),
       prev_hash: last?.row_hash ?? GENESIS,
     };
     const full: Row = { ...row, row_hash: hashRow(row) };

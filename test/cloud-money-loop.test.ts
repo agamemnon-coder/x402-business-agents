@@ -22,6 +22,7 @@ import { treasuryView } from "../src/treasury/view.js";
 import { batchesFor, pushToCloud } from "../src/cloudsync/client.js";
 import { MoneyLoopSnapshot } from "../cloud/src/moneyLoop.js";
 import { DEMO_MONEY_LOOP } from "../cloud/src/guest/moneyLoop.gen.js";
+import { SEED_BATCHES } from "../cloud/src/guest/seed.gen.js";
 import { DEMO_END, DEMO_TENANT } from "../cloud/src/guest/guest.js";
 import { cashPosition } from "../cloud/src/claude/insight.js";
 import { TenantDb } from "../cloud/src/tenant.js";
@@ -154,6 +155,16 @@ describe("GET /v1/treasury and GET /v1/receivables", () => {
     expect(tr.demo && tr.test_money).toBe(true);
     // The demo company's ledger bank on its last day (test/cloud-money-loop.test.ts, "the demo company's cash").
     expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.cents]))).toEqual({ EUR: 4_988_133, USD: 2_500_000, GBP: 64_000 });
+    // Its floors and FX threshold are the demo company's own policy, as its audit log records the CFO setting them: one
+    // policy for the demo (EUR 25,000.00 and USD 20,000.00 from awx-1, GBP 1,000.00 and the EUR 400.00 threshold).
+    const policy: Record<string, string> = {};
+    for (const b of SEED_BATCHES) for (const r of (b.audit_rows ?? []) as { event: string; subject: string; payload_json: string }[]) {
+      if (r.event === "setting.changed") policy[r.subject] = (JSON.parse(r.payload_json) as { after: string }).after;
+    }
+    const cents = (v: string | undefined) => Math.round(Number(v) * 100);
+    expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.floor_cents]))).toEqual({ EUR: cents(policy.eur_floor), USD: cents(policy.usd_floor), GBP: cents(policy["floor.GBP"]) });
+    expect(Object.fromEntries(tr.treasury.cash.map((x) => [x.currency, x.floor_cents]))).toEqual({ EUR: 2_500_000, USD: 2_000_000, GBP: 100_000 });
+    expect(tr.treasury.fx.threshold_eur_cents).toBe(cents(policy["treasury.fx_threshold_eur"]));
     const waiting = tr.treasury.fx.proposals.filter((p) => p.status === "PENDING_APPROVAL");
     expect(waiting).toHaveLength(1);
     expect(tr.treasury.fx.exposures.find((e) => e.currency === waiting[0]!.buy_currency)).toMatchObject({ decision: "proposal" });

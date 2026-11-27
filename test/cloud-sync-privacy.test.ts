@@ -5,9 +5,20 @@
 // and amounts; the names stay in the runner's own tables. Breaks if a name, an e-mail or an IBAN of theirs reaches the
 // ledger entries, the transactions register, the audit rows or the money loop, or if a receipt booked earlier under its
 // payer's name stops reconciling. Test money only; every person here is made up.
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import { describe, expect, it } from "vitest";
 import { matchReceipt, openReceivable } from "../src/agents/receivables.js";
+import { recordDeposits, settledDeposits } from "../src/airwallex/deposits.js";
+import { ingestEmail } from "../src/ap/inbox.js";
+import type { Asker } from "../src/ap/read.js";
+import { audit, GENESIS, verifyAuditChain } from "../src/audit/log.js";
+import { ClaudeReader } from "../src/claude/reader.js";
+import { Tools } from "../src/claude/tools.js";
 import { batchesFor } from "../src/cloudsync/client.js";
+import { sha256Hex } from "../src/lib/terms.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { postEntry } from "../src/ledger/core.js";
 import { FEED_ACTOR, syncLedger } from "../src/ledger/feed.js";
@@ -74,5 +85,84 @@ describe("a sync batch for Purser Cloud", () => {
     const row = transactionRegister(db).rows.find((r) => r.id === "receipt:dep_old")!;
     expect(row).toMatchObject({ reconciliation: "matched", counterparty: "" });
     expect(row.booking?.entry_ids).toEqual([old.entry_id]);
+  });
+});
+
+// The audit rows travel too (src/cloudsync/client.ts batchesFor: audit_rows). A supplier's account is kept as its last
+// four there, as everywhere else in Purser ("…3000"), and an inbox sender as the domain only. The full account stays in
+// the runner's vendor tables, where the payee check and Verification of Payee read it.
+const auditJson = (db: DB) => JSON.stringify(batchesFor(db, EMPTY, { now: NOW }).map((b) => b.audit_rows ?? []));
+const BERGTEX_IBAN = "DE89370400440532013000";
+const STOCKLINE_IBAN = "DE02120300000000202051";
+const supplierInvoice = (iban: string) => `Bergtex Textil GmbH\nINVOICE BTX-2026-11\nInvoice date: 20 October 2026\nDue date: 16 November 2026\nTotal due EUR 1,850.00\nIBAN: ${iban}\nBIC: COBADEFFXXX\nPayment reference: BTX-2026-11`;
+
+describe("the audit rows in a sync batch", () => {
+  it("carry a supplier's IBAN as its last four, in the fallback's reading, a model's reading and free text", async () => {
+    const db = openDb(":memory:");
+    // Code's own parser reads the invoice (no model key): the claude.fallback row holds its reading.
+    const read = await new Tools(db, new ClaudeReader(db, null)).invoice(supplierInvoice(spaced(BERGTEX_IBAN)));
+    expect(read.value.iban.replace(/\s/g, "")).toBe(BERGTEX_IBAN); // the reading the caller gets is whole
+    // A model's reading, and an account in a sentence.
+    audit(db, "treasury", "claude.read", "extract_invoice", { model: "claude-sonnet-5-5", output: { vendor: "Stockline Data GmbH", iban: STOCKLINE_IBAN } });
+    audit(db, "treasury", "agent.tool", "pay", { input: { note: `please pay to ${spaced(STOCKLINE_IBAN)} today`, new_iban: "GB29NWBK60161331926819" } });
+    const json = auditJson(db);
+    for (const s of [BERGTEX_IBAN, STOCKLINE_IBAN, "GB29NWBK60161331926819", ...[BERGTEX_IBAN, STOCKLINE_IBAN].map(spaced)]) expect(json, s).not.toContain(s);
+    for (const s of ["…3000", "…2051", "…6819"]) expect(json, s).toContain(s);
+    expect(verifyAuditChain(db)).toMatchObject({ ok: true, rows: 3 });
+  });
+
+  it("leaves what is not an account as it is: a hash, an id, a VAT number", () => {
+    const db = openDb(":memory:");
+    const payload = { sha256: sha256Hex("x"), short: "be1234567890cafe", vat: "NL123456789B01", request_id: "req_011CVa1b2c3d4e5f6a7b8c9d0e", iban_last4: "3000" };
+    audit(db, "system", "ap.received", "AP-0001", payload);
+    expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log").get() as { payload_json: string }).payload_json)).toEqual(payload);
+  });
+
+  it("leaves a row written before standing as it was: the chain still verifies with new rows after it", () => {
+    const db = openDb(":memory:");
+    // A row as an earlier version wrote it: the reading with the whole account, hashed into the chain.
+    const old = { seq: 1, ts: "2026-10-21T10:00:02.000Z", actor: "treasury", event: "claude.fallback", subject: "extract_invoice", payload_json: jcs({ output: { iban: BERGTEX_IBAN } } as Json), prev_hash: GENESIS };
+    const row_hash = sha256Hex(old.prev_hash + jcs({ seq: old.seq, ts: old.ts, actor: old.actor, event: old.event, subject: old.subject, payload: JSON.parse(old.payload_json) as Json }));
+    db.prepare("INSERT INTO audit_log (seq, ts, actor, event, subject, payload_json, prev_hash, row_hash) VALUES (@seq, @ts, @actor, @event, @subject, @payload_json, @prev_hash, @row_hash)").run({ ...old, row_hash });
+    audit(db, "treasury", "claude.fallback", "extract_invoice", { output: { iban: STOCKLINE_IBAN } });
+    expect(verifyAuditChain(db)).toMatchObject({ ok: true, rows: 2 });
+    const rows = db.prepare("SELECT payload_json FROM audit_log ORDER BY seq").all() as { payload_json: string }[];
+    expect(rows[0]!.payload_json).toContain(BERGTEX_IBAN);
+    expect(rows[1]!.payload_json).not.toContain(STOCKLINE_IBAN);
+    expect(rows[1]!.payload_json).toContain("…2051");
+  });
+
+  it("names an inbox sender by the domain only, when an e-mail's attachments are capped, refused or missing", async () => {
+    const db = openDb(":memory:");
+    const deps = { dir: mkdtempSync(join(tmpdir(), "privacy-inbox-")), reader: { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null }) } as Asker, now: () => NOW };
+    const b = "=_b";
+    // 21 attachments that are not PDFs: more than are taken in at once, each refused, and so no PDF filed at all.
+    const parts = Array.from({ length: 21 }, (_, i) => [`--${b}`, `Content-Type: application/pdf; name="i${i}.pdf"`, `Content-Disposition: attachment; filename="i${i}.pdf"`, "", `not a pdf ${i}`].join("\r\n"));
+    const raw = Buffer.from([`From: Anna Bakker <${EMAILS[0]}>`, "Subject: invoices", "MIME-Version: 1.0", `Content-Type: multipart/mixed; boundary="${b}"`, "", ...parts, `--${b}--`, ""].join("\r\n"));
+    expect(await ingestEmail(db, deps, raw)).toEqual([]);
+    const events = (db.prepare("SELECT event FROM audit_log").all() as { event: string }[]).map((r) => r.event);
+    for (const e of ["ap.email_attachments_capped", "ap.attachment_refused", "ap.email_without_pdf"]) expect(events).toContain(e);
+    const json = auditJson(db);
+    expect(json).not.toContain(EMAILS[0]);
+    expect(json).not.toContain("anna@");
+    expect(json).not.toContain("Bakker <");
+    expect(json).toContain('\\"from\\":\\"@bakker-outdoor.example\\"');
+  });
+
+  it("record an Airwallex deposit by its id, amount, currency and status: no payer, no reference", () => {
+    const db = openDb(":memory:");
+    const deposit = { id: "dep_awx_1", globalAccountId: "ga_eur", currency: "EUR", amountCents: 12_500, status: "PENDING", payer: PAYERS[1]!, reference: `${PAYERS[1]} ${spaced(IBANS[0]!)} ${EMAILS[1]} order 12`, createdAt: "2026-11-20T10:00:00Z" };
+    recordDeposits(db, [deposit], NOW);
+    recordDeposits(db, [{ ...deposit, status: "SETTLED" }], NOW);
+    const rows = (db.prepare("SELECT event, subject, payload_json FROM audit_log ORDER BY seq").all() as { event: string; subject: string; payload_json: string }[])
+      .map((r) => ({ event: r.event, subject: r.subject, payload: JSON.parse(r.payload_json) as unknown }));
+    expect(rows).toEqual([
+      { event: "awx_deposit.seen", subject: "dep_awx_1", payload: { amount_cents: 12_500, currency: "EUR", status: "PENDING" } },
+      { event: "awx_deposit.status", subject: "dep_awx_1", payload: { amount_cents: 12_500, currency: "EUR", status: "SETTLED", was: "PENDING" } },
+    ]);
+    const json = auditJson(db);
+    for (const s of [PAYERS[1]!, "Vries", IBANS[0]!, spaced(IBANS[0]!), EMAILS[1]!, "order 12"]) expect(json, s).not.toContain(s);
+    // The reconciliation still finds the settled deposit, by its id.
+    expect(settledDeposits(db)).toEqual([{ id: "dep_awx_1", currency: "EUR", amountCents: 12_500, label: "deposit" }]);
   });
 });

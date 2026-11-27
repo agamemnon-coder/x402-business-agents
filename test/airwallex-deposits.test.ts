@@ -33,7 +33,7 @@ describe("deposits to global accounts", () => {
     expect(recordDeposits(db, [dep({ status: "PENDING" })], now)).toHaveLength(0);
     expect(settledDeposits(db)).toEqual([]);
     recordDeposits(db, [dep()], now);
-    expect(settledDeposits(db)).toEqual([{ id: "dep-1", currency: "EUR", amountCents: 125000, label: "deposit from Summit Outfitters (NW-2026-119)" }]);
+    expect(settledDeposits(db)).toEqual([{ id: "dep-1", currency: "EUR", amountCents: 125000, label: "deposit" }]);
     expect(db.prepare("SELECT event FROM audit_log WHERE subject = 'dep-1' ORDER BY seq").all()).toEqual([{ event: "awx_deposit.seen" }, { event: "awx_deposit.status" }]);
   });
 });
