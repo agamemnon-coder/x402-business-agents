@@ -1,6 +1,6 @@
 // E1, four eyes: which proposals need the Face ID of two different people. Set by the CFO policy
 // (approval.four_eyes_eur); off until the CFO sets it. Above the threshold: an invoice payment, a supplier payment (in
-// euros: supplierPaymentEur), and an outside
+// euros: supplierPaymentEur), an FX conversion (in euros: fxConversionEur), and an outside
 // agent's card whose monthly limit is above it; at any amount, a supplier's new bank details and a change of the
 // agents' on-chain mandates (Kit 11's rebalance within the 20.00 total).
 
@@ -22,6 +22,17 @@ export const FOUR_EYES_KEY = "approval.four_eyes_eur";
 export function supplierPaymentEur(termsJson: string): string | null {
   const c = paymentEurCents(JSON.parse(termsJson) as PaymentTerms);
   return c === null ? null : (c / 100).toFixed(2);
+}
+
+/**
+ * An FX conversion in euros, for the thresholds (27 Nov, red team, runner finding 3: four eyes and the second key never
+ * applied to one, so one person sold USD 300,000 for EUR 250,000): what it buys when it buys EUR, the most it may sell
+ * when it sells EUR; null for a pair without EUR or an amount that is not money, which counts as over.
+ */
+export function fxConversionEur(termsJson: string): string | null {
+  const t = JSON.parse(termsJson) as { buy_currency?: string; buy_amount?: string; sell_currency?: string; sell_max?: string };
+  const eur = t.buy_currency === "EUR" ? t.buy_amount : t.sell_currency === "EUR" ? t.sell_max : undefined;
+  return money(eur) ? eur! : null;
 }
 
 interface PaymentTerms { amount?: string; currency?: string; platform_fee?: { amount?: string; currency?: string } | null; conversion?: { sell_currency?: string; sell_amount?: string; buy_amount?: string } | null }
@@ -78,6 +89,10 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">, va
   }
   if (p.kind === "supplier_payment") {
     const eur = supplierPaymentEur(p.terms_json);
+    return eur === null || over(eur);
+  }
+  if (p.kind === "fx_conversion") {
+    const eur = fxConversionEur(p.terms_json);
     return eur === null || over(eur);
   }
   if (p.kind === "agent_onboard") return over(t.card?.monthly);
