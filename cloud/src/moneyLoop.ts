@@ -3,8 +3,13 @@
 // the FX exposure with the advisor's decision and the conversions it filed for the CFO's passkey; the receivables by
 // invoice number and amount, the payments matched to them, the review queue and the reminder steps). The cloud holds
 // no receivables, floors or FX threshold of its own, so the runner sends the snapshot with its sync (the first batch),
-// as it sends the authority map and the compliance summary. It is checked here against a strict schema (every field
-// named, each text bounded, no customer or payer name, no reminder text), kept per company as one row ('latest') and
+// as it sends the authority map and the compliance summary. It is checked here against a strict schema: every field
+// named and bounded; no field for a customer's or payer's name, a contact address or a reminder's text; each text the
+// runner writes from its own templates (the money label, the opening's source, why an item is left out of the forecast,
+// why a payment waits for a person) only in those templates' shape; and the one text a payer writes (a payment's
+// reference to review) refused when it holds an IBAN-shaped word or an e-mail address. A name in that reference cannot
+// be told from other words here: the runner takes out the names it knows (src/receivables/ar.ts referenceForCloud).
+// Kept per company as one row ('latest') and
 // read by GET /v1/treasury and GET /v1/receivables. The same figures again change nothing; an older snapshot never
 // replaces a newer one. Read only: a conversion is approved with the CFO's passkey on the runner's approval flow, never
 // here.
@@ -13,6 +18,7 @@ import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import { z } from "zod";
 import { sha256Hex } from "./crypto.js";
 import type { Stmt, TenantDb } from "./tenant.js";
+import { holdsAccountOrAddress } from "../../src/lib/personalData.js";
 
 export const MONEY_LOOP_MAX_BYTES = 256 * 1024;
 const STAMP = z.string().max(40).regex(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
@@ -24,17 +30,28 @@ const WEEK = z.number().int().min(0).max(53);
 const TEXT = (n: number) => z.string().max(n);
 const ID = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,79}$/);
 const BUCKET = z.enum(["0-30", "31-60", "61-90", "90+"]);
+// The runner's own words (src/treasury/cloudSnapshot.ts, src/treasury/forecastCore.ts, src/receivables/ar.ts), and no other.
+const MONEY = z.enum(["test money (Airwallex sandbox)"]);
+const OPENING_SOURCE = z.enum(["the ledger's cash per currency", "the ledger's cash per currency (no Airwallex keys, or --ledger)",
+  "Airwallex sandbox available balances (read-only)", "Airwallex sandbox available balances (read in fx.balances)"]);
+const D = "\\d{4}-\\d{2}-\\d{2}";
+const EXCLUDED_WHY = z.string().max(200).regex(new RegExp(`^(?:(?:payable|receivable) due ${D}, after week \\d{1,2}|receivable \\d{1,6} days overdue: doubtful, not counted)$`));
+const INV = "[A-Za-z0-9][A-Za-z0-9_.:/-]{0,79}";
+const REVIEW_REASON = z.string().max(300).regex(new RegExp(`^(?:the reference names [^\\s@]{1,80}, which is not an invoice on file|the reference names \\d{1,4} invoices|${INV} is already (?:open|partial|paid|overpaid)`
+  + `|${INV} is invoiced in [A-Z]{3}, the payment is in [A-Z]{3}|no invoice named and \\d{1,4} open invoices are open for exactly this amount|no invoice named and no open invoice is open for exactly this amount`
+  + `|${INV} overpaid by [A-Z]{3} \\d{1,13}\\.\\d{2}: a refund or a credit is the CFO's decision)$`)).refine((v) => !holdsAccountOrAddress(v), "a reason holds an account or an e-mail address");
+const REFERENCE = TEXT(140).refine((v) => !holdsAccountOrAddress(v), "a payment's reference holds an IBAN-shaped word or an e-mail address: the runner takes them out before it sends");
 
 export const MoneyLoopSnapshot = z.object({
   generated_at: STAMP,
   as_of: DAY,
-  money: TEXT(80),
+  money: MONEY,
   cash: z.array(z.object({ currency: CUR, cents: C, floor_cents: N }).strict()).max(20),
   forecast: z.object({
-    opening_source: TEXT(120),
+    opening_source: OPENING_SOURCE,
     weeks: z.array(z.object({ week: WEEK, from: DAY, to: DAY, rows: z.array(z.object({ currency: CUR, in_cents: N, out_cents: N, closing_cents: C, below_floor: z.boolean() }).strict()).max(20) }).strict()).max(26),
     currencies: z.array(z.object({ currency: CUR, opening_cents: C, in_cents: N, out_cents: N, closing_cents: C, min_closing_cents: C, min_week: WEEK, floor_cents: N, below_floor_weeks: z.array(WEEK).max(26) }).strict()).max(20),
-    excluded: z.array(z.object({ ref: TEXT(80), currency: CUR, cents: N, why: TEXT(200) }).strict()).max(100),
+    excluded: z.array(z.object({ ref: ID, currency: CUR, cents: N, why: EXCLUDED_WHY }).strict()).max(100),
   }).strict(),
   fx: z.object({
     threshold_eur_cents: N.nullable(),
@@ -56,7 +73,7 @@ export const MoneyLoopSnapshot = z.object({
       payment_id: ID, currency: CUR, amount_cents: N, invoice_no: ID.nullable(), outcome: z.enum(["MATCHED", "MATCHED_TOLERANCE", "PARTIAL", "OVERPAID", "REVIEW"]),
       applied_cents: N, written_off_cents: N, suspense_cents: N, received_at: TEXT(40),
     }).strict()).max(200),
-    review: z.array(z.object({ payment_id: ID, currency: CUR, amount_cents: N, reference: TEXT(140), reason: TEXT(300), created_at: TEXT(40) }).strict()).max(100),
+    review: z.array(z.object({ payment_id: ID, currency: CUR, amount_cents: N, reference: REFERENCE, reason: REVIEW_REASON, created_at: TEXT(40) }).strict()).max(100),
     dunning: z.array(z.object({ invoice_no: ID, stage: z.number().int().min(1).max(3), due_on: DAY }).strict()).max(300),
   }).strict(),
 }).strict().refine((s) => JSON.stringify(s).length <= MONEY_LOOP_MAX_BYTES, `the money loop snapshot is larger than ${MONEY_LOOP_MAX_BYTES} bytes`);

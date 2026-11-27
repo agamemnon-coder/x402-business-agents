@@ -144,7 +144,7 @@ names an invoice, a payment or a report links its resource (`resource_link`).
 | `books_report` | P&L, balance sheet, trial balance, a quarter's VAT, open payables or receivables | read-only, idempotent | any |
 | `agent_decisions` | The audit trail in words: who decided what (an agent, the CFO, or Purser's code) | read-only, idempotent | any |
 | `what_needs_attention` | Open, due within 7 and 30 days, overdue, waiting, blocked | read-only, idempotent | any |
-| `cash_position` | Net cash from what moved (not a bank balance) and a week-by-week projection from due days | read-only, idempotent | any |
+| `cash_position` | Cash (the books' opening balance plus net cash, money in minus money out since the first movement: the figure Cash & FX and the Overview show) and a week-by-week projection from due days | read-only, idempotent | any |
 | `pending_approvals` | What waits for the CFO's Face ID, each with where to approve it in Purser Cloud | read-only, idempotent | any |
 | `cfo_policy` | The rules every payment is held to, the policy version, agents' card limits, treasury settings | read-only, idempotent | any |
 | `spend_breakdown` | Money out by agent or by supplier, per currency, fees included, declines counted | read-only, idempotent | any |

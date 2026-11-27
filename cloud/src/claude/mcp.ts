@@ -308,18 +308,19 @@ export const READ_TOOLS: Tool[] = [
   {
     name: "cash_position",
     title: "Cash and its projection",
-    description: "Net cash in the main currency (money in minus money out on every rail, fees included, since the first movement Purser recorded; not a bank balance), the last 30 days' net flow, and a week-by-week projection from the books' open receivables and payables by due day. A projection from due days, not a forecast model. Read only.",
+    description: "Cash in the main currency: the books' opening balance (owner's equity) plus net cash (money in minus money out on every rail, fees included, since the first movement Purser recorded), the figure Cash & FX and the Overview show; the last 30 days' net flow, and a week-by-week projection from the cash and the books' open receivables and payables by due day. A projection from due days, not a forecast model. Read only.",
     inputSchema: obj({ weeks: { type: "integer", minimum: 1, maximum: 13, description: "How many weeks to project, 1 to 13 (default 4)", examples: [4] } }),
-    outputSchema: shape({ currency: S, as_of: S, net_cash: S, money_in: S, money_out: S, net_flow_last_30_days: S, open: shape({ receivables: S, payables: S }), projection: arr(shape({ week_from: S, week_to: S, expected_in: S, due_out: S, net: S, projected_net_cash: S })), basis: S }),
+    outputSchema: shape({ currency: S, as_of: S, cash: S, opening_balance: S, net_cash: S, money_in: S, money_out: S, net_flow_last_30_days: S, open: shape({ receivables: S, payables: S }), projection: arr(shape({ week_from: S, week_to: S, expected_in: S, due_out: S, net: S, projected_net_cash: S })), basis: S }),
     args: z.object({ weeks: z.number().int().min(1).max(13).optional() }).strict(),
     readOnly: true,
     run: async (c, a) => {
-      const p = await cashPosition(c.db, c.now, (a.weeks as number | undefined) ?? 4) as { currency: string; as_of: string; net_cash: string; net_flow_last_30_days: string; open: { receivables: string; payables: string }; projection: { week_to: string; expected_in: string; due_out: string; projected_net_cash: string }[] };
+      const p = await cashPosition(c.db, c.now, (a.weeks as number | undefined) ?? 4) as { currency: string; as_of: string; cash: string; opening_balance: string; net_cash: string; net_flow_last_30_days: string; open: { receivables: string; payables: string }; projection: { week_to: string; expected_in: string; due_out: string; projected_net_cash: string }[] };
       const cur = p.currency, last = p.projection.at(-1)!;
-      return answer(`${c.company}${demoTag(c)}: net cash ${eur(p.net_cash, cur)} as of ${dayWords(p.as_of)}; projected ${eur(last.projected_net_cash, cur)} by ${dayWords(last.week_to)} from due days.`, p as unknown as Json, [
+      return answer(`${c.company}${demoTag(c)}: cash ${eur(p.cash, cur)} as of ${dayWords(p.as_of)}; projected ${eur(last.projected_net_cash, cur)} by ${dayWords(last.week_to)} from due days.`, p as unknown as Json, [
+        `Opening balance ${eur(p.opening_balance, cur)} plus net cash ${eur(p.net_cash, cur)} since the first movement.`,
         `Last 30 days' net flow ${eur(p.net_flow_last_30_days, cur)} · open receivables ${eur(p.open.receivables, cur)} · open payables ${eur(p.open.payables, cur)}.`,
         ...p.projection.map((w) => `- to ${dayWords(w.week_to)}: in ${eur(w.expected_in, cur)}, out ${eur(w.due_out, cur)}, then ${eur(w.projected_net_cash, cur)}`),
-        "A projection from due days in the books, not a bank balance or a model.",
+        "A projection from due days in the books, not a model.",
       ], [RES.cash]);
     },
   },
@@ -567,8 +568,8 @@ export const PROMPTS = [
     text: (a: Record<string, string>) => `Explain invoice ${a.invoice_id} from Purser in plain words. Call get_invoice with id ${a.invoice_id}. Say who it is from, the amount and its VAT, when it is due, what Purser's checks found, and where it stands (paid, waiting for my Face ID, or waiting for a new supplier). Keep it short.` },
   { name: "explain_payment", title: "Explain this payment", description: "One payment in plain words: who was paid, why, who allowed it and how, and its audit trail.", arguments: [{ name: "payment_id", description: "A payment id, an invoice id like AP-0004 or a proposal id like P-0003", required: true }],
     text: (a: Record<string, string>) => `Explain payment ${a.payment_id} from Purser in plain words. Call explain_payment with id ${a.payment_id}, then payment_audit_trail with the same id. Say who was paid and why, who allowed it and how (the CFO's Face ID over the exact terms, or an agent within its card's limits), where it is booked, and whether it reconciles. Keep it short.` },
-  { name: "cash_outlook", title: "Cash outlook", description: "Net cash now and the next four weeks from due days, with what waits for approval.", arguments: [],
-    text: () => "Give me my cash outlook from Purser. Call cash_position and pending_approvals. Answer in four short lines: net cash now, the lowest projected week and why, what is due out soon, and what waits for my Face ID. Say that the projection comes from due days, not a bank balance, and say so if it is the demo company." },
+  { name: "cash_outlook", title: "Cash outlook", description: "Cash now and the next four weeks from due days, with what waits for approval.", arguments: [],
+    text: () => "Give me my cash outlook from Purser. Call cash_position and pending_approvals. Answer in four short lines: cash now, the lowest projected week and why, what is due out soon, and what waits for my Face ID. Say that the projection comes from due days, not a model, and say so if it is the demo company." },
 ];
 
 type Rpc = { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown };

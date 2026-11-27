@@ -131,7 +131,10 @@ async function overviewNext(){
   // The header: the page's name, the company and the day its figures stand at (the demo's own end, else today).
   const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}),m.demo?[ovNet()]:null);hero.classList.add('ov-head');
   // Four figures, each from the records; a change or a meter only where the records hold what it compares with.
-  const days=(D&&D.cash)||[],nets=days.map((d)=>toCents(d.net)),last=nets[nets.length-1],prev=nets.length>7?nets[nets.length-8]:null;
+  // The cash position: the books' opening balance plus what moved since (GET /v1/dashboard money.cash, each day's balance),
+  // the ledger's bank when every movement is booked, as Books and Cash & FX show it.
+  const days=(D&&D.cash)||[],nets=days.map((d)=>toCents(d.balance!==undefined?d.balance:d.net)),last=nets[nets.length-1],prev=nets.length>7?nets[nets.length-8]:null;
+  const opening=D&&D.money&&D.money.opening?toCents(D.money.opening):0,cashNow=D&&D.money?toCents(D.money.cash!==undefined?D.money.cash:D.money.net):0;
   const delta=prev!==null&&prev!==0?(last-prev)/Math.abs(prev)*100:null;
   const sup=new Set(open.map((i)=>i.vendor)).size,dups=(D&&D.invoices&&D.invoices.duplicates_stopped)||0;
   // Paid this month: the invoices paid in the month the figures stand at, beside the month before.
@@ -144,7 +147,7 @@ async function overviewNext(){
   // One meter, a part per agent in the agent's own colour (consoleColor.ts), each part what that card spent of all the limits.
   const bar=(v,max)=>{const b=el('span','as-bar ovk-m ovk-st'+(v>=max?' full':''));for(const a of (AG.agents||[]).filter((a)=>cc.includes(a.card))){const f=el('span','g'+passHue(a));f.style.width=(max>0?Math.min(100,toCents(a.card.spent_month)/max*100):0).toFixed(1)+'%';f.title=a.name+': '+cur(a.card.currency)+' '+cents(toCents(a.card.spent_month));b.append(f)}return b};
   const kpis=el('div','ov-row ov-k',[
-    D&&D.money?ovKpi({icon:'wallet',label:sw('k_cash'),value:cur(C)+' '+cents(toCents(D.money.net)),sub:delta!==null?(delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+'% '+t('cs.ov2.vs7'):D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),tone:delta===null?'':delta>=0?'pos':'neg',spark:ovSpark(nets.slice(-30),'pos'),href:'#/transactions',k:'k-sky'}):null,
+    D&&D.money?ovKpi({icon:'wallet',label:sw('k_cash'),value:cur(C)+' '+cents(cashNow),sub:opening&&D.since?t('cs.dash.cash_pos_sub',{amt:cur(C)+' '+cents(opening),date:dday(D.since)}):delta!==null?(delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+'% '+t('cs.ov2.vs7'):D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),tone:delta===null?'':delta>=0?'pos':'neg',spark:ovSpark(nets.slice(-30),'pos'),href:'#/transactions',k:'k-sky'}):null,
     ovKpi({icon:'scan-face',label:sw('k_wait'),value:String(wait.length),sub:wait.length?cur(wait[0].currency)+' '+cents(sumOf(wait)):t('cs.ov.nothing_waits'),hot:wait.length>0,href:'#/invoices?f=waiting_cfo',k:'k-vio'}),
     ovKpi({icon:'circle-check',label:sw('k_paid'),value:cur(C0)+' '+cents(sumOf(pd)),spark:ovSpark(ovPaidRun(pd,mo,now),'paid'),sub:sw('k_paid_sub',{n:pd.length,prev:cur(C0)+' '+cents(sumOf(pp)),month:MONTHS[+pm.slice(5,7)-1]}),href:'#/invoices?f=paid',k:'k-ok'}),
     ovKpi({icon:'bot',label:sw('k_spend'),value:cc.length?cur(cc[0].currency)+' '+cents(sp):'—',sub:cc.length?sw('k_spend_sub',{cap:cur(cc[0].currency)+' '+cents(capc),n:cc.length}):sw('k_spend_none'),meter:cc.length?bar(sp,capc):null,href:'#/agents',k:'k-ind'})].filter(Boolean));
