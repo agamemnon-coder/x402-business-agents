@@ -13,6 +13,10 @@ import type { DB } from "./open.js";
  */
 export function prepareDb(db: DB, schema: string, ledger: string): void {
   db.transaction(() => {
+    // Red team round 2 (finding E): the per-bill trigger is scoped to the supplier now. CREATE TRIGGER IF NOT EXISTS keeps
+    // an older one, so a ledger whose trigger is not this one (it names no account) has it dropped and made again below.
+    const bill = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'one_live_transfer_per_bill'").get() as { sql?: string } | undefined;
+    if (bill && !String(bill.sql ?? "").includes("iban_sha256")) db.exec("DROP TRIGGER IF EXISTS one_live_transfer_per_bill");
     db.exec(schema);
     db.exec(ledger);
     migrate(db);
