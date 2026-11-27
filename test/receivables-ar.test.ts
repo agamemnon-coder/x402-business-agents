@@ -166,6 +166,17 @@ describe("matching a payment", () => {
     expect(matchPayment(db, pay("dep-4", "EUR", 10_000, "/INV/NW/7/2"), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW/7/2" });
   });
 
+  // Red team (review 153): a deposit in "eur" was refused by the ledger, and again on every poll.
+  it("a currency in lower case is the currency: the payment is matched and booked in EUR, by either matcher", async () => {
+    const { db } = await world();
+    expect(matchPayment(db, pay("dep-lc", "eur", 121_000, "NW-1001"), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW-1001", repeat: false });
+    expect(matchPayment(db, pay("dep-lc", "eur", 121_000, "NW-1001"), now)).toMatchObject({ outcome: "MATCHED", repeat: true });
+    expect(db.prepare("SELECT currency FROM ar_payments WHERE payment_id = 'dep-lc'").get()).toEqual({ currency: "EUR" });
+    expect(balance(db, "1200", "EUR")).toBe(121_000);
+    openReceivable(db, { invoice_no: "NW-R-101", customer: "Alpenweg Sport AG", currency: "EUR", amount_cents: 124_000, due_date: "2026-12-29" }, now);
+    expect(routeDeposit(db, { deposit_id: "d-lc", global_account_id: "ga", currency: " eur", amount_cents: 124_000, reference: "NW-R-101", payer: "x", received_at: "2026-11-26T08:00:00Z" }, now)).toMatchObject({ by: "receivables", outcome: "MATCHED" });
+  });
+
   // Review 153: a word keeps its "/", so the SWIFT remittance form "/INV/<number>" became "INV/<number>" and named nothing.
   it("a reference in the SWIFT form /INV/<number> names the invoice, in both matchers, and still only as a whole word", async () => {
     expect(referenceTokens("/INV/NW-R-101")).toEqual(expect.arrayContaining(["INV/NW-R-101", "NW-R-101"]));

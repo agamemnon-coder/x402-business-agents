@@ -130,7 +130,9 @@ function named(db: DB, reference: string | null): { inv: ArInvoice } | { review:
 }
 
 /** Matches one incoming payment and books it, once per payment id. */
-export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+export function matchPayment(db: DB, payment: IncomingPayment, now = new Date()): MatchResult & { repeat: boolean } {
+  // "eur" is EUR (red team, review 153: the ledger refused it, and again on every poll).
+  const p = { ...payment, currency: payment.currency.trim().toUpperCase() };
   if (!Number.isSafeInteger(p.amount_cents) || p.amount_cents <= 0) throw new Error("a payment is whole cents above zero");
   return db.transaction(() => {
     const seen = db.prepare("SELECT outcome, invoice_no, rule, applied_cents, written_off_cents, suspense_cents FROM ar_payments WHERE payment_id = ?").get(p.payment_id) as MatchResult | undefined;
@@ -186,7 +188,8 @@ export function matchPayment(db: DB, p: IncomingPayment, now = new Date()): Matc
  * invoices and the reference names one of them or none of the older receivables' (src/agents/receivables.ts, which
  * books cash basis through the journal); else the older matcher, exactly as before.
  */
-export function routeDeposit(db: DB, d: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+export function routeDeposit(db: DB, deposit: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { by: "ar" | "receivables"; outcome: string; detail: string } {
+  const d = { ...deposit, currency: deposit.currency.trim().toUpperCase() }; // "eur" is EUR, for either matcher
   const p = { payment_id: d.deposit_id, currency: d.currency, amount_cents: d.amount_cents, reference: d.reference, payer: d.payer, received_at: d.received_at };
   const ar = (): { by: "ar"; outcome: string; detail: string } => { const r = matchPayment(db, p, now); return { by: "ar", outcome: r.outcome, detail: `${r.invoice_no ?? "no invoice"}: ${r.rule}` }; };
   if (db.prepare("SELECT 1 FROM ar_payments WHERE payment_id = ?").get(d.deposit_id)) return ar();
