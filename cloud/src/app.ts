@@ -717,8 +717,9 @@ export const ROUTES: Route[] = [
       ...(c.caller!.kind === "session" ? { signed_in_with: c.caller!.via ?? "passkey" } : {}),
       // Why this person may approve (docs/security/roles.md): "cfo", or "owner_without_cfo" (the console's note); null: they may not.
       approves: c.caller!.approves ?? null,
-      user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
-      language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
+      user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: isDemoTenant(c.caller!.tenantId) ? null : person?.language ?? null } : null,
+      // The demo's shared guest has no language of its own: the page keeps the choice in the browser (POST /v1/me/language).
+      language: !isDemoTenant(c.caller!.tenantId) && (person?.language === "en" || person?.language === "nl") ? person.language : companyLanguage,
       owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t && !isDemoTenant(c.caller!.tenantId) ? `${t.slug}@${c.env.mailDomain}` : null,
       // The guest's demo company (Try as guest): demo data, read only; the console labels every page with it.
       demo: isDemoTenant(c.caller!.tenantId) ? { as_of: DEMO_END } : null });

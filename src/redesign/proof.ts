@@ -12,7 +12,7 @@ import { TWO_LOCKS_LOG, airwallexHold } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { AWX_CALLS_LABEL, SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
-import { PROOF_RUNS_CSS, PROOF_RUNS_ID, latestVerificationReport, partnerStripHtml, proofRunCount, proofRuns, proofRunsHtml, recordsOf, verifyCalloutHtml } from "./proofRuns.js";
+import { PROOF_RUNS_CSS, PROOF_RUNS_ID, latestVerificationReport, partnerStripHtml, proofRunCount, elsewhereRuns, proofRuns, proofRunsHtml, recordsOf, verifyCalloutHtml } from "./proofRuns.js";
 import { COPY_JS, liveRunCount } from "./runs.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
@@ -699,7 +699,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const extras: Record<QuestionId, QExtras> = {
     "q-live": {
       lead: band("sandbox and testnet runs", AWX_CALLS_LABEL, "Alta testnet transactions"),
-      charts: [chartHtml(liveRunsChart(groups, recordsOf(groups.flatMap((g) => g.runs)).split(" ").filter(Boolean)))],
+      charts: [chartHtml(liveRunsChart(groups, recordsOf(groups.flatMap((g) => g.runs)).split(" ").filter(Boolean), elsewhereRuns().length))],
       folds: [
         detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
   <p class="pawx" data-rec="${esc(LIVE_FX_RECORD)}"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>

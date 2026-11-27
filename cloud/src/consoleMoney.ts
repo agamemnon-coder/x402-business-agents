@@ -110,7 +110,9 @@ async function receivablesView(){
   if(!R){view().replaceChildren(head(t('cs.ar.title'),t('cs.ar.lede_none')),mlNone());return}
   const open=R.invoices.filter((i)=>i.status==='OPEN'||i.status==='PARTIAL').sort((a,b)=>b.days_overdue-a.days_overdue||a.due_date.localeCompare(b.due_date)||a.invoice_no.localeCompare(b.invoice_no));
   const late=open.filter((i)=>i.days_overdue>0),matched=R.payments.filter((p)=>p.outcome!=='REVIEW');
-  const openBy=mlSum(open,(i)=>i.amount_cents-i.paid_cents),lateBy=mlSum(late,(i)=>i.amount_cents-i.paid_cents),inBy=mlSum(matched,(p)=>p.applied_cents),revBy=mlSum(R.review,(r)=>r.amount_cents);
+  const openBy=mlSum(open,(i)=>i.amount_cents-i.paid_cents),lateBy=mlSum(late,(i)=>i.amount_cents-i.paid_cents),inBy=mlSum(matched,(p)=>p.applied_cents),revBy=mlSum(R.payments,(p)=>p.suspense_cents||0);
+  // Waiting for a person: only what is held in suspense. An overpayment's applied part is already matched (v1.5.2 sweep:
+  // EUR 1,425.00 counted the EUR 950.00 applied to NW-2026-136 twice; EUR 475.00 is held).
   const x=(m,s)=>{const o=others(m);return o?o+' · '+s:s};
   const tiles=el('div','tiles ml-tiles',[
     tile(t('cs.ar.k_open'),'receipt',money(openBy,mc('EUR',0)),x(openBy,t(open.length===1?'cs.ar.n_inv_1':'cs.ar.n_inv',{n:open.length})),'k-sky'),

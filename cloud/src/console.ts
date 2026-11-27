@@ -451,7 +451,9 @@ const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
 const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
-const today=new Date().toISOString().slice(0,10);
+// The day the figures stand at: today, or the demo company's own last day (me() sets it), so nothing reads as overdue
+// against a clock the demo never reached (v1.5.2 sweep: due 17 and 23 Nov read late on 27 Nov).
+let today=new Date().toISOString().slice(0,10);
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
 const ST_IC={paid:'circle-check',ready:'circle-check',waiting_cfo:'scan-face',needs_vendor:'clock',needs_review:'triangle-alert',blocked:'octagon-x',rejected:'circle-minus'};
@@ -523,7 +525,7 @@ function shell(){
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
 function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.language',lang)}catch(e){}if(lang!==L.lang)location.reload()}
-async function me(){if(!ME){ME=await api('/v1/me');const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
+async function me(){if(!ME){ME=await api('/v1/me');if(ME.demo&&ME.demo.as_of)today=String(ME.demo.as_of).slice(0,10);const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>{const g=groupWords();return el('div','head',[el('div','',[g?el('span','eyebrow',g):null,el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null])};
 
@@ -1794,6 +1796,8 @@ function askContext(path){const b=document.body.dataset,m=/^\/invoices\/([^/]+)$
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   S=load();shell();askContext(path);
+  // The person and the demo's day first, so every page counts due and overdue from the same day (cached after once).
+  if(S&&!ME){try{await me()}catch(e){}}
   // No timer of the panel "At work" outlives the view it was mounted in.
   workStop();
   // The emergency stop's banner is asked afresh on every page: another person's Face ID may have pulled it meanwhile.

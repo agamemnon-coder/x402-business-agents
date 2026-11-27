@@ -116,7 +116,7 @@ export function refusalsChart(): Chart | null {
 }
 
 /** The live runs, by day and by partner group (src/redesign/proofRuns.ts proofRuns: the rows /proof lists). */
-export function liveRunsChart(groups: { group: string; runs: { iso: string }[] }[], rec: string[]): Chart | null {
+export function liveRunsChart(groups: { group: string; runs: { iso: string }[] }[], rec: string[], elsewhere = 0): Chart | null {
   const CLS: Record<string, ChartSeries["cls"]> = { "The main run": "ink", Airwallex: "awx", "Visa via Airwallex's Airi": "accent", Alta: "metal", "The books": "base" };
   const LABEL: Record<string, string> = { "Visa via Airwallex's Airi": "Visa via Airi" };
   const days = [...new Set(groups.flatMap((g) => g.runs.map((r) => r.iso.slice(0, 10))))].sort();
@@ -125,7 +125,7 @@ export function liveRunsChart(groups: { group: string; runs: { iso: string }[] }
   const rows = days.map((d) => ({ cat: shortDay(d), values: Object.fromEntries(groups.map((g, i) => [`g${i}`, g.runs.filter((r) => r.iso.startsWith(d)).length])) }));
   const total = groups.reduce((n, g) => n + g.runs.length, 0);
   return {
-    id: "chart-runs", kind: "stacked", title: "Live runs, by day", sub: `${total} runs listed in this section, ${shortDay(days[0]!)} to ${shortDay(days.at(-1)!)}, by the partner each shows first`,
+    id: "chart-runs", kind: "stacked", title: "Live runs, by day", sub: `${total} runs listed in this section${elsewhere ? ` (${elsewhere} more on /visa, ${total + elsewhere} live runs in all)` : ""}, ${shortDay(days[0]!)} to ${shortDay(days.at(-1)!)}, by the partner each shows first`,
     series, rows,
     table: { head: ["Day", ...series.map((s) => s.label), "All"], rows: rows.map((r) => [r.cat, ...series.map((s) => r.values[s.key]!), Object.values(r.values).reduce((a, b) => a + b, 0)]) },
     rec, href: `${REPO_BLOB.replace("/blob/", "/tree/")}docs/runs`,
