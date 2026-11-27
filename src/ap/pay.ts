@@ -10,7 +10,7 @@ import { apAgentsOn } from "../config/agents.js";
 import { followPayouts, liveRequestId, type FollowOptions } from "../payouts/follow.js";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import type { BillsRail } from "../airwallex/bills.js";
-import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
+import { proposeInvoicePayment, type InvoiceOutcome, type NegotiatedPayment } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, returnedPayout, returnEntries, reversalEntries, SINK_TOOK, type BookkeepingSink } from "./books.js";
@@ -97,11 +97,34 @@ async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApI
   const document = scan
     ? { total_line: scanTotalLine(inv, scan), currency: inv.currency, reason: transferReason(inv.gl_account) }
     : { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
+  // An invoice agreed by negotiation carries what was agreed into the signed terms (red team round 2, finding D: on /try
+  // the bill as issued was paid again, as no guard could link its number to the agreed invoice's).
+  const negotiated = negotiatedFacts(db, id);
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
   const plan = (on: DB, rail: AirwallexRail & PayoutRail, gate?: PlanGate): Promise<PayOutcome> => payoutBeneficiary(on, r.vendor) || r.currency !== "EUR"
-    ? proposeSupplierPayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, gate)
-    : proposeInvoicePayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, gate);
+    ? proposeSupplierPayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, gate, undefined, negotiated)
+    : proposeInvoicePayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, gate, undefined, negotiated);
   return { inv, text, plan };
+}
+
+/**
+ * What a negotiation agreed for this inbox invoice, as its ap.negotiated record holds it (src/engine/host.ts
+ * recordNegotiated), in the form the payment's signed terms carry (terms.negotiation, src/agents/euroBill.ts); undefined
+ * when the invoice was not agreed by negotiation. The pay-by day and the offers chain's head are the agreement's own; an
+ * agreement kept without a transcript names its last signed offer, or else itself.
+ */
+export function negotiatedFacts(db: DB, invoiceId: string): NegotiatedPayment | undefined {
+  const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.negotiated' AND subject = ? ORDER BY seq DESC LIMIT 1").get(invoiceId) as { payload_json: string } | undefined;
+  if (!row) return undefined;
+  const f = JSON.parse(row.payload_json) as { original_invoice_no?: unknown; original_amount?: unknown; agreed_amount?: unknown; discount?: unknown; agreement_sha256?: unknown; agreement?: unknown; offers?: unknown };
+  let agreement: { pay_by?: unknown; transcript_sha256?: unknown } = {};
+  try { if (typeof f.agreement === "string") agreement = JSON.parse(f.agreement) as typeof agreement; } catch { /* below: no pay-by day, so the payment is refused */ }
+  const str = (x: unknown) => (typeof x === "string" ? x : "");
+  const offers = Array.isArray(f.offers) ? f.offers.filter((x): x is string => typeof x === "string") : [];
+  return {
+    agreement_sha256: str(f.agreement_sha256), transcript_sha256: str(agreement.transcript_sha256) || offers.at(-1) || str(f.agreement_sha256),
+    original_invoice_no: str(f.original_invoice_no), original_amount: str(f.original_amount), agreed_amount: str(f.agreed_amount), discount: str(f.discount), pay_by: str(agreement.pay_by),
+  };
 }
 
 /** A payment approved by code within the CFO's limit to pay alone (payAlone): who decided, and code's rule in words. */

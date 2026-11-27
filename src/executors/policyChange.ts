@@ -11,6 +11,7 @@ import { sodChanges } from "../policy/policySod.js";
 import { policyValue, ruleFor, validateChange } from "../policy/rules.js";
 import { autonomyOn } from "../config/agents.js";
 import { publish, type AgentName } from "../autonomy/bus.js";
+import { personName } from "../lib/personName.js";
 
 export type PolicyChange = {
   key: string;
@@ -23,7 +24,8 @@ export interface PolicyChangeTerms extends Terms {
   kind: "policy_change";
   changes: PolicyChange[];
   reason: string;
-  // proposed_by (a string, only when a person is named): who proposed it, never its approver (src/policy/policySod.ts).
+  // proposed_by (a string, only when a person is named): who proposed it, never its approver (src/policy/policySod.ts);
+  // proposed_by_id beside it in the Cloud: that signed-in person's user id, whose keys never approve it (src/engine/host.ts).
 }
 
 /** A person's name as a passkey is enrolled under (src/passkey/ledger.ts openEnrolment). */
@@ -33,12 +35,12 @@ const NOT_PEOPLE = new Set(["system", "claude", "sourcing", "support", "treasury
 
 /**
  * A signed-in person's name, as the Cloud labels their approval passkey (their display name, 1 to 120 characters), read
- * the way approvals.ts reads an approver: the part before " (", trimmed. So "Jane Doe (Finance)" proposes as "Jane Doe",
+ * the way approvals.ts reads an approver (personName: normalised, the part before " (", trimmed). So "Jane Doe (Finance)" proposes as "Jane Doe",
  * whom her passkey's approval ("Jane Doe (Finance) (passkey …)") is compared as. Asked only where segregation of duties
  * applies; there an agent's or the system's name, or one joining people (" + "), is refused: no proposer passes as a person.
  */
 function signedInName(name: string): string {
-  const n = name.split(" (")[0]!.trim();
+  const n = personName(name);
   if (!n || name.length > 120 || [...name].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f) || n.includes(" + ") || NOT_PEOPLE.has(n.toLowerCase()) || n.toLowerCase().startsWith("ext:")) {
     throw new Error(`not a signed-in person's name: ${JSON.stringify(name)}`);
   }
@@ -67,7 +69,7 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
  * out, the terms are as before; but a person's change (createdBy "human") that loosens the policy above the threshold
  * is refused without one, since nobody could then tell its proposer from its approver. An agent's proposal is its own.
  */
-export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number; proposedBy?: string; signedInAs?: string }, createdBy: Actor, now = new Date()): ProposalRow {
+export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number; proposedBy?: string; signedInAs?: string; signedInId?: string }, createdBy: Actor, now = new Date()): ProposalRow {
   const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
@@ -77,13 +79,16 @@ export function proposePolicyChange(db: DB, req: { changes: { key: string; to: s
   // stays one person's to ask for and approve, and no name ever refuses it.
   const signedIn = sod.length && req.signedInAs !== undefined ? signedInName(req.signedInAs) : undefined;
   const by = req.proposedBy ?? signedIn;
+  // The Cloud's id for the signed-in person (red team round 2, finding B): a display name is free text that may change
+  // after a key was labelled with it, so the engine also refuses that person's key by id (src/engine/host.ts approve).
+  const byId = signedIn !== undefined && req.signedInId !== undefined && /^[\x21-\x7e]{1,200}$/.test(req.signedInId) ? req.signedInId : undefined;
   if (by === undefined && createdBy === "human" && sod.length) {
     throw new Error(`segregation of duties applies (${sod.map((c) => `${c.key}: ${c.why}`).join("; ")}): name who proposes it, who then cannot approve it (--by <person> on the command line; in Purser Cloud, the signed-in person)`);
   }
   const terms: PolicyChangeTerms = {
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + (req.ttlMs ?? PROPOSAL_TTL_MS)).toISOString().replace(/\.\d{3}Z$/, "Z"),
-    changes, reason: req.reason, ...(by !== undefined ? { proposed_by: by } : {}),
+    changes, reason: req.reason, ...(by !== undefined ? { proposed_by: by } : {}), ...(byId !== undefined ? { proposed_by_id: byId } : {}),
   };
   return createProposal(db, { terms, createdBy }, now);
 }

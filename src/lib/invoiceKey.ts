@@ -19,15 +19,23 @@ export function invoiceKey(invoiceNo: string): string {
  * SWIFT form "/INV/NW-R-101" names NW-R-101), so a number with "/" in it still matches whole, and a "-" never splits one.
  */
 export function referenceTokens(reference: string): string[] {
+  return [...new Set(referenceWords(reference).flat())];
+}
+
+/**
+ * referenceTokens word by word: for each word of the reference, every number it names (itself and each run of its
+ * "/"-separated parts). Red team round 2 (finding C): "NW/7, NW/7/2" names NW/7 by a word of its own, which only the
+ * words tell apart from "NW/7/2" alone, whose parts name NW/7 too.
+ */
+export function referenceWords(reference: string): string[][] {
   const words = reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
     .split(/[^\p{L}\p{N}/-]+/u).map((t) => t.replace(/^[-/]+|[-/]+$/g, "")).filter(Boolean);
-  const out = new Set<string>();
-  for (const w of words) {
-    out.add(w);
+  return words.map((w) => {
+    const out = new Set<string>([w]);
     const parts = w.split("/").map((t) => t.replace(/^-+|-+$/g, "")).filter(Boolean);
     for (let i = 0; i < parts.length; i++) for (let j = i + 1; j <= parts.length; j++) out.add(parts.slice(i, j).join("/"));
-  }
-  return [...out];
+    return [...out];
+  });
 }
 
 /** Whether a payment reference names this invoice number as a whole word. */

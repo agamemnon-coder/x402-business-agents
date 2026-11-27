@@ -15,7 +15,7 @@
 
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
-import { fxConversionEur, supplierPaymentEur } from "./fourEyes.js";
+import { fxConversionEur, fxPartsEurCents, supplierPaymentEur } from "./fourEyes.js";
 
 export const SECOND_KEY_EUR = "approval.second_key_eur";
 export const SECOND_KEY_NEW_PAYEE = "approval.second_key_new_payee";
@@ -163,7 +163,9 @@ export function secondKeyReasons(db: DB, p: { kind: string; terms_json: string }
     const eur = setting(db, SECOND_KEY_EUR);
     if (!/^\d+\.\d{2}$/.test(eur)) return [];
     const v = fxConversionEur(p.terms_json);
-    return v === null || toCents(v) >= toCents(eur) ? [`amount at or above EUR ${eur}`] : [];
+    // With the parts to its currency approved within the split window without the second key (red team round 2, FX split).
+    const parts = v === null ? null : fxPartsEurCents(db, p.terms_json, now, (a) => /\(passkey and security key\)/.test(a));
+    return v === null || parts === null || toCents(v) + parts >= toCents(eur) ? [`amount at or above EUR ${eur}`] : [];
   }
   if (p.kind === "payment_batch") {
     const lines = (JSON.parse(p.terms_json) as { lines?: { kind: string; terms: PaymentTerms }[] }).lines ?? [];
