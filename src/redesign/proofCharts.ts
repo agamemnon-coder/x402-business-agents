@@ -125,7 +125,7 @@ export function liveRunsChart(groups: { group: string; runs: { iso: string }[] }
   const rows = days.map((d) => ({ cat: shortDay(d), values: Object.fromEntries(groups.map((g, i) => [`g${i}`, g.runs.filter((r) => r.iso.startsWith(d)).length])) }));
   const total = groups.reduce((n, g) => n + g.runs.length, 0);
   return {
-    id: "chart-runs", kind: "stacked", title: "Live runs, by day", sub: `${total} runs listed in this section${elsewhere ? ` (${elsewhere} more on /visa, ${total + elsewhere} live runs in all)` : ""}, ${shortDay(days[0]!)} to ${shortDay(days.at(-1)!)}, by the partner each shows first`,
+    id: "chart-runs", kind: "stacked", title: "Live runs, by day", sub: `${total} runs listed in this section${elsewhere ? " (the Visa TAP run is told on /visa)" : ""}, ${shortDay(days[0]!)} to ${shortDay(days.at(-1)!)}, by the partner each shows first`,
     series, rows,
     table: { head: ["Day", ...series.map((s) => s.label), "All"], rows: rows.map((r) => [r.cat, ...series.map((s) => r.values[s.key]!), Object.values(r.values).reduce((a, b) => a + b, 0)]) },
     rec, href: `${REPO_BLOB.replace("/blob/", "/tree/")}docs/runs`,
