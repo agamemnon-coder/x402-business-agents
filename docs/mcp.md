@@ -6,7 +6,7 @@
 
 **Connect any MCP client to Purser Cloud: every tool, resource, prompt and error code; read and propose only.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![MCP 2026-07-28, and 2025-11-25 back to 2024-11-05](https://img.shields.io/badge/MCP-2026--07--28_%C2%B7_back_to_2024--11--05-6366f1?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![Tools: 15 read, 2 for a token made to propose](https://img.shields.io/badge/tools-15_read_%C2%B7_2_propose-8b5cf6?style=flat-square&labelColor=1f2937)](#tools)&nbsp;[![Approve or pay over MCP: never, for any token](https://img.shields.io/badge/approve_or_pay_over_MCP-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#the-safety-model)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, or a bearer token](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE-0ea5e9?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![MCP Registry: server.json describes it; not published](https://img.shields.io/badge/MCP_Registry-described%2C_not_published-f59e0b?style=flat-square&labelColor=1f2937)](#the-mcp-registry)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![MCP 2026-07-28, and 2025-11-25 back to 2024-11-05](https://img.shields.io/badge/MCP-2026--07--28_%C2%B7_back_to_2024--11--05-6099f4?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![Tools: 15 read, 2 for a token made to propose](https://img.shields.io/badge/tools-15_read_%C2%B7_2_propose-5996f9?style=flat-square&labelColor=1f2937)](#tools)&nbsp;[![Approve or pay over MCP: never, for any token](https://img.shields.io/badge/approve_or_pay_over_MCP-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#the-safety-model)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, or a bearer token](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE-0ea5e9?style=flat-square&labelColor=1f2937)](#connect)&nbsp;[![MCP Registry: server.json describes it; not published](https://img.shields.io/badge/MCP_Registry-described%2C_not_published-f59e0b?style=flat-square&labelColor=1f2937)](#the-mcp-registry)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Connect](#connect) · [Tools](#tools) · [Resources and prompts](#resources-and-prompts) · [Errors](#errors) · [Safety model](#the-safety-model) · [A proposal](#how-a-proposal-reaches-the-cfo) · [Registry](#the-mcp-registry) · [Tests](#the-tests-that-hold-this-page)
 
@@ -42,8 +42,8 @@ flowchart LR
   TOK -- "made to propose" --> PR --> Q
   TOK -. "any token" .-> NO
   Q --> CFO
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
@@ -243,7 +243,7 @@ sequenceDiagram
   participant M as Purser /mcp
   participant C as Purser Cloud
   participant P as CFO's passkey
-  rect rgba(139, 92, 246, 0.14)
+  rect rgba(89, 150, 249, 0.14)
     AI->>M: propose_invoice_payment (an invoice id)
     M->>C: checked as the Pay button checks it
     C-->>AI: proposal id, terms, terms_sha256, paid false

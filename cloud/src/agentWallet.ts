@@ -269,7 +269,7 @@ function openDesign(items){
   const msg=el('p','sub');msg.setAttribute('aria-live','polite');
   const changed=()=>{if(DESIGN_MODE!=='company')keepLocal();if(DECK_REDRAW)DECK_REDRAW();preview()};
   // Colour
-  const col=el('input','dk-col');col.type='color';col.value=DESIGN.color||'#4f46e5';col.setAttribute('aria-label',dw('d_color'));
+  const col=el('input','dk-col');col.type='color';col.value=DESIGN.color||'#4382e8';col.setAttribute('aria-label',dw('d_color'));
   col.oninput=()=>{DESIGN.color=col.value.toLowerCase();changed()};
   const all=btn(dw('d_color_all'),'mini','');all.onclick=()=>{DESIGN.color=col.value.toLowerCase();for(const x of items)DESIGN.styles[x.r.id]='brand';changed();drawStyles()};
   // Mark: initials or a logo
@@ -288,7 +288,7 @@ function openDesign(items){
       b.onclick=()=>{DESIGN.styles[x.r.id]=p;changed();drawStyles();const n=styles.querySelector('[data-a="'+x.r.id+'"] .dk-sw.on');if(n)n.focus()};opts.append(b)}
     g.dataset.a=x.r.id;g.append(opts);return g}));drawStyles();
   const pv=el('div','dk-pv');const preview=()=>{const x=items[0];if(x)pv.replaceChildren(cardFace(x.face));fillMeters(pv)};preview();
-  const reset=btn(dw('d_reset'),'ghost2','');reset.onclick=()=>{DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};col.value='#4f46e5';ini.value='';changed();drawMark();drawStyles()};
+  const reset=btn(dw('d_reset'),'ghost2','');reset.onclick=()=>{DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};col.value='#4382e8';ini.value='';changed();drawMark();drawStyles()};
   const save=DESIGN_MODE==='company'?btn(dw('d_save'),'primary','check'):null;
   if(save)save.onclick=async()=>{save.disabled=true;msg.textContent=dw('d_saving');try{const r=await api('/v1/card-design',{method:'POST',body:DESIGN});DESIGN=Object.assign(DESIGN,r.design);msg.textContent=dw('d_saved')}catch(e){if(e instanceof Expired)return;msg.textContent=dw('d_save_fail',{why:e.message})}finally{save.disabled=false}};
   const done=btn(dw('d_done'),save?'':'primary','');
@@ -425,10 +425,10 @@ label.dk-up:focus-within { outline: 3px solid var(--accent); outline-offset: 2px
 button.dk-sw { width: 28px; height: 19px; border-radius: 5px; border: 0; cursor: pointer; padding: 0; }
 button.dk-sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
 button.dk-sw:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.dk-sw.p-aurora, .dk-sw.p-lagoon, .dk-sw.p-midnight, .dk-sw.p-ember, .dk-sw.p-graphite, .dk-sw.p-rose, .dk-sw.p-citrus, .dk-sw.p-sky, .dk-sw.p-bullion, .dk-sw.p-brand { --brand: #4f46e5; }
+.dk-sw.p-aurora, .dk-sw.p-lagoon, .dk-sw.p-midnight, .dk-sw.p-ember, .dk-sw.p-graphite, .dk-sw.p-rose, .dk-sw.p-citrus, .dk-sw.p-sky, .dk-sw.p-bullion, .dk-sw.p-brand { --brand: #4382e8; }
 /* 21 Nov (Max): one family of navy metal cards; a swatch is the agent's accent on it, at the card's edge. */
 .dk-sw[class*=" p-"] { background: linear-gradient(90deg, var(--acc, #e9c46a) 0 4px, transparent 4px), radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--acc, #e9c46a) 35%, transparent), transparent 70%), linear-gradient(140deg, #13265a, #060d24); box-shadow: inset 0 0 0 1px rgba(233,196,106,.6); }
-.dk-sw.p-aurora { --acc: #a78bfa; } .dk-sw.p-lagoon { --acc: #2dd4bf; } .dk-sw.p-midnight { --acc: #60a5fa; } .dk-sw.p-ember { --acc: #fb923c; } .dk-sw.p-graphite { --acc: #cbd5e1; }
+.dk-sw.p-aurora { --acc: #89b5fc; } .dk-sw.p-lagoon { --acc: #2dd4bf; } .dk-sw.p-midnight { --acc: #60a5fa; } .dk-sw.p-ember { --acc: #fb923c; } .dk-sw.p-graphite { --acc: #cbd5e1; }
 .dk-sw.p-rose { --acc: #fb7185; } .dk-sw.p-citrus { --acc: #a3e635; } .dk-sw.p-sky { --acc: #38bdf8; } .dk-sw.p-bullion { --acc: #e9c46a; }
 .dk-sw.p-brand { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
 .dk-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); } .dk-foot > span { flex: 1; }

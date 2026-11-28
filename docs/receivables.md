@@ -59,7 +59,7 @@ flowchart TB
   classDef check fill:#f59e0b,stroke:#b45309,color:#1f2937
   classDef good fill:#10b981,stroke:#047857,color:#ffffff
   classDef held fill:#f43f5e,stroke:#be123c,color:#ffffff
-  classDef part fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef part fill:#5996f9,stroke:#246bdd,color:#ffffff
   class IN start
   class SEEN,REF,OPEN,AMT,AMOUNTS check
   class SAME,PAID,TOL good

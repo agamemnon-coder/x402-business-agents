@@ -6,7 +6,7 @@
 
 **Per agent and per feature: what it is for, who it can affect, what could go wrong, how likely and how bad, what stops it, and what is left.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#review)&nbsp;[![ISO/IEC 42001 A.5.2](https://img.shields.io/badge/ISO%2FIEC_42001-A.5.2-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![EU AI Act Art. 9](https://img.shields.io/badge/EU_AI_Act-Art._9-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#review)&nbsp;[![ISO/IEC 42001 A.5.2](https://img.shields.io/badge/ISO%2FIEC_42001-A.5.2-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![EU AI Act Art. 9](https://img.shields.io/badge/EU_AI_Act-Art._9-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
 
 [Method](#method) · [Matrix](#the-risk-matrix) · [Sourcing](#sourcing-agent) · [Support](#support-agent) · [Treasury](#treasury-agent) · [Autopilot](#autopilot) · [Ask Purser](#ask-purser) · [Register](#the-risk-register) · [Society](#individuals-groups-and-society)
 

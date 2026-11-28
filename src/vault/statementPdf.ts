@@ -127,7 +127,7 @@ export function statementView(given: BooksStatementFile): StatementView | null {
   };
 }
 
-const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4f46e5", OK = "#0b7d43", BAND = "#f1f3f7";
+const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4382e8", OK = "#0b7d43", BAND = "#f1f3f7";
 /** Text as drawn: no soft hyphen and no zero-width character, which a viewer may draw as a stray dot (Max, 14 Nov). */
 export const clean = (t: string): string => t.normalize("NFC").replace(/[\u00AD\u200B-\u200F\u2060\uFEFF]/g, "");
 /** Claude's reason in one short line under its row: about 140 characters, cut at a word; the whole reason is in the appendix. */

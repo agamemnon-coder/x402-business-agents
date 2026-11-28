@@ -6,7 +6,7 @@
 
 **Which recorded events are incidents, how severe, who acts and who is told, and the record each incident leaves.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![DORA Arts. 17 to 19](https://img.shields.io/badge/DORA-Arts._17_to_19-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![SOC 2 CC7.3, CC7.4](https://img.shields.io/badge/SOC_2-CC7.3%2C_CC7.4-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Reported to an authority: never, sandbox](https://img.shields.io/badge/reported_to_an_authority-never%2C_sandbox-475569?style=flat-square&labelColor=1f2937)](#reporting-to-an-authority)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![DORA Arts. 17 to 19](https://img.shields.io/badge/DORA-Arts._17_to_19-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![SOC 2 CC7.3, CC7.4](https://img.shields.io/badge/SOC_2-CC7.3%2C_CC7.4-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Reported to an authority: never, sandbox](https://img.shields.io/badge/reported_to_an_authority-never%2C_sandbox-475569?style=flat-square&labelColor=1f2937)](#reporting-to-an-authority)
 
 [Classes](#severity-classes) · [Runbook](#the-runbook) · [Roles](#roles) · [Communication](#communication-plan) · [Authority](#reporting-to-an-authority) · [Template](#the-incident-record)
 
@@ -59,7 +59,7 @@ flowchart TB
   classDef decide fill:#f59e0b,stroke:#1f2937,color:#1f2937
   classDef act fill:#f43f5e,stroke:#1f2937,color:#fff
   classDef done fill:#10b981,stroke:#1f2937,color:#fff
-  classDef tell fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef tell fill:#5996f9,stroke:#1f2937,color:#fff
   class D detect
   class E decide
   class S,I,R act

@@ -6,7 +6,7 @@
 
 **The text of Purser's entry, block by block as it goes into the form, each figure checked against its record.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Description: 3,964 characters, under 4,000](https://img.shields.io/badge/Description-3%2C964_characters_%C2%B7_under_4%2C000-8b5cf6?style=flat-square&labelColor=1f2937)](#description)&nbsp;[![Entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award](https://img.shields.io/badge/entered_for-Founder%27s_Choice_%C2%B7_Judges%27_Choice_%C2%B7_Metal_%C2%B7_Visa-8b5cf6?style=flat-square&labelColor=1f2937)](../rules.md)&nbsp;[![Every run figure from the main run of 3 November](https://img.shields.io/badge/figures-the_main_run%2C_3_Nov-0ea5e9?style=flat-square&labelColor=1f2937)](../runs/2026-11-03-main-run.md)&nbsp;[![Nothing here is sent by itself: each block is copied into the form](https://img.shields.io/badge/sent_by_itself-nothing_%C2%B7_copied_by_hand-f59e0b?style=flat-square&labelColor=1f2937)](#title)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Description: 3,964 characters, under 4,000](https://img.shields.io/badge/Description-3%2C964_characters_%C2%B7_under_4%2C000-5996f9?style=flat-square&labelColor=1f2937)](#description)&nbsp;[![Entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award](https://img.shields.io/badge/entered_for-Founder%27s_Choice_%C2%B7_Judges%27_Choice_%C2%B7_Metal_%C2%B7_Visa-5996f9?style=flat-square&labelColor=1f2937)](../rules.md)&nbsp;[![Every run figure from the main run of 3 November](https://img.shields.io/badge/figures-the_main_run%2C_3_Nov-0ea5e9?style=flat-square&labelColor=1f2937)](../runs/2026-11-03-main-run.md)&nbsp;[![Nothing here is sent by itself: each block is copied into the form](https://img.shields.io/badge/sent_by_itself-nothing_%C2%B7_copied_by_hand-f59e0b?style=flat-square&labelColor=1f2937)](#title)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
 
 [Title](#title) · [Synopsis](#synopsis) · [Description](#description) · [Instructions](#instructions) · [Kit 11](#kit-11-step-by-step) · [Links](#links) · [Screenshots](#screenshots) · [Deck and zip](#deck-and-zip) · [Proof sentences](#proof-sentences)
 
@@ -34,7 +34,7 @@ flowchart LR
   T["test/submission.test.ts<br/>each figure against its record,<br/>the Description under 4,000"] -.->|checks| PAGE
   PAGE -->|copied by hand| FORM["The HackerEarth form"]
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   class REC rails

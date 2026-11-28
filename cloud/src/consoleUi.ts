@@ -431,7 +431,7 @@ export const UI_CSS = `
 .agent .ah { grid-template-columns: 40px minmax(0, 1fr) auto; margin: 0; align-items: center; }
 .agent .atop { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
 .bcard { position: relative; aspect-ratio: 1.586; border-radius: 16px; padding: 18px 20px; color: #fff; display: grid; grid-template-rows: auto 1fr auto auto; gap: 6px; overflow: hidden;
-  background: radial-gradient(120% 140% at 100% 0%, #4f46e5 0%, #312e81 45%, #111827 100%); box-shadow: 0 10px 30px -14px rgba(49, 46, 129, .6); }
+  background: radial-gradient(120% 140% at 100% 0%, #4382e8 0%, #2e4e81 45%, #111827 100%); box-shadow: 0 10px 30px -14px rgba(46, 78, 129, .6); }
 .bcard::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,.14), transparent 40%); pointer-events: none; }
 .bcard.frozen { background: linear-gradient(135deg, #9aa3af, #4b5563); filter: saturate(.4); }
 .bcard .bct { display: flex; justify-content: space-between; align-items: center; }

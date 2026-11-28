@@ -13,7 +13,7 @@
 import PDFDocument from "pdfkit";
 import { LEDGER_ACCOUNTS } from "../ledger/accounts.js";
 
-const INK = "#0b1220", MUTED = "#586174", FAINT = "#8a93a6", LINE = "#e3e6ec", ACCENT = "#4f46e5", OK = "#0b7d43", BAND = "#f5f6f9";
+const INK = "#0b1220", MUTED = "#586174", FAINT = "#8a93a6", LINE = "#e3e6ec", ACCENT = "#4382e8", OK = "#0b7d43", BAND = "#f5f6f9";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const L = 50, R = 545, W = R - L, BOTTOM = 780;
 

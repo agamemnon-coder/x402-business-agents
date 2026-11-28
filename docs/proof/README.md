@@ -6,7 +6,7 @@
 
 **The file /try hands over on Paid and on the one-cent refusal, so anyone can check the payment without trusting our server.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Format: purser.proof-bundle/v1](https://img.shields.io/badge/format-purser.proof--bundle%2Fv1-8b5cf6?style=flat-square&labelColor=1f2937)](../../src/proof/bundle.ts)&nbsp;[![Checks: 7, the same in the browser and offline](https://img.shields.io/badge/checks-7%2C_browser_and_offline-8b5cf6?style=flat-square&labelColor=1f2937)](#check-one)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper_matrix-894%2F894_refused-16a34a?style=flat-square&labelColor=1f2937)](../evidence/tamper-matrix.md)&nbsp;[![Samples: one paid, one refused](https://img.shields.io/badge/samples-1_paid_%C2%B7_1_refused-10b981?style=flat-square&labelColor=1f2937)](#the-two-samples-here)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Format: purser.proof-bundle/v1](https://img.shields.io/badge/format-purser.proof--bundle%2Fv1-5996f9?style=flat-square&labelColor=1f2937)](../../src/proof/bundle.ts)&nbsp;[![Checks: 7, the same in the browser and offline](https://img.shields.io/badge/checks-7%2C_browser_and_offline-5996f9?style=flat-square&labelColor=1f2937)](#check-one)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper_matrix-894%2F894_refused-16a34a?style=flat-square&labelColor=1f2937)](../evidence/tamper-matrix.md)&nbsp;[![Samples: one paid, one refused](https://img.shields.io/badge/samples-1_paid_%C2%B7_1_refused-10b981?style=flat-square&labelColor=1f2937)](#the-two-samples-here)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
 
 [What it holds](#what-it-holds) · [Check one](#check-one) · [The two samples](#the-two-samples-here) · [/verify](https://kit11.max-31b.workers.dev/verify) · [Tamper matrix](../evidence/tamper-matrix.md)
 
@@ -61,7 +61,7 @@ flowchart LR
   C6 --> C7["7 · ledger entries<br/>balance and hash"]
   C7 --> OK["VALID<br/>exit 0"]
   C1 & C2 & C3 & C4 & C5 & C6 & C7 -.->|any check fails| NO["NOT VALID<br/>exit 1"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   class C1,C2,C3,C4,C5,C6,C7 purser

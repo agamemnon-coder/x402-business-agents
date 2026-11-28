@@ -78,7 +78,7 @@ ${[["Get them", q.shell], ["TypeScript: which invoices wait for the CFO", q.ts],
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Your AI reads; with a token made to propose it files proposals. No AI approves or pays: the CFO's limits and Face ID decide.">${ICON_LINKS}${PREVIEW_TAGS}
 <style nonce="${nonce}">
-:root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4f46e5}
+:root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4382e8}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:860px;margin:0 auto;padding:28px 16px 48px}.brand{display:flex;align-items:center;gap:10px;font-weight:750;font-size:18px;margin:0 0 14px}.brand img{width:32px;height:32px;border-radius:9px}
 h1{font-size:26px;line-height:1.2;margin:0 0 8px;letter-spacing:-.01em}.lede{color:var(--muted);margin:0 0 14px}

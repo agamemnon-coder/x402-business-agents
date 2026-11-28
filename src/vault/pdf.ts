@@ -147,7 +147,7 @@ const INK = "#111827";
 const MUTED = "#6b7280";
 const LINE = "#e5e7eb";
 const WARN = "#b45309";
-const ACCENT = "#4f46e5";
+const ACCENT = "#4382e8";
 
 /**
  * A receipt's header in the layout of the demo's invoices (src/engine/invoicePdf.ts, owner 13 Nov): the company's name

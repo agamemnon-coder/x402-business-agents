@@ -6,9 +6,9 @@
 
 **How to report a vulnerability in Purser privately, how fast you hear back, and what is in scope.**
 
-[![Report privately: GitHub advisory](https://img.shields.io/badge/report_privately-GitHub_advisory-be123c?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new)&nbsp;[![Acknowledged: within 3 working days](https://img.shields.io/badge/acknowledged-within_3_working_days-059669?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Disclosure: within 90 days](https://img.shields.io/badge/disclosure-within_90_days-0284c7?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Supported: main and the latest release](https://img.shields.io/badge/supported-main_%C2%B7_latest_release-7c3aed?style=flat-square&labelColor=1f2937)](#supported-versions)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-d97706?style=flat-square&labelColor=1f2937)](#scope)
+[![Report privately: GitHub advisory](https://img.shields.io/badge/report_privately-GitHub_advisory-be123c?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new)&nbsp;[![Acknowledged: within 3 working days](https://img.shields.io/badge/acknowledged-within_3_working_days-059669?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Disclosure: within 90 days](https://img.shields.io/badge/disclosure-within_90_days-0284c7?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Supported: main and the latest release](https://img.shields.io/badge/supported-main_%C2%B7_latest_release-367ef1?style=flat-square&labelColor=1f2937)](#supported-versions)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-d97706?style=flat-square&labelColor=1f2937)](#scope)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Secrets: gitleaks on every push](https://img.shields.io/badge/secrets-gitleaks_on_every_push-7c3aed?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Secrets: gitleaks on every push](https://img.shields.io/badge/secrets-gitleaks_on_every_push-367ef1?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository)
 
 [Report](#reporting-a-vulnerability) · [Timeline](#disclosure-timeline) · [Handling](#how-a-report-is-handled) · [Supported versions](#supported-versions) · [Scope](#scope) · [Controls](#security-controls-at-a-glance) · [Trust boundaries](#trust-boundaries-and-the-money-path) · [Credit](#credit) · [Threat model](docs/security.md)
 
@@ -55,7 +55,7 @@ flowchart LR
   A3 --> A4["4 · Release<br/>a PATCH release; the test<br/>preview redeployed if affected"]:::paid
   A4 --> A5["5 · Disclose<br/>the advisory published,<br/>normally within 90 days"]:::cash
   A5 --> C["Credit<br/>in the advisory and<br/>the release notes"]:::purser
-  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
+  classDef purser fill:#246bdd,stroke:#89b5fc,color:#fff
   classDef cash fill:#0369a1,stroke:#38bdf8,color:#fff
   classDef paid fill:#047857,stroke:#34d399,color:#fff
 ```
@@ -101,11 +101,11 @@ in CI, amber for test money.
 
 | Control | What it does | Where |
 |---|---|---|
-| [![Approval: passkey-signed terms](https://img.shields.io/badge/approval-passkey--signed_terms-7c3aed?style=flat-square&labelColor=1f2937)](src/lib/terms.ts) | Above a limit, the CFO's passkey (Face ID) signs the SHA-256 of the exact terms; one cent changed and it no longer verifies. | [src/lib/terms.ts](src/lib/terms.ts), [src/policy/approvals.ts](src/policy/approvals.ts) |
-| [![Execution: re-checks the signed hash](https://img.shields.io/badge/execution-re--checks_the_signed_hash-7c3aed?style=flat-square&labelColor=1f2937)](src/policy/hashFirst.ts) | Before anything leaves for a rail, the executor checks that the stored terms still hash to what was signed. | [src/policy/hashFirst.ts](src/policy/hashFirst.ts), [src/executors/](src/executors/) |
-| [![Agent identity: Ed25519-signed requests](https://img.shields.io/badge/agent_identity-Ed25519_signed_requests-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/agent-identity.md) | Each agent that can move money has its own key; a money-relevant request carries a signature over that exact request, and a replay is refused. | [docs/security/agent-identity.md](docs/security/agent-identity.md) |
-| [![Audit: hash-chained, anchored](https://img.shields.io/badge/audit-hash--chained%2C_anchored-7c3aed?style=flat-square&labelColor=1f2937)](src/audit/log.ts) | Every event goes into a hash-chained log whose head is anchored on Alta testnet. | [src/audit/log.ts](src/audit/log.ts), [src/anchor/](src/anchor/) |
-| [![Releases: SBOM and SLSA L3 provenance](https://img.shields.io/badge/releases-SBOM_%C2%B7_SLSA_L3_provenance-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/README.md#verify-a-release) | A release carries a CycloneDX bill of materials and Sigstore-signed attestations; releases after `v1.2.0` also carry SLSA Build Level 3 provenance. | [docs/security/README.md](docs/security/README.md#verify-a-release), [release.yml](.github/workflows/release.yml) |
+| [![Approval: passkey-signed terms](https://img.shields.io/badge/approval-passkey--signed_terms-367ef1?style=flat-square&labelColor=1f2937)](src/lib/terms.ts) | Above a limit, the CFO's passkey (Face ID) signs the SHA-256 of the exact terms; one cent changed and it no longer verifies. | [src/lib/terms.ts](src/lib/terms.ts), [src/policy/approvals.ts](src/policy/approvals.ts) |
+| [![Execution: re-checks the signed hash](https://img.shields.io/badge/execution-re--checks_the_signed_hash-367ef1?style=flat-square&labelColor=1f2937)](src/policy/hashFirst.ts) | Before anything leaves for a rail, the executor checks that the stored terms still hash to what was signed. | [src/policy/hashFirst.ts](src/policy/hashFirst.ts), [src/executors/](src/executors/) |
+| [![Agent identity: Ed25519-signed requests](https://img.shields.io/badge/agent_identity-Ed25519_signed_requests-367ef1?style=flat-square&labelColor=1f2937)](docs/security/agent-identity.md) | Each agent that can move money has its own key; a money-relevant request carries a signature over that exact request, and a replay is refused. | [docs/security/agent-identity.md](docs/security/agent-identity.md) |
+| [![Audit: hash-chained, anchored](https://img.shields.io/badge/audit-hash--chained%2C_anchored-367ef1?style=flat-square&labelColor=1f2937)](src/audit/log.ts) | Every event goes into a hash-chained log whose head is anchored on Alta testnet. | [src/audit/log.ts](src/audit/log.ts), [src/anchor/](src/anchor/) |
+| [![Releases: SBOM and SLSA L3 provenance](https://img.shields.io/badge/releases-SBOM_%C2%B7_SLSA_L3_provenance-367ef1?style=flat-square&labelColor=1f2937)](docs/security/README.md#verify-a-release) | A release carries a CycloneDX bill of materials and Sigstore-signed attestations; releases after `v1.2.0` also carry SLSA Build Level 3 provenance. | [docs/security/README.md](docs/security/README.md#verify-a-release), [release.yml](.github/workflows/release.yml) |
 | [![Static analysis: CodeQL](https://img.shields.io/badge/static_analysis-CodeQL-059669?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) | GitHub's code scanning on the repository. | [Code scanning](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) |
 | [![Secrets: gitleaks](https://img.shields.io/badge/secrets-gitleaks-059669?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository) | gitleaks on every push and on the whole history of the commit under check. | [ci.yml](.github/workflows/ci.yml), [below](#no-secrets-in-this-repository) |
 | [![OpenSSF: Scorecard and Best Practices](https://img.shields.io/badge/OpenSSF-Scorecard_%C2%B7_Best_Practices-059669?style=flat-square&labelColor=1f2937)](https://www.bestpractices.dev/projects/16923) | The OpenSSF Scorecard workflow, and the project's OpenSSF Best Practices entry. | [scorecard.yml](.github/workflows/scorecard.yml), [bestpractices.dev](https://www.bestpractices.dev/projects/16923) |
@@ -150,15 +150,15 @@ flowchart LR
   EX -- "one cent changed" --> X["Refused.<br/>Nothing paid."]:::refused
   EX -- "terms match" --> AW & AL & VI
   EX --> LOG
-  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
-  classDef agent fill:#4338ca,stroke:#818cf8,color:#fff
+  classDef purser fill:#246bdd,stroke:#89b5fc,color:#fff
+  classDef agent fill:#356fcd,stroke:#818cf8,color:#fff
   classDef paid fill:#047857,stroke:#34d399,color:#fff
   classDef refused fill:#be123c,stroke:#fb7185,color:#fff
   classDef testmoney fill:#b45309,stroke:#fbbf24,color:#fff
   classDef proof fill:#334155,stroke:#94a3b8,color:#fff
   style U fill:#be123c1a,stroke:#fb7185
-  style T fill:#6d28d91a,stroke:#a78bfa
-  style P fill:#6d28d91a,stroke:#a78bfa
+  style T fill:#6d28d91a,stroke:#89b5fc
+  style P fill:#6d28d91a,stroke:#89b5fc
   style Q fill:#b453091a,stroke:#fbbf24
 ```
 

@@ -2,7 +2,7 @@
 
 # Purser · records anyone can check
 
-[![Rekor: entry 4128274903](https://img.shields.io/badge/Rekor-entry_4128274903-7c3aed?style=flat-square&labelColor=1f2937)](entries/2026-11-26-rekor-4128274903.json)&nbsp;[![Verify: offline](https://img.shields.io/badge/verify-offline%2C_no_network-16a34a?style=flat-square&labelColor=1f2937)](#check-it-yourself)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](../runs/2026-11-19-anchor.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../../README.md)
+[![Rekor: entry 4128274903](https://img.shields.io/badge/Rekor-entry_4128274903-367ef1?style=flat-square&labelColor=1f2937)](entries/2026-11-26-rekor-4128274903.json)&nbsp;[![Verify: offline](https://img.shields.io/badge/verify-offline%2C_no_network-16a34a?style=flat-square&labelColor=1f2937)](#check-it-yourself)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](../runs/2026-11-19-anchor.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../../README.md)
 
 **One SHA-256 over Purser's committed records, held by two parties that are not Purser: an Alta testnet transaction and Sigstore's public Rekor log. Anyone can recompute it from this repo and check both, without trusting us.**
 

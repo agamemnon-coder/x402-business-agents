@@ -51,7 +51,7 @@ flowchart LR
   REC --> CL["claims.md<br/>every claim and its source"]
   REC --> V["Checked offline<br/>npm run verify-approval,<br/>verify-bundle, verify-all"]
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class RUN rails
   class REC purser
@@ -89,7 +89,7 @@ flowchart LR
   OPS["Operations<br/>install, run-it,<br/>runbook, releasing"]
   CON["Contributing<br/>CONTRIBUTING, GOVERNANCE,<br/>SECURITY, decisions"]
   START["Start here<br/>the five files above"] --> PROD & SEC & EV & OPS & CON
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827

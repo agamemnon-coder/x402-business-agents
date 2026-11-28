@@ -5,31 +5,31 @@
       "name": "approve",
       "path": "/approve/*",
       "served_by": "relay",
-      "sha256": "136c442408c167864765aa1314a59b87a41418b65826bab67b5a7ba3f06cf11c",
-      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      "build": "5967-EA02-2BD7"
+      "sha256": "e001082e0987d30c1e7a3c14eebf6568b98cfd95965f99d2446c96ba17b790c6",
+      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-EcMxcS+vOgs97ZTUCYR9X3+C7tpN2jS0kwd5571gA8A='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "D24E-58DA-719D"
     },
     {
       "name": "enrol",
       "path": "/enrol",
       "served_by": "relay",
-      "sha256": "f26e62b447cbb2dec05f46a17f212f3c0bee7115f8bc893196e3f39a47989be9",
-      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      "build": "5E87-0A4B-31FA"
+      "sha256": "afe59e08e2254fefc8895a51be41c721301e5ac2036cb55bcdfef540832339d2",
+      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-EcMxcS+vOgs97ZTUCYR9X3+C7tpN2jS0kwd5571gA8A='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "16AA-B842-A97F"
     },
     {
       "name": "policy",
       "path": "/policy",
       "served_by": "relay",
-      "sha256": "33cbe293a929aa8762a633dbde28af7d9c95a8e2937ca6b49a009255158f35c7",
-      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      "build": "7211-C707-CC55"
+      "sha256": "d9815b49a325af89f1df40a0333e3dedbc8da918fa49ddfad009688244aa3944",
+      "csp": "default-src 'none'; script-src 'sha256-DOqWlnGYjNmnv/47kw+VqbUEuwTpY+nnJkk98FHS0wo='; style-src 'sha256-EcMxcS+vOgs97ZTUCYR9X3+C7tpN2jS0kwd5571gA8A='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "3E99-1C81-5A99"
     },
     {
       "name": "cloud-console",
       "path": "/",
       "served_by": "cloud",
-      "sha256": "8a478d6a1227a00a22b2ec774e767946f0c928b8765f2dfd3434d4b272940cc5",
+      "sha256": "17efc23795e0623dc1327e00377b0fce489038367b3ff4dbbe190a737fb240f0",
       "csp": "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
     }
   ]

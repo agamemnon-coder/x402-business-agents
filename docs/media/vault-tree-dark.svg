@@ -3,10 +3,10 @@
 <style>
 .bg { fill: #111522; stroke: #2b2e44; }
 .g line, .g path { stroke: #2b2e44; stroke-width: 1.2; fill: none; }
-.f { fill: #28234b; stroke: #a398ff; stroke-width: 1.2; }
+.f { fill: #23324b; stroke: #98bfff; stroke-width: 1.2; }
 .d { fill: #111522; stroke: #b6bed0; stroke-width: 1.2; }
 .t { font: 13px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-.fo { fill: #f5f4ff; font-weight: 600; } .k { fill: #a398ff; font-weight: 650; } .fi { fill: #b6bed0; }
+.fo { fill: #f5f4ff; font-weight: 600; } .k { fill: #98bfff; font-weight: 650; } .fi { fill: #b6bed0; }
 </style>
 <rect class="bg" x=".5" y=".5" width="504" height="437" rx="12"/>
 <g class="g"></g><path class="f" d="M24 31h5l2 2h7v9h-14z"/><text class="t fo" x="46" y="41.5">Northwind Outdoor</text>

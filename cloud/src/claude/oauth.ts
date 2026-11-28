@@ -205,7 +205,7 @@ export async function consentPage(secret: string, ask: AuthorizeAsk, client: Cli
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Connect your AI to Purser</title><meta name="robots" content="noindex">${ICON_LINKS}
 <style nonce="${nonce}">
-:root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4f46e5;--accent-ink:#fff}
+:root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4382e8;--accent-ink:#fff}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:460px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
 .brand{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-weight:750;font-size:18px;letter-spacing:-.01em}.brand img{width:32px;height:32px;border-radius:9px}
@@ -214,7 +214,7 @@ h1{font-size:22px;line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}p{margin
 ul.can{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:8px}ul.can li{display:grid;grid-template-columns:20px 1fr;gap:8px;color:var(--ink);font-size:14.5px}ul.can svg{color:#16a34a;margin-top:3px}
 label{display:block;font-weight:650;margin:0 0 6px;font-size:14px}
 input[type=password]{width:100%;min-height:48px;padding:12px 14px;border:1px solid #cbd2dc;border-radius:12px;font:16px ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;color:var(--ink)}
-input[type=password]:focus{outline:3px solid rgba(79,70,229,.25);border-color:var(--accent)}
+input[type=password]:focus{outline:3px solid rgba(67,130,232,.25);border-color:var(--accent)}
 button{display:block;width:100%;min-height:48px;margin-top:12px;border-radius:12px;padding:12px 16px;font:650 16px Inter,system-ui,-apple-system,sans-serif;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);-webkit-appearance:none;appearance:none}
 button.demo{background:#fff;color:var(--ink);border:1.5px solid var(--ink);text-align:left;display:grid;gap:2px;padding:12px 16px}button.demo small{font:500 13.5px Inter,system-ui,sans-serif;color:var(--muted)}
 button.plain{background:none;border:0;color:var(--muted);font-weight:550;min-height:44px}

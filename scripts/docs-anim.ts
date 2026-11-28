@@ -11,8 +11,8 @@ import { pathToFileURL } from "node:url";
 const ROOT = resolve(import.meta.dirname, "..");
 export const ANIM_DIR = join(ROOT, "docs/assets/anim");
 
-/** The Purser colours: violet is Purser and approval, emerald paid, amber waits and test money, rose refused, sky the rails. */
-export const PALETTE = { violet: "#8b5cf6", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e", sky: "#0ea5e9", indigo: "#6366f1", teal: "#14b8a6", blue: "#3b82f6" };
+/** The Purser colours: blue is Purser and approval, emerald paid, amber waits and test money, rose refused, sky the rails. */
+export const PALETTE = { violet: "#5996f9", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e", sky: "#0ea5e9", indigo: "#6099f4", teal: "#14b8a6", blue: "#3b82f6" };
 type Theme = "light" | "dark";
 const INK: Record<Theme, { bg: string; card: string; ink: string; muted: string; line: string }> = {
   light: { bg: "#ffffff", card: "#f6f8fa", ink: "#1f2328", muted: "#59636e", line: "#d1d9e0" },

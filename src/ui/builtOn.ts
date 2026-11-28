@@ -56,4 +56,4 @@ a.awx-badge:hover { border-color: #c9cfda; }
 header .awx-badge, .awx-app .awx-badge, .awx-row .awx-badge { background: transparent; border: 0; padding: 2px 0; gap: 6px; color: var(--muted, #8b93a7); font-weight: 500; }
 header .awx-badge img, .awx-app .awx-badge img, .awx-row .awx-badge img { box-sizing: content-box; height: 10px; min-width: 0; width: auto; padding: 3px 6px; border-radius: 6px; background: #ffffff; }
 header a.awx-badge:hover, .awx-app a.awx-badge:hover, .awx-row a.awx-badge:hover { color: var(--text, #e8eaf0); }
-a.awx-badge:focus-visible { outline: 2px solid var(--accent, #6d28d9); outline-offset: 2px; }`;
+a.awx-badge:focus-visible { outline: 2px solid var(--accent, #246bdd); outline-offset: 2px; }`;

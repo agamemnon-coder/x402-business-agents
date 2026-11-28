@@ -6,7 +6,7 @@
 
 **A stored general ledger fed from every movement of money Purser makes: balanced, append-only and hash-chained.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every entry balanced per currency, or refused](https://img.shields.io/badge/entries-balanced_or_refused-10b981?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![The ledger: append-only, hash-chained](https://img.shields.io/badge/ledger-append--only_%C2%B7_hash--chained-8b5cf6?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![Signed terms are booked only as signed](https://img.shields.io/badge/signed_terms-booked_only_as_signed-8b5cf6?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![VAT: an overview for a person to check and file](https://img.shields.io/badge/VAT-an_overview%2C_not_a_filing-f59e0b?style=flat-square&labelColor=1f2937)](#not-yet)&nbsp;[![Realised FX: not wired into the feed yet](https://img.shields.io/badge/realised_FX-not_wired_in_yet-f59e0b?style=flat-square&labelColor=1f2937)](#fx-differences-and-token-financing)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every entry balanced per currency, or refused](https://img.shields.io/badge/entries-balanced_or_refused-10b981?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![The ledger: append-only, hash-chained](https://img.shields.io/badge/ledger-append--only_%C2%B7_hash--chained-5996f9?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![Signed terms are booked only as signed](https://img.shields.io/badge/signed_terms-booked_only_as_signed-5996f9?style=flat-square&labelColor=1f2937)](#what-holds)&nbsp;[![VAT: an overview for a person to check and file](https://img.shields.io/badge/VAT-an_overview%2C_not_a_filing-f59e0b?style=flat-square&labelColor=1f2937)](#not-yet)&nbsp;[![Realised FX: not wired into the feed yet](https://img.shields.io/badge/realised_FX-not_wired_in_yet-f59e0b?style=flat-square&labelColor=1f2937)](#fx-differences-and-token-financing)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Run it](#run-it) · [What holds](#what-holds) · [FX and token financing](#fx-differences-and-token-financing) · [For other parts](#for-other-parts-of-purser) · [Not yet](#not-yet)
 
@@ -34,7 +34,7 @@ flowchart LR
   BAL -- "yes" --> POST --> REP
   BAL -- "no" --> X
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   class M rails

@@ -16,30 +16,30 @@
 const DARK = String.raw`
   --bg:#080a12; --surface:#111522; --sunken:#191d30; --border:#2b2e44;
   --text:#f5f4ff; --muted:#b6bed0; --faint:#8e98af;
-  --accent:#a398ff; --accent-soft:#28234b; --accent-ink:#7c6cf0;
+  --accent:#98bfff; --accent-soft:#23324b; --accent-ink:#699ef3;
   --ok:#3ccf82; --ok-soft:#12291e; --bad:#ff6b70; --bad-soft:#341a1c; --on-bad:#1a0607;
   --metal:#2dd4bf; --metal-soft:#0f2a28; --awx:#ff8a4c; --awx-soft:#33200f; --claude:#ef9a76; --claude-soft:#33221b;
-  --a-sourcing:#60a5fa; --a-support:#d8b4fe; --a-treasury:#22d3ee;
-  --shadow:0 10px 38px -18px rgba(0,0,0,.75),0 0 0 1px rgba(163,152,255,.035);
-  --hi:inset 0 1px 0 rgba(255,255,255,.06); --glow:rgba(129,107,250,.42);
-  --glass:rgba(17,21,34,.66); --glass-line:rgba(180,168,255,.14);
-  --grad-text:linear-gradient(100deg,#f0edff 0%,#c3b8ff 40%,#a398ff 70%,#d8b4fe 100%);
-  --btn-bg:linear-gradient(112deg,#c6baff 0%,#a297ff 60%,#8f85fc 100%); --btn-ink:#100d25; --btn-line:#b4a8ff;
+  --a-sourcing:#60a5fa; --a-support:#b3d0ff; --a-treasury:#22d3ee;
+  --shadow:0 10px 38px -18px rgba(0,0,0,.75),0 0 0 1px rgba(152,191,255,.035);
+  --hi:inset 0 1px 0 rgba(255,255,255,.06); --glow:rgba(104,161,253,.42);
+  --glass:rgba(17,21,34,.66); --glass-line:rgba(168,201,255,.14);
+  --grad-text:linear-gradient(100deg,#edf4ff 0%,#b8d3ff 40%,#98bfff 70%,#b3d0ff 100%);
+  --btn-bg:linear-gradient(112deg,#bad4ff 0%,#97bfff 60%,#83b2fe 100%); --btn-ink:#0d1625; --btn-line:#a8c9ff;
   --mk-bg:#ffffff; --mk-ink:#000000; --mk-wm:#ffffff; --mk-line:transparent;
   color-scheme:dark;`;
 
 export const PREMIUM_TOKENS = String.raw`:root {
-  --bg:#f7f6fb; --surface:#ffffff; --sunken:#f2f0f8; --border:#e4e1ef;
+  --bg:#f7f6fb; --surface:#ffffff; --sunken:#f0f3f8; --border:#e1e6ef;
   --text:#0e0b1a; --muted:#57536b; --faint:#646078;
-  --accent:#6d28d9; --accent-soft:#f1ebff; --accent-ink:#6d28d9;
+  --accent:#246bdd; --accent-soft:#ebf3ff; --accent-ink:#246bdd;
   --ok:#0b7d43; --ok-soft:#e6f6ee; --bad:#c5363c; --bad-soft:#fdecec; --on-bad:#ffffff;
   --metal:#0b7a70; --metal-soft:#e3f5f2; --awx:#ad4a0c; --awx-soft:#fdf0e7; --claude:#a84d2b; --claude-soft:#fbefe9;
-  --a-sourcing:#2563eb; --a-support:#9333ea; --a-treasury:#0e7490;
-  --shadow:0 1px 2px rgba(20,16,40,.05),0 14px 36px -16px rgba(40,24,90,.16);
-  --hi:inset 0 1px 0 rgba(255,255,255,.9); --glow:rgba(109,40,217,.28);
+  --a-sourcing:#2563eb; --a-support:#2f78ee; --a-treasury:#0e7490;
+  --shadow:0 1px 2px rgba(16,25,40,.05),0 14px 36px -16px rgba(23,49,91,.16);
+  --hi:inset 0 1px 0 rgba(255,255,255,.9); --glow:rgba(36,107,221,.28);
   --glass:rgba(255,255,255,.74); --glass-line:rgba(14,11,26,.09);
-  --grad:linear-gradient(135deg,#7c3aed 0%,#6d28d9 55%,#5b21b6 100%);
-  --grad-text:linear-gradient(100deg,#7c3aed,#a855f7 55%,#6d28d9);
+  --grad:linear-gradient(135deg,#367ef1 0%,#246bdd 55%,#1e59b9 100%);
+  --grad-text:linear-gradient(100deg,#367ef1,#5292fa 55%,#246bdd);
   --btn-bg:var(--grad); --btn-ink:#ffffff; --btn-line:transparent;
   /* The Purser mark: pure black and white (the owner: "monochrome, no violet at all"), the wordmark the same. */
   --mk-bg:#000000; --mk-ink:#ffffff; --mk-wm:#000000; --mk-line:transparent;

@@ -871,7 +871,7 @@ body.pv-shell #main .btn.fin-proof { min-height: 32px; padding: 0 10px; gap: 5px
 .fin-row.bad .fin-money { color: var(--bad); text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .fin-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 @media (max-width: 520px) { .fin-row { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; } .fin-ic { width: 32px; height: 32px; } .fin-amt { grid-column: 2; justify-items: start; text-align: left; } .fin-total { font-size: 22px; } }
-.fin-cloud { position: relative; overflow: hidden; margin: 18px 0 16px; padding: 24px; border-radius: 20px; color: #fff; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--accent) 85%, transparent) 0%, transparent 60%), linear-gradient(140deg, #14162b 0%, #231f5c 58%, #3a2fa0 100%); box-shadow: 0 30px 60px -32px color-mix(in srgb, var(--accent) 75%, transparent); }
+.fin-cloud { position: relative; overflow: hidden; margin: 18px 0 16px; padding: 24px; border-radius: 20px; color: #fff; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--accent) 85%, transparent) 0%, transparent 60%), linear-gradient(140deg, #14162b 0%, #1f365c 58%, #2d5aa2 100%); box-shadow: 0 30px 60px -32px color-mix(in srgb, var(--accent) 75%, transparent); }
 .fc-eb { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 5px 11px; border-radius: 999px; background: #ffffff1f; color: #fff; font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .fin-cloud h2 { margin: 0 0 6px; color: #fff; font: 780 28px/1.15 Inter, system-ui, sans-serif; letter-spacing: -.02em; }
 .fc-p { margin: 0 0 18px; color: #ffffffcc; font-size: 15.5px; line-height: 1.5; }
@@ -881,7 +881,7 @@ body.pv-shell #main .btn.fin-proof { min-height: 32px; padding: 0 10px; gap: 5px
 .fc-t b { display: block; color: #fff; font-weight: 700; font-size: 14.5px; line-height: 1.3; }
 .fc-t span { display: block; margin-top: 2px; color: #ffffffb3; font-size: 13.5px; line-height: 1.42; }
 .fc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
-body.pv-shell #main .fin-cloud .fin-go, .fin-cloud .fin-go { margin: 0; background: #fff; color: #17143d; border-color: #fff; }
+body.pv-shell #main .fin-cloud .fin-go, .fin-cloud .fin-go { margin: 0; background: #fff; color: #13243e; border-color: #fff; }
 .fin-own { display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 14px; font-weight: 600; text-underline-offset: 3px; }
 .fc-note { margin: 14px 0 0; color: #ffffffa6; font-size: 12.5px; line-height: 1.45; }
 .fin-cloud a:focus-visible { outline-color: #fff; }

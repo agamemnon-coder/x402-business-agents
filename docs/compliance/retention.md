@@ -6,7 +6,7 @@
 
 **How long each kind of record on the runner's ledger is kept by default, how to check it, and how records leave.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Check: reports, never deletes](https://img.shields.io/badge/check-reports%2C_never_deletes-0ea5e9?style=flat-square&labelColor=1f2937)](#check-it)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Check: reports, never deletes](https://img.shields.io/badge/check-reports%2C_never_deletes-0ea5e9?style=flat-square&labelColor=1f2937)](#check-it)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
 
 [Lifecycle](#the-lifecycle) · [Periods](#the-periods) · [Check it](#check-it) · [How records leave](#how-records-leave) · [Cloud](#purser-cloud)
 

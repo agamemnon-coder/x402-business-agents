@@ -6,7 +6,7 @@
 
 **Each Purser agent and feature against the AI Act's tiers, with the reasoning, and the transparency duties that apply whatever the tier.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Prohibited: none](https://img.shields.io/badge/prohibited-none-10b981?style=flat-square&labelColor=1f2937)](#prohibited-practices-art-5)&nbsp;[![High-risk: none on this reading](https://img.shields.io/badge/high--risk-none_on_this_reading-0ea5e9?style=flat-square&labelColor=1f2937)](#the-classification)&nbsp;[![Not legal advice](https://img.shields.io/badge/legal_advice-no-475569?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Prohibited: none](https://img.shields.io/badge/prohibited-none-10b981?style=flat-square&labelColor=1f2937)](#prohibited-practices-art-5)&nbsp;[![High-risk: none on this reading](https://img.shields.io/badge/high--risk-none_on_this_reading-0ea5e9?style=flat-square&labelColor=1f2937)](#the-classification)&nbsp;[![Not legal advice](https://img.shields.io/badge/legal_advice-no-475569?style=flat-square&labelColor=1f2937)](#document-control)
 
 [Tiers](#the-tiers) · [Classification](#the-classification) · [Art. 5](#prohibited-practices-art-5) · [Annex III](#why-not-high-risk-annex-iii) · [Art. 50](#transparency-art-50) · [Roles](#provider-or-deployer)
 
@@ -33,7 +33,7 @@ flowchart TB
   classDef none fill:#10b981,stroke:#1f2937,color:#fff
   classDef high fill:#0ea5e9,stroke:#1f2937,color:#fff
   classDef limited fill:#f59e0b,stroke:#1f2937,color:#1f2937
-  classDef minimal fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef minimal fill:#5996f9,stroke:#1f2937,color:#fff
   class P none
   class H high
   class L limited

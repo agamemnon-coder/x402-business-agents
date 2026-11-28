@@ -6,7 +6,7 @@
 
 **Each agent's own card, limited at Airwallex and frozen at rest; selling by Metal clearing; and a month replayed in 90 seconds.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Agent cards: three virtual Visa cards from Airwallex Issuing](https://img.shields.io/badge/agent_cards-3_virtual_Visa_%C2%B7_Airwallex_Issuing-0ea5e9?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Agent cards rest frozen (INACTIVE) at Airwallex](https://img.shields.io/badge/at_rest-frozen_%C2%B7_INACTIVE-8b5cf6?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![A card limit raise needs the CFO's Face ID](https://img.shields.io/badge/a_raise-needs_Face_ID-8b5cf6?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Frozen by default and the hours: tested against the Issuing stand-in, not yet live](https://img.shields.io/badge/frozen_by_default%2C_hours-stand--in_only%2C_not_yet_live-f59e0b?style=flat-square&labelColor=1f2937)](#card-governance-per-agent-hours-merchants-currencies-and-a-trace-to-agent-task-and-policy-26-november)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](#selling-by-metal-clearing-prepaid-new-on-testnet)&nbsp;[![A month in 90 seconds: simulated](https://img.shields.io/badge/the_month-simulated-f59e0b?style=flat-square&labelColor=1f2937)](#a-month-in-90-seconds-simulated)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Agent cards: three virtual Visa cards from Airwallex Issuing](https://img.shields.io/badge/agent_cards-3_virtual_Visa_%C2%B7_Airwallex_Issuing-0ea5e9?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Agent cards rest frozen (INACTIVE) at Airwallex](https://img.shields.io/badge/at_rest-frozen_%C2%B7_INACTIVE-5996f9?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![A card limit raise needs the CFO's Face ID](https://img.shields.io/badge/a_raise-needs_Face_ID-5996f9?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Frozen by default and the hours: tested against the Issuing stand-in, not yet live](https://img.shields.io/badge/frozen_by_default%2C_hours-stand--in_only%2C_not_yet_live-f59e0b?style=flat-square&labelColor=1f2937)](#card-governance-per-agent-hours-merchants-currencies-and-a-trace-to-agent-task-and-policy-26-november)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](#selling-by-metal-clearing-prepaid-new-on-testnet)&nbsp;[![A month in 90 seconds: simulated](https://img.shields.io/badge/the_month-simulated-f59e0b?style=flat-square&labelColor=1f2937)](#a-month-in-90-seconds-simulated)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Company cards](#company-cards-airwallex-issuing) · [Card governance](#card-governance-per-agent-hours-merchants-currencies-and-a-trace-to-agent-task-and-policy-26-november) · [Metal clearing](#selling-by-metal-clearing-prepaid-new-on-testnet) · [A month in 90 seconds](#a-month-in-90-seconds-simulated) · [Cards run log](runs/2026-10-29-cards.md)
 
@@ -25,7 +25,7 @@ Moved from the project README. Back to the [README](../README.md).
 The merchants are fictional (Microsoft's sample company names).
 
 ```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#0ea5e9, #8b5cf6"}}}}%%
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#0ea5e9, #5996f9"}}}}%%
 xychart-beta
   title "Card limits per agent, EUR: per month (sky), per purchase (violet)"
   x-axis ["sourcing", "support", "treasury"]
@@ -134,7 +134,7 @@ flowchart LR
   C -- "the check against the mandate<br/>and the CFO policy fails" --> N["503, not offered<br/>nobody pays"]
   C -- "paid by clearing" --> OK["Delivered<br/>a signed running total"]
   C -- "clearing took nothing" --> M["/v1/stock<br/>exact, under the mandate"] --> OK
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827

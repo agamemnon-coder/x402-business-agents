@@ -6,7 +6,7 @@
 
 **What Purser's pages do for people with disabilities, what is checked automatically, what is not, and where it stands on languages.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The target: WCAG 2.1 level AA](https://img.shields.io/badge/target-WCAG_2.1_AA-8b5cf6?style=flat-square&labelColor=1f2937)](#accessibility)&nbsp;[![Nobody has audited Purser against it; the checks are the project's own](https://img.shields.io/badge/audited-no_%C2%B7_the_project%27s_own_checks-f59e0b?style=flat-square&labelColor=1f2937)](#accessibility)&nbsp;[![Browser checks in Chromium and Firefox at 360 to 1440 px, light and dark, on every pull request](https://img.shields.io/badge/browser_checks-Chromium_%C2%B7_Firefox_%C2%B7_360_to_1440_px_%C2%B7_light%2C_dark-10b981?style=flat-square&labelColor=1f2937)](/test/browser/pages.check.ts)&nbsp;[![The product's pages: Dutch and English](https://img.shields.io/badge/languages-Dutch_%C2%B7_English_%28the_product%29-0ea5e9?style=flat-square&labelColor=1f2937)](#internationalisation)&nbsp;[![No test session with a screen reader recorded yet](https://img.shields.io/badge/screen--reader_session-not_recorded_yet-f59e0b?style=flat-square&labelColor=1f2937)](#accessibility)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The target: WCAG 2.1 level AA](https://img.shields.io/badge/target-WCAG_2.1_AA-5996f9?style=flat-square&labelColor=1f2937)](#accessibility)&nbsp;[![Nobody has audited Purser against it; the checks are the project's own](https://img.shields.io/badge/audited-no_%C2%B7_the_project%27s_own_checks-f59e0b?style=flat-square&labelColor=1f2937)](#accessibility)&nbsp;[![Browser checks in Chromium and Firefox at 360 to 1440 px, light and dark, on every pull request](https://img.shields.io/badge/browser_checks-Chromium_%C2%B7_Firefox_%C2%B7_360_to_1440_px_%C2%B7_light%2C_dark-10b981?style=flat-square&labelColor=1f2937)](/test/browser/pages.check.ts)&nbsp;[![The product's pages: Dutch and English](https://img.shields.io/badge/languages-Dutch_%C2%B7_English_%28the_product%29-0ea5e9?style=flat-square&labelColor=1f2937)](#internationalisation)&nbsp;[![No test session with a screen reader recorded yet](https://img.shields.io/badge/screen--reader_session-not_recorded_yet-f59e0b?style=flat-square&labelColor=1f2937)](#accessibility)
 
 [Accessibility](#accessibility) · [Internationalisation](#internationalisation) · [Report a problem](/.github/ISSUE_TEMPLATE/bug_report.md)
 
@@ -49,7 +49,7 @@ flowchart LR
   BR --> C4["No sideways scroll<br/>at 360 px"]
   C1 & C2 & C3 & C4 --> PASS["Passes, or CI fails"]
   NOT["Not yet: axe-core in CI, contrast on every page,<br/>a screen-reader session"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   class PR,BR purser

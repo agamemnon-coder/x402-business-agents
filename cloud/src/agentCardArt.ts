@@ -118,7 +118,7 @@ export function cardSvg(o: { agent: string; name: string; last4: string | null; 
 export const CARD_ART_CSS = `
 .pc-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .pc-tint { fill: var(--acc, #000); fill-opacity: .16; }
-.acard { --brand: #4f46e5; --acc: #8fa3c8;
+.acard { --brand: #4382e8; --acc: #8fa3c8;
   position: relative; isolation: isolate; overflow: hidden; display: block; width: 100%; aspect-ratio: 1.586; border-radius: 16px; background: #070708; color: #e8ecf5;
   box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 16px 32px -14px rgba(0,0,0,.72), 0 0 0 .5px rgba(255,255,255,.07);
   transform: perspective(900px) translateY(var(--lift, 0px)) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .35s cubic-bezier(.2,.75,.2,1), box-shadow .3s; }
@@ -128,7 +128,7 @@ export const CARD_ART_CSS = `
   background-size: 260% 100%; background-position: 100% 0; transition: background-position .9s cubic-bezier(.2,.75,.2,1); }
 .acard.frozen { filter: grayscale(.8) brightness(.9); }
 .acard.dim .ac-art { opacity: .88; }
-.acard.p-aurora { --acc: #9a8fc7; }
+.acard.p-aurora { --acc: #8fa4c7; }
 .acard.p-lagoon { --acc: #7fb5ad; }
 .acard.p-midnight { --acc: #8fa3c8; }
 .acard.p-ember { --acc: #c49a7a; }

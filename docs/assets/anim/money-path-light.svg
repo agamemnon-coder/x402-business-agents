@@ -16,19 +16,19 @@ text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 <path class="line" d="M315 84h14" stroke-width="2"/><path d="M329 79l6 5-6 5z" fill="#d1d9e0"/>
 <path class="line" d="M473 84h14" stroke-width="2"/><path d="M487 79l6 5-6 5z" fill="#d1d9e0"/>
 <path class="line" d="M631 84h14" stroke-width="2"/><path d="M645 79l6 5-6 5z" fill="#d1d9e0"/>
-<rect class="glow" style="animation-delay:0.00s" x="14" y="48" width="144" height="72" rx="12" fill="#6366f1"/>
+<rect class="glow" style="animation-delay:0.00s" x="14" y="48" width="144" height="72" rx="12" fill="#6099f4"/>
 <rect class="card" x="18" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
-<rect x="18" y="52" width="6" height="64" rx="3" fill="#6366f1"/>
+<rect x="18" y="52" width="6" height="64" rx="3" fill="#6099f4"/>
 <text class="ink l" x="34" y="79">AI agent</text>
 <text class="muted s" x="34" y="98">proposes a payment</text>
-<rect class="glow" style="animation-delay:1.20s" x="172" y="48" width="144" height="72" rx="12" fill="#8b5cf6"/>
+<rect class="glow" style="animation-delay:1.20s" x="172" y="48" width="144" height="72" rx="12" fill="#5996f9"/>
 <rect class="card" x="176" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
-<rect x="176" y="52" width="6" height="64" rx="3" fill="#8b5cf6"/>
+<rect x="176" y="52" width="6" height="64" rx="3" fill="#5996f9"/>
 <text class="ink l" x="192" y="79">Purser's checks</text>
 <text class="muted s" x="192" y="98">in code: limits, payee</text>
-<rect class="glow" style="animation-delay:2.40s" x="330" y="48" width="144" height="72" rx="12" fill="#8b5cf6"/>
+<rect class="glow" style="animation-delay:2.40s" x="330" y="48" width="144" height="72" rx="12" fill="#5996f9"/>
 <rect class="card" x="334" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
-<rect x="334" y="52" width="6" height="64" rx="3" fill="#8b5cf6"/>
+<rect x="334" y="52" width="6" height="64" rx="3" fill="#5996f9"/>
 <text class="ink l" x="350" y="79">CFO's passkey</text>
 <text class="muted s" x="350" y="98">Face ID, above the limit</text>
 <rect class="glow" style="animation-delay:3.60s" x="488" y="48" width="144" height="72" rx="12" fill="#0ea5e9"/>
@@ -41,6 +41,6 @@ text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 <rect x="650" y="52" width="6" height="64" rx="3" fill="#10b981"/>
 <text class="ink l" x="666" y="79">The books</text>
 <text class="muted s" x="666" y="98">double entry</text>
-<circle class="pk" cx="86" cy="130" r="5" fill="#8b5cf6"/>
+<circle class="pk" cx="86" cy="130" r="5" fill="#5996f9"/>
 <text class="muted s" x="18" y="158">Each step can stop the payment. Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet.</text>
 </svg>

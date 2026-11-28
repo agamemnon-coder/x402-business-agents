@@ -231,7 +231,7 @@ li.ovs-m > a:hover { background: var(--hover); }
 .ovs-k img { display: block; width: 16px; height: 16px; object-fit: contain; }
 .ovs-k.wide { padding: 0 6px; overflow: hidden; } .ovs-k.wide img { width: auto; max-width: 52px; height: 10px; }
 .ovs-k b { font-size: 11px; font-weight: 800; color: #1a1f2e; }
-.ovs-k.visa b { font-style: italic; font-weight: 900; color: #1a1f71; }
+.ovs-k.visa b { font-style: italic; font-weight: 900; color: #183b73; }
 .ov-par .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 a.ovk { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none; color: inherit; transition: border-color .12s; }
 a.ovk:hover { border-color: color-mix(in srgb, var(--text) 20%, var(--line)); }

@@ -114,7 +114,7 @@ export const MORE_CSS = `.pmore { position: relative; flex: none; margin: 0; }
 .pmore[open] > summary::after { content: "▴"; }
 .pmore > summary:hover, .pmore[open] > summary { color: var(--text, #0b1220); }
 .pmore > summary.on { color: var(--text, #0b1220); background: var(--surface, var(--panel, #fff)); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.pmore > summary:focus-visible, .pmenu a:focus-visible { outline: 3px solid var(--accent, #4f46e5); outline-offset: 2px; }
+.pmore > summary:focus-visible, .pmenu a:focus-visible { outline: 3px solid var(--accent, #4382e8); outline-offset: 2px; }
 .pmenu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 60; display: grid; gap: 2px; min-width: 190px; max-width: calc(100vw - 24px); padding: 8px; border-radius: 16px; background: var(--surface, var(--panel, #fff)); border: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 12px 32px -12px rgba(16,24,40,.25); }
 .pmenu a { display: block !important; text-decoration: none !important; white-space: nowrap; border-radius: 10px !important; padding: 9px 12px !important; background: none; color: var(--text, #0b1220) !important; font: 600 15px/1.3 Inter, system-ui, sans-serif !important; }
 .pmenu a:hover, .pmenu a[aria-current="page"] { background: var(--sunken, var(--surface2, rgba(127,127,127,.12))); }

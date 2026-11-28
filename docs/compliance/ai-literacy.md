@@ -6,7 +6,7 @@
 
 **What the people who approve, check and run Purser need to know about its AI: what it does, what it gets wrong, what only they can do, and the security habits that keep a passkey worth something.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![EU AI Act Art. 4](https://img.shields.io/badge/EU_AI_Act-Art._4-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#eu-ai-act-regulation-eu-20241689)&nbsp;[![Read by: none recorded](https://img.shields.io/badge/read_by-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#who-has-read-it)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![EU AI Act Art. 4](https://img.shields.io/badge/EU_AI_Act-Art._4-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#eu-ai-act-regulation-eu-20241689)&nbsp;[![Read by: none recorded](https://img.shields.io/badge/read_by-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#who-has-read-it)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#document-control)
 
 [The AI](#what-the-ai-in-purser-is) · [What it gets wrong](#what-it-gets-wrong) · [Your part](#what-only-you-can-do) · [Automation bias](#automation-bias) · [Security habits](#security-habits) · [Competences](#what-each-role-needs-to-know) · [Record](#who-has-read-it)
 
@@ -39,7 +39,7 @@ flowchart LR
   C -- "yes" --> P["Paid<br/>and recorded"]
   C -- "no" --> Y["You<br/>read, then sign or reject"]
   Y --> P
-  classDef ai fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef ai fill:#5996f9,stroke:#1f2937,color:#fff
   classDef code fill:#0ea5e9,stroke:#1f2937,color:#fff
   classDef you fill:#f59e0b,stroke:#1f2937,color:#1f2937
   classDef done fill:#10b981,stroke:#1f2937,color:#fff

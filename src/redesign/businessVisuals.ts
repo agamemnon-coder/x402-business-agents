@@ -10,7 +10,7 @@
 // script, no picture; under prefers-reduced-motion it stands still (the routes keep their lights where they stopped).
 //
 // The colours mean what they mean in Purser Cloud's console (cloud/src/consoleColor.ts, Max: "use the colour system on
-// the sign-up page too"): violet Purser and the CFO's approval (--accent), emerald paid (--ok), amber test money
+// the sign-up page too"): blue Purser and the CFO's approval (--accent), emerald paid (--ok), amber test money
 // (--amb, the console's --warn), sky cash and money moving (--sky), and the agents' own hues (Sourcing indigo, Support
 // teal, Treasury blue: --g0 to --g2). BUSINESS_TONES sets them on the page, light and dark, at the console's values.
 
@@ -45,7 +45,7 @@ export function routePath(r: { a: number; b: number; h: number }): string {
 
 /** The meaning-colours, at Purser Cloud's console values (cloud/src/consoleColor.ts), scoped to the page. */
 const TONES_DARK = "--amb: #ffb547; --sky: #38bdf8; --g0: #818cf8; --g1: #2dd4bf; --g2: #60a5fa;";
-export const BUSINESS_TONES = `.bzp { --amb: #a15c00; --sky: #0369a1; --g0: #4f46e5; --g1: #0f766e; --g2: #1d4ed8; }
+export const BUSINESS_TONES = `.bzp { --amb: #a15c00; --sky: #0369a1; --g0: #4382e8; --g1: #0f766e; --g2: #1d4ed8; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bzp { ${TONES_DARK} } }
 :root[data-theme="dark"] .bzp { ${TONES_DARK} }`;
 
@@ -90,7 +90,7 @@ export const BUSINESS_SKY_CSS = `
 .bz-sky .p { stroke: color-mix(in srgb, var(--t, var(--accent)) 45%, #ffffff); stroke-width: 4.5; }
 .bz-sky .g { stroke: var(--t, var(--accent)); stroke-width: 16; opacity: .3; }
 ${ROUTES.map((r, i) => `.bz-sky .p${i + 1} { --t: var(--${r.tone}); stroke-dashoffset: ${[40, 70, 25, 55, 85, 12][i] ?? 40}; }`).join(" ")}
-/* Light: dawn rather than night: violet stars, a pale sphere with the same lit rim. */
+/* Light: dawn rather than night: blue stars, a pale sphere with the same lit rim. */
 @media (prefers-color-scheme: light) { ${LIGHT_SKY.replace(/\.bz-sky/g, ':root:not([data-theme="dark"]) .bz-sky')} }
 ${LIGHT_SKY.replace(/\.bz-sky/g, ':root[data-theme="light"] .bz-sky')}
 @keyframes bz-drift { from { translate: -34% 0; scale: 1; } to { translate: -24% 4%; scale: 1.08; } }

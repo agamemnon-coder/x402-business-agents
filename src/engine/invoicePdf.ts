@@ -12,7 +12,7 @@
 import PDFDocument from "pdfkit";
 import type { InvoiceFields } from "../config/trySample.js";
 
-const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4f46e5", BAND = "#f1f3f7";
+const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4382e8", BAND = "#f1f3f7";
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number) as [number, number, number]; return `${d} ${MONTHS[m - 1]} ${y}`; };
 export const eur = (cents: number, currency = "EUR") => `${currency} ${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;

@@ -6,7 +6,7 @@
 
 **Nine frameworks mapped to Purser's controls, the evidence each control leaves in the ledger, the documents behind the rest, and every gap that is still open.**
 
-[![Frameworks: 9](https://img.shields.io/badge/frameworks-9-8b5cf6?style=flat-square&labelColor=1f2937)](#the-dashboard)&nbsp;[![Evidence: signed, verified offline](https://img.shields.io/badge/evidence-signed%2C_verified_offline-10b981?style=flat-square&labelColor=1f2937)](#run-it)&nbsp;[![Gaps: listed, not hidden](https://img.shields.io/badge/gaps-listed%2C_not_hidden-f43f5e?style=flat-square&labelColor=1f2937)](controls.md#gaps-in-one-list)&nbsp;[![Audited: no](https://img.shields.io/badge/audited-no-475569?style=flat-square&labelColor=1f2937)](#governance-and-compliance)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-0ea5e9?style=flat-square&labelColor=1f2937)](#governance-and-compliance)
+[![Frameworks: 9](https://img.shields.io/badge/frameworks-9-5996f9?style=flat-square&labelColor=1f2937)](#the-dashboard)&nbsp;[![Evidence: signed, verified offline](https://img.shields.io/badge/evidence-signed%2C_verified_offline-10b981?style=flat-square&labelColor=1f2937)](#run-it)&nbsp;[![Gaps: listed, not hidden](https://img.shields.io/badge/gaps-listed%2C_not_hidden-f43f5e?style=flat-square&labelColor=1f2937)](controls.md#gaps-in-one-list)&nbsp;[![Audited: no](https://img.shields.io/badge/audited-no-475569?style=flat-square&labelColor=1f2937)](#governance-and-compliance)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-0ea5e9?style=flat-square&labelColor=1f2937)](#governance-and-compliance)
 
 [Dashboard](#the-dashboard) · [Who signs what](#who-signs-what) · [Documents](#the-documents) · [Run it](#run-it) · [Verify](#what-the-verifier-checks) · [Example](#an-example-on-test-data)
 
@@ -87,7 +87,7 @@ flowchart LR
   LOG -->|"signed audit pack and<br/>compliance evidence"| CTL
   classDef person fill:#f59e0b,stroke:#1f2937,color:#1f2937
   classDef code fill:#0ea5e9,stroke:#1f2937,color:#fff
-  classDef ai fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef ai fill:#5996f9,stroke:#1f2937,color:#fff
   classDef log fill:#10b981,stroke:#1f2937,color:#fff
   class CFO,SEC,MNT,CTL person
   class POL,EXE code

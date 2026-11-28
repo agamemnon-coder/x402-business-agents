@@ -6,7 +6,7 @@
 
 **Purser in pictures: the site, the phone, the console and four animations, light or dark as your GitHub is.**
 
-[![Pictures from the site and the records](https://img.shields.io/badge/pictures-from_the_site_and_the_records-8b5cf6?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Four animations, CSS only, still under reduced motion](https://img.shields.io/badge/animations-4_%C2%B7_CSS_only_%C2%B7_still_under_reduced_motion-0ea5e9?style=flat-square&labelColor=1f2937)](#animations)&nbsp;[![Light and dark, as your GitHub is](https://img.shields.io/badge/themes-light_%C2%B7_dark-10b981?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![Pictures from the site and the records](https://img.shields.io/badge/pictures-from_the_site_and_the_records-5996f9?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Four animations, CSS only, still under reduced motion](https://img.shields.io/badge/animations-4_%C2%B7_CSS_only_%C2%B7_still_under_reduced_motion-0ea5e9?style=flat-square&labelColor=1f2937)](#animations)&nbsp;[![Light and dark, as your GitHub is](https://img.shields.io/badge/themes-light_%C2%B7_dark-10b981?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [The pictures](#gallery) · [Animations](#animations) · [See it](see-it.md) · [Charts](charts.md) · [/try](https://kit11.max-31b.workers.dev/try)
 

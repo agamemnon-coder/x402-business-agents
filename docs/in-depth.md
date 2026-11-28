@@ -6,7 +6,7 @@
 
 **The README's first screen in full: every run with its ids, where each judging criterion is proven, and what is real and what is mock.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C_last_full_run-10239_passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Visa via Airi: sandbox](https://img.shields.io/badge/Visa_via_Airi-sandbox-1a1f71?style=flat-square&labelColor=1f2937)](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov)&nbsp;[![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937)](t0.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C_last_full_run-10239_passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Visa via Airi: sandbox](https://img.shields.io/badge/Visa_via_Airi-sandbox-183b73?style=flat-square&labelColor=1f2937)](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov)&nbsp;[![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937)](t0.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [What ran live](#what-ran-live-one-id-per-rail) · [Live or simulated](#whats-live-whats-simulated-run-by-run) · [Judging criteria](#where-each-judging-criterion-is-proven) · [How a payment flows](#how-a-payment-flows) · [The main run](#the-main-run-3-november) · [awx-1](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money) · [Airi](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov) · [Try it](#try-it-step-by-step) · [Real or mock](#what-is-real-what-is-mock)
 
@@ -72,8 +72,8 @@ flowchart LR
   X -- "match" --> L
   L --> B["Purser's books<br/>hash-chained audit log"]
   B --> T["T:0 general ledger<br/>(sandbox)"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
@@ -227,8 +227,8 @@ flowchart LR
   L -- "yes, EUR 12.00" --> AI["Airi: a single-use<br/>Visa credential"]
   L -- "no, EUR 45.00" --> F["The CFO's Face ID<br/>on the exact terms"] --> AI
   AI --> CH["The cardholder's passkey<br/>in Airi"] --> OK["PaymentIntent SUCCEEDED"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827

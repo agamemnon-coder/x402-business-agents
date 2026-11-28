@@ -6,7 +6,7 @@
 
 **What personal data Purser processes and why, the impact assessment for the agents, how a person's rights are met, and where data goes outside the EU.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![GDPR Arts. 30, 35](https://img.shields.io/badge/GDPR-Arts._30%2C_35-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#gdpr-regulation-eu-2016679)&nbsp;[![Transfer mechanisms: none recorded](https://img.shields.io/badge/transfer_mechanisms-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#transfers-outside-the-eu)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![GDPR Arts. 30, 35](https://img.shields.io/badge/GDPR-Arts._30%2C_35-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#gdpr-regulation-eu-2016679)&nbsp;[![Transfer mechanisms: none recorded](https://img.shields.io/badge/transfer_mechanisms-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#transfers-outside-the-eu)
 
 [Roles](#who-is-controller) · [Record](#record-of-processing-activities-art-30) · [DPIA](#dpia-for-the-agents-art-35) · [Rights](#data-subjects-rights) · [Transfers](#transfers-outside-the-eu) · [Breaches](#breaches)
 

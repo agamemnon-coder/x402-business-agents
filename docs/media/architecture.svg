@@ -7,13 +7,13 @@
   </defs>
   <g font-size="13" fill="#0f172a">
     <!-- 1 agent -->
-    <rect x="15" y="60" width="170" height="160" rx="10" fill="#eef2ff" stroke="#6366f1"/>
+    <rect x="15" y="60" width="170" height="160" rx="10" fill="#eef2ff" stroke="#6099f4"/>
     <text x="100" y="86" text-anchor="middle" font-weight="700" font-size="15">AI agent</text>
     <text x="100" y="108" text-anchor="middle">Claude reads, explains,</text>
     <text x="100" y="126" text-anchor="middle">acts inside its limits</text>
     <text x="100" y="144" text-anchor="middle">and proposes the rest.</text>
-    <text x="100" y="172" text-anchor="middle" fill="#4338ca">Cannot change</text>
-    <text x="100" y="190" text-anchor="middle" fill="#4338ca">its own limits</text>
+    <text x="100" y="172" text-anchor="middle" fill="#356fcd">Cannot change</text>
+    <text x="100" y="190" text-anchor="middle" fill="#356fcd">its own limits</text>
     <!-- 2 rules -->
     <rect x="215" y="60" width="170" height="160" rx="10" fill="#ecfdf5" stroke="#10b981"/>
     <text x="300" y="86" text-anchor="middle" font-weight="700" font-size="15">Rules in code</text>

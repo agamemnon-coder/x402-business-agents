@@ -67,7 +67,7 @@ describe("the generated blocks", () => {
     expect(block).toBe(dashboardMarkdown());
     for (const c of statusCounts()) expect(block).toContain(`/badge/gap-${c.gap}-f43f5e`);
     // The palette, as classDef in the who-signs-what diagram and as the pie's colours.
-    for (const colour of ["#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9"]) expect(read("docs/compliance/README.md")).toContain(colour);
+    for (const colour of ["#5996f9", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9"]) expect(read("docs/compliance/README.md")).toContain(colour);
   });
 
   it("docs/governance.md and docs/compliance.md carry the per-framework table as the map gives it", () => {

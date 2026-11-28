@@ -78,7 +78,7 @@ async function highlight(page: Page, texts: string[]): Promise<void> {
       if (!el) continue;
       if (/^T[DH]$/.test(el.tagName)) el = el.parentElement as HTMLElement;
       if (/^(SPAN|CODE|STRONG|B|EM|A)$/.test(el.tagName) && el.parentElement) el = el.parentElement;
-      el.style.outline = "3px solid #8b85ff"; el.style.outlineOffset = "4px"; el.style.borderRadius = "6px";
+      el.style.outline = "3px solid #85b4ff"; el.style.outlineOffset = "4px"; el.style.borderRadius = "6px";
     }
   }, texts);
 }

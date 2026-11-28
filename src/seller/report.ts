@@ -36,7 +36,7 @@ export function disputeReportHtml(c: DisputeCase, seller = "Northwind Outdoor"):
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dispute ${esc(c.case_id)}: ${esc(seller)}</title>
 <style>
-:root { --text: #0f172a; --muted: #5b6475; --border: #e3e6ec; --ok: #0f7a3d; --bad: #b42318; --bg: #fff; --sunken: #f5f6f8; --accent: #4f46e5; }
+:root { --text: #0f172a; --muted: #5b6475; --border: #e3e6ec; --ok: #0f7a3d; --bad: #b42318; --bg: #fff; --sunken: #f5f6f8; --accent: #4382e8; }
 @media (prefers-color-scheme: dark) { :root { --text: #e8eaf0; --muted: #9aa3b5; --border: #2a2f3a; --ok: #4ade80; --bad: #f87171; --bg: #0d0f14; --sunken: #161a22; --accent: #a5b4fc; } }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 980px; margin: 0 auto; padding: 32px 16px 48px; overflow-wrap: anywhere; }

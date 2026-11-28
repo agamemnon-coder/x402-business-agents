@@ -6,7 +6,7 @@
 
 **A 13-week cash forecast from the ledger and FX advice from code; a conversion moves only after the CFO's passkey.**
 
-[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#what-is-real-and-what-is-not)&nbsp;[![Advice only: the CFO signs](https://img.shields.io/badge/advice_only-the_CFO_signs_with_a_passkey-8b5cf6?style=flat-square&labelColor=1f2937)](#from-advice-to-a-conversion)&nbsp;[![Numbers from code](https://img.shields.io/badge/numbers-from_code%2C_not_a_model-10b981?style=flat-square&labelColor=1f2937)](#the-forecast-method)
+[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#what-is-real-and-what-is-not)&nbsp;[![Advice only: the CFO signs](https://img.shields.io/badge/advice_only-the_CFO_signs_with_a_passkey-5996f9?style=flat-square&labelColor=1f2937)](#from-advice-to-a-conversion)&nbsp;[![Numbers from code](https://img.shields.io/badge/numbers-from_code%2C_not_a_model-10b981?style=flat-square&labelColor=1f2937)](#the-forecast-method)
 
 [Run it](#run-it) · [The forecast method](#the-forecast-method) · [FX exposure](#fx-exposure-and-the-cfos-threshold) · [From advice to a conversion](#from-advice-to-a-conversion) · [Receivables](receivables.md)
 
@@ -64,7 +64,7 @@ flowchart LR
   classDef data fill:#0ea5e9,stroke:#0369a1,color:#ffffff
   classDef code fill:#10b981,stroke:#047857,color:#ffffff
   classDef gate fill:#f59e0b,stroke:#b45309,color:#1f2937
-  classDef advice fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef advice fill:#5996f9,stroke:#246bdd,color:#ffffff
   class AWX,AP,AR,CARD data
   class F,X code
   class P gate

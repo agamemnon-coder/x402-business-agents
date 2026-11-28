@@ -6,7 +6,7 @@
 
 **Purser keeps its own books and can send them to a company's ERP, and read back what the ERP holds; no CSV needed.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Moneybird: run live once, in a sandbox administration, 12 November](https://img.shields.io/badge/Moneybird-run_live_once_%C2%B7_sandbox_%C2%B7_12_Nov-10b981?style=flat-square&labelColor=1f2937)](moneybird.md)&nbsp;[![Exact Online, Business Central and Odoo: not tested against a live system yet](https://img.shields.io/badge/Exact_%C2%B7_Business_Central_%C2%B7_Odoo-not_tested_live_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-needed-to-go-live)&nbsp;[![Each object sent once, never posted twice](https://img.shields.io/badge/sent-once_%C2%B7_never_posted_twice-8b5cf6?style=flat-square&labelColor=1f2937)](#how-a-sync-behaves)&nbsp;[![No CSV needed](https://img.shields.io/badge/CSV-not_needed-0ea5e9?style=flat-square&labelColor=1f2937)](#erp-connectors)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Moneybird: run live once, in a sandbox administration, 12 November](https://img.shields.io/badge/Moneybird-run_live_once_%C2%B7_sandbox_%C2%B7_12_Nov-10b981?style=flat-square&labelColor=1f2937)](moneybird.md)&nbsp;[![Exact Online, Business Central and Odoo: not tested against a live system yet](https://img.shields.io/badge/Exact_%C2%B7_Business_Central_%C2%B7_Odoo-not_tested_live_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-needed-to-go-live)&nbsp;[![Each object sent once, never posted twice](https://img.shields.io/badge/sent-once_%C2%B7_never_posted_twice-5996f9?style=flat-square&labelColor=1f2937)](#how-a-sync-behaves)&nbsp;[![No CSV needed](https://img.shields.io/badge/CSV-not_needed-0ea5e9?style=flat-square&labelColor=1f2937)](#erp-connectors)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [What it does](#what-it-does) · [How a sync behaves](#how-a-sync-behaves) · [A go and a call budget](#a-go-and-a-call-budget) · [Commands](#commands) · [Going live](#what-is-needed-to-go-live) · [What the ledger sends](#what-the-ledger-sends-today) · [Next](#next) · [Moneybird](moneybird.md)
 
@@ -32,7 +32,7 @@ flowchart LR
   S4 --> BC["Business Central"]
   S4 --> OD["Odoo 17, 18"]
   SY -. "an object found only in part" .-> NR["needs_review<br/>a person looks"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   class L,SY purser

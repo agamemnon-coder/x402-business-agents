@@ -149,10 +149,10 @@ README.md, llms.txt, the docs and the site's pages, asked with HEAD, then GET wh
 | ok | 200 | HEAD | https://img.shields.io/badge/Claude-24_decisions-d97757?style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=16a34a&style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://img.shields.io/badge/license-MIT-2563eb?style=flat-square&labelColor=1f2937 | README.md |  |
-| ok | 200 | HEAD | https://img.shields.io/badge/MCP_server-read%2C_propose_only-6366f1?style=flat-square&labelColor=1f2937 | README.md |  |
+| ok | 200 | HEAD | https://img.shields.io/badge/MCP_server-read%2C_propose_only-6099f4?style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937 | README.md |  |
-| ok | 200 | HEAD | https://img.shields.io/badge/Visa_VIC_via_Airi-sandbox-1a1f71?style=flat-square&labelColor=1f2937 | README.md |  |
+| ok | 200 | HEAD | https://img.shields.io/badge/Visa_VIC_via_Airi-sandbox-183b73?style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://img.shields.io/badge/worst--case_AI_%28offline_eval%29-0_wrong_payments-16a34a?style=flat-square&labelColor=1f2937 | README.md |  |
 | ok | 200 | HEAD | https://kit11.max-31b.workers.dev/ | README.md, docs/assets/screens/README.md, docs/evidence/verification-2026-11-15.md and 15 more |  |
 | ok | 200 | HEAD | https://kit11.max-31b.workers.dev/agents/sourcing | docs/in-depth.md, page proofJson |  |

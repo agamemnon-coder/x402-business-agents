@@ -363,7 +363,7 @@ function socialWave(W: number): string {
         const a = Math.min(1, gain * fade * (0.28 + 0.72 * edge) * (0.75 + 0.5 * r()));
         if (a < 0.05) continue;
         const rad = (0.7 + 1.3 * edge * r() + 0.35 * fade).toFixed(2);
-        const col = edge > 0.82 && r() > 0.55 ? "#f3efff" : k % 3 === 0 ? "#c4b5fd" : k % 3 === 1 ? "#a78bfa" : "#8b5cf6";
+        const col = edge > 0.82 && r() > 0.55 ? "#eff5ff" : k % 3 === 0 ? "#b4d0fe" : k % 3 === 1 ? "#89b5fc" : "#5996f9";
         dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad}" fill="${col}" opacity="${a.toFixed(2)}"/>`);
       }
     }
@@ -373,7 +373,7 @@ function socialWave(W: number): string {
   // A few loose particles above the ribbons, as on the site.
   for (let i = 0; i < 70; i++) {
     const x = 640 + r() * 560, y = 40 + r() * 420, a = 0.12 + 0.45 * r() * smooth(640, 1100, x);
-    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.6 + r() * 1.1).toFixed(2)}" fill="#ddd6fe" opacity="${a.toFixed(2)}"/>`);
+    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.6 + r() * 1.1).toFixed(2)}" fill="#d5e5ff" opacity="${a.toFixed(2)}"/>`);
   }
   return `<g class="s-wave">${dots.join("")}</g>`;
 }
@@ -413,16 +413,16 @@ export function socialSvg(_site?: string, logo?: string): string {
 .pv .s-mark { fill: #ffffff; }
 .pv .s-feather path { fill: none; stroke: #0b0a14; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
 .pv .s-name { font-size: 40px; font-weight: 760; letter-spacing: -.025em; fill: #ffffff; }
-.pv .s-line { font-size: 84px; font-weight: 800; letter-spacing: -.042em; fill: #ffffff; } .pv .s-line2 { fill: #b9a9ff; }
+.pv .s-line { font-size: 84px; font-weight: 800; letter-spacing: -.042em; fill: #ffffff; } .pv .s-line2 { fill: #a9caff; }
 .pv .s-sub { font-size: 31px; font-weight: 500; letter-spacing: -.012em; fill: #c3c6d8; }
 .pv .s-pill { fill: #ffffff; }
-.pv .s-bw { font-size: 21px; font-weight: 650; letter-spacing: -.01em; fill: #14121f; }
+.pv .s-bw { font-size: 21px; font-weight: 650; letter-spacing: -.01em; fill: #12171f; }
 .pv .s-tag { fill: rgba(255, 255, 255, .05); stroke: rgba(255, 255, 255, .2); stroke-width: 1.5; }
 .pv .s-tagdot { fill: #fbbf24; }
 .pv .s-tagt { font-size: 18px; font-weight: 600; letter-spacing: -.005em; fill: #b4b8cc; }`;
-  const grad = `<defs><linearGradient id="s-bgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b0a1a"/><stop offset=".55" stop-color="#08070f"/><stop offset="1" stop-color="#0d0a22"/></linearGradient>`
-    + `<radialGradient id="s-grad" cx="82%" cy="78%" r="62%"><stop offset="0" stop-color="#6d4aff" stop-opacity=".42"/><stop offset=".55" stop-color="#4c1d95" stop-opacity=".16"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
-    + `<radialGradient id="s-grad2" cx="8%" cy="0%" r="55%"><stop offset="0" stop-color="#3b2f8f" stop-opacity=".35"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
+  const grad = `<defs><linearGradient id="s-bgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b0a1a"/><stop offset=".55" stop-color="#08070f"/><stop offset="1" stop-color="#0a1322"/></linearGradient>`
+    + `<radialGradient id="s-grad" cx="82%" cy="78%" r="62%"><stop offset="0" stop-color="#4a8fff" stop-opacity=".42"/><stop offset=".55" stop-color="#1b4a97" stop-opacity=".16"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="s-grad2" cx="8%" cy="0%" r="55%"><stop offset="0" stop-color="#2d5391" stop-opacity=".35"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
     + `<linearGradient id="s-veil" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08070f" stop-opacity=".55"/><stop offset=".5" stop-color="#08070f" stop-opacity=".12"/><stop offset=".72" stop-color="#08070f" stop-opacity="0"/></linearGradient></defs>`;
   return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE.join(" ")} ${SOCIAL_SUB.join(" ")}${logo ? " Built on Airwallex." : ""} ${SOCIAL_TEST}.`, body: `${grad}
 ${out.join("\n")}`, standalone: "dark" }).replace("</style>", `\n${css}</style>`);

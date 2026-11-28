@@ -16,13 +16,13 @@
 <style>
   @font-face { font-family: Inter; src: url("{{font}}") format("woff2"); font-weight: 100 900; }
   :root { --bg: #0a1020; --ink: #eef1f8; --muted: rgba(238, 241, 248, .62); --line: rgba(255, 255, 255, .10);
-          --accent: #8b87ff; --accent2: #5ec8ff; --red: #ff6b6b; --green: #34d399; }
+          --accent: #87b5ff; --accent2: #5ec8ff; --red: #ff6b6b; --green: #34d399; }
   html, body { margin: 0; width: 1280px; height: 640px; }
   body { background: var(--bg); color: var(--ink); font-family: Inter, sans-serif; position: relative; overflow: hidden;
          background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .07) 1px, transparent 0);
          background-size: 36px 36px; }
   .glow { position: absolute; inset: 0;
-          background: radial-gradient(ellipse at 22% 38%, rgba(110, 120, 255, .18), transparent 58%),
+          background: radial-gradient(ellipse at 22% 38%, rgba(110, 166, 255, .18), transparent 58%),
                       radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .55)); }
   .brand { position: absolute; left: 80px; top: 60px; display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
   .brand img { width: 40px; height: 40px; border-radius: 10px; }
@@ -37,7 +37,7 @@
   .chip { font-size: 19px; font-weight: 500; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line);
           background: rgba(255, 255, 255, .04); color: var(--ink); white-space: nowrap; }
   .chip b { font-weight: 700; }
-  .chip.try { border-color: rgba(139, 135, 255, .7); background: rgba(139, 135, 255, .16); font-weight: 700; }
+  .chip.try { border-color: rgba(135, 181, 255, .7); background: rgba(135, 181, 255, .16); font-weight: 700; }
   .card { position: absolute; right: 80px; top: 120px; width: 470px; padding: 30px 32px; border-radius: 22px;
           background: rgba(17, 24, 44, .92); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
   .label { font-size: 14px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); font-weight: 600; }

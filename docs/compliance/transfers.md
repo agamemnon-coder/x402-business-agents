@@ -6,7 +6,7 @@
 
 **Where the personal data Purser handles goes, per provider of the register, and which GDPR Chapter V mechanism each transfer would need. None is in place yet.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![GDPR Art. 44](https://img.shields.io/badge/GDPR-Art._44-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#gdpr-regulation-eu-2016679)&nbsp;[![Mechanisms: none recorded](https://img.shields.io/badge/mechanisms-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#per-provider)&nbsp;[![Not legal advice](https://img.shields.io/badge/legal_advice-no-475569?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![GDPR Art. 44](https://img.shields.io/badge/GDPR-Art._44-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#gdpr-regulation-eu-2016679)&nbsp;[![Mechanisms: none recorded](https://img.shields.io/badge/mechanisms-none_recorded-f43f5e?style=flat-square&labelColor=1f2937)](#per-provider)&nbsp;[![Not legal advice](https://img.shields.io/badge/legal_advice-no-475569?style=flat-square&labelColor=1f2937)](#document-control)
 
 [Where data goes](#where-the-data-goes) · [Per provider](#per-provider) · [The mechanisms](#the-mechanisms) · [What limits the data](#what-already-limits-what-leaves) · [Before real data](#before-real-data)
 
@@ -40,7 +40,7 @@ flowchart LR
   classDef eu fill:#10b981,stroke:#1f2937,color:#fff
   classDef us fill:#f43f5e,stroke:#1f2937,color:#fff
   classDef nk fill:#f59e0b,stroke:#1f2937,color:#1f2937
-  classDef pc fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef pc fill:#5996f9,stroke:#1f2937,color:#fff
   class EU eu
   class US us
   class NK nk

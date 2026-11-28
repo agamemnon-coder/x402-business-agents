@@ -17,9 +17,9 @@ import { liveTryRecords, liveTryTotals } from "./liveTry.js";
 import { NEGOTIATE_MODEL } from "../negotiate/claude.js";
 import { ASK_MODEL } from "../../cloud/src/ask/model.js";
 
-export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4f46e5; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #7a73f0; } }
-:root[data-theme="dark"] { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #7a73f0; }
+export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4382e8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #70a2f3; } }
+:root[data-theme="dark"] { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #70a2f3; }
 .csplit { margin: 0; padding: 18px 20px 14px; display: grid; gap: 10px; }
 .csplit svg { display: block; width: 100%; height: auto; overflow: visible; }
 .csplit .nar { display: none; }

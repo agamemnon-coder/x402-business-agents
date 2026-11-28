@@ -39,8 +39,8 @@ flowchart LR
   AP -- "yes" --> CFO["The CFO's passkey<br/>over the exact terms"] --> PAY
   AP -- "no" --> PAY["Paid<br/>the Payer picks rail, day, currency"]
   PAY --> BK["Booked<br/>double entry, hash-chained"] --> ME["VAT, month-end<br/>a person closes"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class IN sourcing

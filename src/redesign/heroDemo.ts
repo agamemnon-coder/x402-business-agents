@@ -113,16 +113,16 @@ export function heroDemoHtml(f: HeroDemoFacts | null = heroDemoFacts(), r: HeroR
 
 const EASE = "cubic-bezier(.22,1,.36,1)";
 const AT = (n: number, sel: string) => `.hd[data-phase="${n}"] ${sel}`;
-export const HERO_DEMO_CSS = `.hd { --hd-bg: #0b0d18; --hd-ink: #eef0ff; --hd-dim: #8d93b3; --hd-line: #262a45; --hd-acc: #8b85ff; --hd-ok: #3ccf82; --hd-bad: #ff5d68; --hd-awx: #ff8a4c;
+export const HERO_DEMO_CSS = `.hd { --hd-bg: #0b0d18; --hd-ink: #eef0ff; --hd-dim: #8d93b3; --hd-line: #262a45; --hd-acc: #85b4ff; --hd-ok: #3ccf82; --hd-bad: #ff5d68; --hd-awx: #ff8a4c;
   position: relative; margin: 0; padding: 16px; border-radius: 24px; border: 1px solid rgba(255,255,255,.07); color: var(--hd-ink); overflow: hidden; isolation: isolate;
-  background: radial-gradient(120% 90% at 85% 0%, rgba(139,133,255,.28), transparent 55%), radial-gradient(90% 70% at 0% 100%, rgba(255,138,76,.16), transparent 60%), var(--hd-bg);
-  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -30px rgba(20,16,80,.55); }
+  background: radial-gradient(120% 90% at 85% 0%, rgba(133,180,255,.28), transparent 55%), radial-gradient(90% 70% at 0% 100%, rgba(255,138,76,.16), transparent 60%), var(--hd-bg);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -30px rgba(15,40,81,.55); }
 .hd::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 28px 28px; mask-image: radial-gradient(80% 70% at 60% 40%, #000, transparent); }
 .hd-steps { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .hd-steps li { position: relative; display: flex; align-items: center; gap: 6px; padding: 7px 8px 9px; border-radius: 10px; font-size: 12.5px; font-weight: 650; color: var(--hd-dim); background: rgba(255,255,255,.03); white-space: nowrap; overflow: hidden; transition: color .4s ${EASE}, background .4s ${EASE}; }
 .hd-steps span { display: grid; place-items: center; width: 18px; height: 18px; flex: none; border-radius: 50%; font-size: 11px; background: rgba(255,255,255,.08); transition: background .4s ${EASE}; }
 .hd-steps li::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--hd-acc); transform: scaleX(0); transform-origin: left; }
-${[1, 2, 3, 4].map((n) => AT(n, `.hd-steps [data-p="${n}"]`)).join(", ")} { color: var(--hd-ink); background: rgba(139,133,255,.14); }
+${[1, 2, 3, 4].map((n) => AT(n, `.hd-steps [data-p="${n}"]`)).join(", ")} { color: var(--hd-ink); background: rgba(133,180,255,.14); }
 ${[1, 2, 3, 4].map((n) => AT(n, `.hd-steps [data-p="${n}"] span`)).join(", ")} { background: var(--hd-acc); color: #0b0d18; }
 ${[1, 2, 3].map((n) => `.hd.run[data-phase="${n}"] [data-p="${n}"]::after`).join(", ")} { animation: hd-bar 3.2s linear forwards; }
 .hd[data-phase="4"][data-verdict="refused"] .hd-steps [data-p="4"] { background: rgba(255,93,104,.16); } .hd[data-phase="4"][data-verdict="refused"] .hd-steps [data-p="4"] span { background: var(--hd-bad); }
@@ -134,21 +134,21 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 .hd-stage { display: grid; grid-template-columns: minmax(0, 1fr) 196px; gap: 14px; align-items: center; height: 330px; }
 .hd-flow { display: grid; grid-template-rows: auto 1fr auto 1fr auto; height: 100%; padding: 6px 0; }
 .hd-node { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--hd-line); background: rgba(255,255,255,.03); opacity: .45; transition: opacity .5s ${EASE}, border-color .5s ${EASE}, box-shadow .5s ${EASE}, transform .5s ${EASE}; }
-.hd-node svg { grid-row: span 2; width: 30px; height: 30px; padding: 6px; border-radius: 9px; background: rgba(139,133,255,.16); color: var(--hd-acc); box-sizing: border-box; }
+.hd-node svg { grid-row: span 2; width: 30px; height: 30px; padding: 6px; border-radius: 9px; background: rgba(133,180,255,.16); color: var(--hd-acc); box-sizing: border-box; }
 .hd-node.n3 svg { background: rgba(255,138,76,.16); color: var(--hd-awx); }
 .hd-node b { font-size: 14.5px; line-height: 1.2; } .hd-node small { font-size: 12px; color: var(--hd-dim); }
 .hd-seg { position: relative; justify-self: start; margin-left: 26px; width: 2px; background: var(--hd-line); border-radius: 2px; }
-.hd-seg > i { position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(var(--hd-acc), #c4b5fd); transform: scaleY(0); transform-origin: top; transition: transform .9s ${EASE}; box-shadow: 0 0 12px rgba(139,133,255,.8); }
+.hd-seg > i { position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(var(--hd-acc), #b4d0fe); transform: scaleY(0); transform-origin: top; transition: transform .9s ${EASE}; box-shadow: 0 0 12px rgba(133,180,255,.8); }
 .hd-seg.s2 > i { background: linear-gradient(var(--hd-acc), var(--hd-awx)); box-shadow: 0 0 12px rgba(255,138,76,.7); }
-.hd-seg::after { content: ""; position: absolute; left: -4px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(139,133,255,.35), 0 0 18px 4px rgba(139,133,255,.9); opacity: 0; }
+.hd-seg::after { content: ""; position: absolute; left: -4px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(133,180,255,.35), 0 0 18px 4px rgba(133,180,255,.9); opacity: 0; }
 .hd[data-phase="1"] .n1, .hd[data-phase="2"] .n1, .hd[data-phase="2"] .n2, .hd[data-phase="3"] .n1, .hd[data-phase="3"] .n2, .hd[data-phase="3"] .n3, .hd[data-phase="4"] .n1, .hd[data-phase="4"] .n2, .hd[data-phase="4"] .n3 { opacity: 1; }
-.hd[data-phase="1"] .n1, .hd[data-phase="2"] .n2 { border-color: rgba(139,133,255,.6); box-shadow: 0 0 0 4px rgba(139,133,255,.1), 0 10px 30px -10px rgba(139,133,255,.6); transform: translateX(4px); }
+.hd[data-phase="1"] .n1, .hd[data-phase="2"] .n2 { border-color: rgba(133,180,255,.6); box-shadow: 0 0 0 4px rgba(133,180,255,.1), 0 10px 30px -10px rgba(133,180,255,.6); transform: translateX(4px); }
 .hd[data-phase="3"] .n3 { border-color: rgba(255,138,76,.6); box-shadow: 0 0 0 4px rgba(255,138,76,.1), 0 10px 30px -10px rgba(255,138,76,.55); transform: translateX(4px); }
 .hd[data-phase="4"][data-verdict="refused"] .n2 { border-color: rgba(255,93,104,.6); box-shadow: 0 0 0 4px rgba(255,93,104,.12); }
 .hd[data-phase="1"] .s1 > i, .hd[data-phase="2"] .s1 > i, .hd[data-phase="3"] .s1 > i, .hd[data-phase="4"] .s1 > i, .hd[data-phase="3"] .s2 > i, .hd[data-phase="4"] .s2 > i { transform: scaleY(1); }
 .hd.run[data-phase="1"] .s1::after, .hd.run[data-phase="3"] .s2::after { animation: hd-pulse 1.1s ${EASE} .15s 2 both; }
 @keyframes hd-pulse { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 10px); opacity: 0; } }
-.hd-phone { position: relative; height: 318px; border-radius: 34px; padding: 9px; background: linear-gradient(160deg, #2b2f4a, #12142a 60%); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 24px 50px -20px rgba(0,0,0,.8), 0 0 60px -10px rgba(139,133,255,.35); }
+.hd-phone { position: relative; height: 318px; border-radius: 34px; padding: 9px; background: linear-gradient(160deg, #2b2f4a, #12142a 60%); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 24px 50px -20px rgba(0,0,0,.8), 0 0 60px -10px rgba(133,180,255,.35); }
 .hd-phone::before { content: ""; position: absolute; top: 15px; left: 50%; width: 54px; height: 16px; margin-left: -27px; border-radius: 10px; background: #05060c; z-index: 2; }
 .hd-screen { position: relative; height: 100%; border-radius: 26px; padding: 40px 12px 14px; background: linear-gradient(180deg, #151833, #0d0f20); display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden; }
 .hd-screen p { line-height: 1.3; }
@@ -159,7 +159,7 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 /* The amount as a field (step 4): a thumb can hit it, and its edge says it can be typed in. */
 .hd-in { width: 108px; height: 44px; min-width: 0; padding: 0 4px; text-align: center; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.06); transition: color .25s ${EASE}, border-color .25s ${EASE}; }
 .hd-iban { margin: 4px 0 0; font-size: 12px; color: var(--hd-dim); } .hd-iban b { color: var(--hd-ink); font-weight: 650; font-variant-numeric: tabular-nums; transition: color .25s ${EASE}; }
-.hd-btn:focus-visible, .hd-in:focus-visible { outline: 3px solid #c4b5fd; outline-offset: 2px; }
+.hd-btn:focus-visible, .hd-in:focus-visible { outline: 3px solid #b4d0fe; outline-offset: 2px; }
 /* Steps 1 to 3 show the record: the amount as text, the Face ID glyph, the hash. Step 4 shows the receipt's terms. */
 .hd[data-phase="4"] .hd-num, .hd[data-phase="4"] .hd-fid, .hd[data-phase="4"] .hd-hash, .hd[data-phase="4"] .hd-st { display: none; }
 .hd:not([data-phase="4"]) .hd-in, .hd:not([data-phase="4"]) .hd-to, .hd:not([data-phase="4"]) .hd-iban, .hd:not([data-phase="4"]) .hd-verdict, .hd:not([data-phase="4"]) .hd-stamp { display: none; }
@@ -177,11 +177,11 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 @keyframes hd-spin { to { transform: rotate(360deg); } } @keyframes hd-fade { to { opacity: 0; } }
 .hd-hash { margin: 4px 0 0; font-size: 10.5px; color: var(--hd-dim); opacity: 0; transition: opacity .4s ${EASE}; }
 .hd-hash span { display: block; text-transform: uppercase; letter-spacing: .08em; font-size: 9.5px; }
-.hd code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #c4b5fd; }
+.hd code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #b4d0fe; }
 .hd[data-phase="2"] .hd-hash, .hd[data-phase="3"] .hd-hash { opacity: 1; }
 .hd-st, .hd-verdict { position: absolute; left: 50%; bottom: 16px; margin: 0; padding: 6px 11px; border-radius: 14px; font-size: 12px; font-weight: 650; transform: translate(-50%, 0); }
 .hd-st { display: flex; align-items: center; gap: 5px; white-space: nowrap; opacity: 0; transform: translate(-50%, 10px); transition: opacity .5s ${EASE}, transform .5s ${EASE}; }
-.hd-st.s1 { color: #ffc46b; background: rgba(255,196,107,.12); } .hd-st.s2 { color: #c4b5fd; background: rgba(139,133,255,.16); }
+.hd-st.s1 { color: #ffc46b; background: rgba(255,196,107,.12); } .hd-st.s2 { color: #b4d0fe; background: rgba(133,180,255,.16); }
 .hd-paid { color: var(--hd-ok); background: rgba(60,207,130,.12); } .hd-paid code { color: var(--hd-ok); }
 .hd[data-phase="1"] .s1, .hd[data-phase="2"] .s2, .hd[data-phase="3"] .hd-paid { opacity: 1; transform: translate(-50%, 0); }
 .hd.run[data-phase="2"] .s2 { transition-delay: 1.9s; }
@@ -204,7 +204,7 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 .hd-btn { height: 44px; min-width: 0; padding: 0 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: var(--hd-ink); font: 650 14px/1 Inter, system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background .2s, border-color .2s; }
 .hd-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
 .hd-btn.go { background: var(--hd-acc); border-color: var(--hd-acc); color: #0b0d18; font-weight: 750; }
-.hd-btn.go:hover { background: #a39eff; border-color: #a39eff; }
+.hd-btn.go:hover { background: #9ec3ff; border-color: #9ec3ff; }
 @media (max-width: 480px) { .hd { padding: 12px; } .hd-stage { grid-template-columns: minmax(0, 1fr) 172px; gap: 10px; height: 300px; } .hd-phone { height: 292px; } .hd-node { padding: 8px 9px; column-gap: 8px; grid-template-columns: 26px minmax(0, 1fr); } .hd-node svg { width: 26px; height: 26px; padding: 5px; } .hd-node b { font-size: 13px; } .hd-steps li { font-size: 11.5px; padding: 6px 5px 8px; gap: 4px; } .hd-amt b, .hd-in { font-size: 23px; } .hd-in { width: 96px; } .hd-fid { width: 50px; height: 50px; margin: 6px 0 2px; } .hd-screen { padding: 36px 9px 12px; } .hd-st, .hd-verdict { bottom: 12px; font-size: 11.5px; padding: 6px 8px; } .hd-verdict { width: calc(100% - 14px); } .hd-btn { font-size: 13px; } .hd-lines p { font-size: 14px; } .hd-hashes { display: grid; } .hd-hashes span { display: grid; grid-template-columns: 4.1em auto; justify-content: start; gap: 0; } }
 @media (max-width: 340px) { .hd-btn { font-size: 12px; padding: 0 2px; } .hd-ctl { gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .hd *, .hd *::before, .hd *::after { transition: none !important; animation: none !important; } }`;
