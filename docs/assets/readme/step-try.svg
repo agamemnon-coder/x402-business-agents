@@ -3,9 +3,9 @@
 <style>text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}</style>
 <rect width="640" height="360" rx="18" fill="#0b0f1a"/><rect x="0.5" y="0.5" width="639" height="359" rx="18" fill="none" stroke="#2a2f45"/>
 <rect x="36" y="34" width="44" height="44" rx="13.2" fill="#f0f3f6"/><g transform="translate(46.27 44.27) scale(0.98)" fill="none" stroke="#0b1220" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g><text x="94" y="66" font-size="26" font-weight="700" fill="#f0f3f6">Purser</text>
-<circle cx="58" cy="152" r="24" fill="#a371f7"/><text x="58" y="161" font-size="26" font-weight="800" fill="#0b0f1a" text-anchor="middle">2</text>
+<circle cx="58" cy="152" r="24" fill="#6ea4fa"/><text x="58" y="161" font-size="26" font-weight="800" fill="#0b0f1a" text-anchor="middle">2</text>
 <text x="96" y="166" font-size="46" font-weight="800" letter-spacing="-0.8" fill="#ffffff">Try it live</text>
 <text x="36" y="216" font-size="23" fill="#c4c8d4">/try · your own test company · 2 min</text>
-<rect x="36" y="248" width="516.5" height="50" rx="25" fill="#a371f7"/><text x="294.25" y="280" font-size="22" font-weight="650" fill="#ffffff" text-anchor="middle">Approve &amp; sign EUR 1,850.00 with Face ID</text>
+<rect x="36" y="248" width="516.5" height="50" rx="25" fill="#6ea4fa"/><text x="294.25" y="280" font-size="22" font-weight="650" fill="#ffffff" text-anchor="middle">Approve &amp; sign EUR 1,850.00 with Face ID</text>
 <text x="36" y="332" font-size="17" fill="#8b90a3">the button on /try, recorded 21 Nov · test money</text>
 </svg>

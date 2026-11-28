@@ -129,7 +129,7 @@ export const globeScript = (o: GlobeOptions): string => `
   CITY = CITY.map(function (q) { return unit(q[0], q[1]); });
   function night(d) { var x = d > 0.07 ? 0 : d < -0.15 ? 1 : (0.07 - d) / 0.22; return x * x * (3 - 2 * x); }
   var still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
-  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [167, 139, 250], lite = false;
+  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [137, 181, 252], lite = false;
   var cx = 0, cy = 0, R = 0, at = null, body = null, rim = null, grid = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 48; q0++) bk.push([]);
   var bg = null;
   function hex(v) { var m = /^#([0-9a-f]{6})$/i.exec((v || "").trim()); if (!m) return null; var n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
@@ -171,9 +171,9 @@ export const globeScript = (o: GlobeOptions): string => `
     if (HOR) { // a horizon: the body is the page's own ground, lit a little at the top, so the glow behind it reads as light from beyond the limb
       var b0 = bg || (lite ? [247, 246, 251] : [8, 10, 18]), mix = function (k) { return "rgba(" + [0, 1, 2].map(function (i) { return Math.round(b0[i] + (ink[i] - b0[i]) * k); }).join(",") + ",1)"; };
       body = g.createLinearGradient(0, cy - R, 0, cy - R + Math.min(H, R)); body.addColorStop(0, mix(lite ? 0.1 : 0.16)); body.addColorStop(0.3, mix(lite ? 0.03 : 0.05)); body.addColorStop(1, mix(0));
-    } else { body = g.createRadialGradient(cx - R * 0.4, cy - R * 0.45, R * 0.05, cx, cy, R * 1.02); body.addColorStop(0, lite ? "rgba(255,255,255,1)" : "rgba(40,34,92,1)"); body.addColorStop(0.7, lite ? "rgba(241,238,253,1)" : "rgba(14,13,36,1)"); body.addColorStop(1, lite ? "rgba(226,220,250,1)" : "rgba(8,8,22,1)"); }
+    } else { body = g.createRadialGradient(cx - R * 0.4, cy - R * 0.45, R * 0.05, cx, cy, R * 1.02); body.addColorStop(0, lite ? "rgba(255,255,255,1)" : "rgba(34,56,92,1)"); body.addColorStop(0.7, lite ? "rgba(238,244,253,1)" : "rgba(13,22,36,1)"); body.addColorStop(1, lite ? "rgba(219,231,251,1)" : "rgba(8,8,22,1)"); }
     grid = g.createRadialGradient(cx, cy, 0, cx, cy, R); grid.addColorStop(0, col + (lite ? ".26)" : ".22)")); grid.addColorStop(0.8, col + (lite ? ".14)" : ".12)")); grid.addColorStop(1, col + ".03)");
-    if (HOR) { rim = g.createRadialGradient(cx, cy - R, 0, cx, cy - R, Math.max(W, H) * 0.7); rim.addColorStop(0, lite ? "rgba(255,255,255,.95)" : "rgba(236,230,255,.95)"); rim.addColorStop(0.25, col + (lite ? ".7)" : ".75)")); rim.addColorStop(1, col + "0)"); }
+    if (HOR) { rim = g.createRadialGradient(cx, cy - R, 0, cx, cy - R, Math.max(W, H) * 0.7); rim.addColorStop(0, lite ? "rgba(255,255,255,.95)" : "rgba(230,240,255,.95)"); rim.addColorStop(0.25, col + (lite ? ".7)" : ".75)")); rim.addColorStop(1, col + "0)"); }
     else { rim = g.createLinearGradient(cx - R, cy - R, cx + R * 0.6, cy + R); rim.addColorStop(0, col + (lite ? ".7)" : ".95)")); rim.addColorStop(0.5, col + ".08)"); rim.addColorStop(1, col + ".3)"); }
   }
   // One point of the sphere (or above it) in the view: [x, y, z] with z toward the viewer.
@@ -187,13 +187,13 @@ export const globeScript = (o: GlobeOptions): string => `
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     if (R < 16) return;
     var wide = R >= 90, rot = ROT + SWAY * Math.sin(el * 2 * Math.PI / PERIOD), cr = Math.cos(rot), sr = Math.sin(rot), i, v;
-    for (i = 0; i < sky.length; i++) { var S = sky[i]; g.fillStyle = "rgba(226,222,255," + (S[3] * (S[4] < 0 ? 1 : 0.55 + 0.45 * Math.sin(el / 1400 + S[4]))).toFixed(3) + ")"; g.fillRect(S[0], S[1], S[2], S[2]); }
+    for (i = 0; i < sky.length; i++) { var S = sky[i]; g.fillStyle = "rgba(222,235,255," + (S[3] * (S[4] < 0 ? 1 : 0.55 + 0.45 * Math.sin(el / 1400 + S[4]))).toFixed(3) + ")"; g.fillRect(S[0], S[1], S[2], S[2]); }
     g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.2, 0, Math.PI * 2); g.fill();
     g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
     // The night side: the Sun's direction in the view, the shade drawn small and smoothly scaled (a soft twilight).
     if (now - sunAt > 60000) { sunAt = now; var s0 = SUN(Date.now()); sunV = unit(s0[0], s0[1]); }
     var sv = view(sunV, cr, sr);
-    if (oimg) { var Dd = oimg.data, fx = W / OW, fy = H / OH, nc = lite ? [60, 44, 130, 72] : [2, 3, 12, 175], lc = lite ? [255, 255, 255, 150] : [ink[0], ink[1], ink[2], 78];
+    if (oimg) { var Dd = oimg.data, fx = W / OW, fy = H / OH, nc = lite ? [44, 77, 130, 72] : [2, 3, 12, 175], lc = lite ? [255, 255, 255, 150] : [ink[0], ink[1], ink[2], 78];
       for (var yy = 0; yy < OH; yy++) for (var xx = 0; xx < OW; xx++) { var dx = (cx - (xx + 0.5) * fx) / R, dy = (cy - (yy + 0.5) * fy) / R, r2 = dx * dx + dy * dy, dz = 0, o4 = (yy * OW + xx) * 4;
         if (r2 > 1) { r2 = Math.sqrt(r2); dx /= r2; dy /= r2; } else dz = Math.sqrt(1 - r2);
         var dd = dx * sv[0] + dy * sv[1] + dz * sv[2], nn = night(dd), tw = 4 * nn * (1 - nn) * 0.6, dc = nn > 0.02 ? nc : lc;
@@ -213,7 +213,7 @@ export const globeScript = (o: GlobeOptions): string => `
       var s = (wide ? 0.95 : 0.75) * (0.5 + 0.5 * z);
       bk[(nt > 0.5 ? 32 : !lite && lit > 0.8 ? 16 : 0) + (a >= 1 ? 15 : (a * 16) | 0)].push(cx - v[0] * R - s, cy - v[1] * R - s, s * 2);
     }
-    for (q = 0; q < 48; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 32 ? (lite ? "rgba(70,62,150," : "rgba(118,126,226,") : q >= 16 ? "rgba(240,236,255," : (lite ? "rgba(" + Math.round(ink[0] * 0.62) + "," + Math.round(ink[1] * 0.5) + "," + Math.round(ink[2] * 0.85) + "," : col)) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
+    for (q = 0; q < 48; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 32 ? (lite ? "rgba(62,96,150," : "rgba(118,126,226,") : q >= 16 ? "rgba(236,243,255," : (lite ? "rgba(" + Math.round(ink[0] * 0.62) + "," + Math.round(ink[1] * 0.5) + "," + Math.round(ink[2] * 0.85) + "," : col)) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
       for (var j = 0; j < B.length; j += 3) g.rect(B[j], B[j + 1], B[j + 2], B[j + 2]); g.fill(); }
     // The cities' lights on the night side: small and warm.
     for (i = 0; i < CITY.length; i++) { var C = CITY[i], cn = night(C[0] * sunV[0] + C[1] * sunV[1] + C[2] * sunV[2]); v = view(C, cr, sr); if (cn < 0.3 || v[2] < 0.08) continue;
@@ -222,7 +222,7 @@ export const globeScript = (o: GlobeOptions): string => `
       g.fillStyle = (lite ? "rgba(217,119,6," : "rgba(255,214,150,") + (0.9 * f2).toFixed(3) + ")"; g.beginPath(); g.arc(lx2, ly2, wide ? 1.3 : 0.9, 0, Math.PI * 2); g.fill(); }
     g.strokeStyle = rim; g.lineWidth = HOR ? 1.6 : wide ? 1.4 : 1; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
     // The arcs: drawn where they are in front of the globe or off its disc, a light running along each.
-    var green = lite ? "22,163,74" : "74,222,128", vio = lite ? "109,84,232" : "196,181,253";
+    var green = lite ? "22,163,74" : "74,222,128", vio = lite ? "81,140,235" : "180,208,254";
     for (var A = 0; A < ARCS.length; A++) { var arc = ARCS[A], prev = null, run = still ? 0.6 : ((el / 4200) + A * 0.37) % 1;
       g.lineWidth = wide ? 1.5 : 1;
       for (i = 0; i < arc.length; i++) { v = view(arc[i], cr, sr); var ok = v[2] > 0 || Math.hypot(v[0], v[1]) > 1.0, X = cx - v[0] * R, Y = cy - v[1] * R;
@@ -231,13 +231,13 @@ export const globeScript = (o: GlobeOptions): string => `
         var dim = ok && under(X, Y);
         if (prev && ok && prev[2]) { var t = i / (arc.length - 1); g.strokeStyle = "rgba(" + (t < 0.5 ? green : vio) + "," + ((0.55 + 0.4 * Math.sin(Math.PI * t)) * (dim || prev[3] ? 0.14 : 1)).toFixed(3) + ")"; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(X, Y); g.stroke(); }
         prev = [X, Y, ok, dim];
-        if (ok && !dim && Math.abs(i / (arc.length - 1) - run) < 0.5 / (arc.length - 1)) { g.fillStyle = lite ? "rgba(109,84,232,.95)" : "rgba(255,255,255,.95)"; g.beginPath(); g.arc(X, Y, wide ? 2.2 : 1.6, 0, Math.PI * 2); g.fill(); }
+        if (ok && !dim && Math.abs(i / (arc.length - 1) - run) < 0.5 / (arc.length - 1)) { g.fillStyle = lite ? "rgba(81,140,235,.95)" : "rgba(255,255,255,.95)"; g.beginPath(); g.arc(X, Y, wide ? 2.2 : 1.6, 0, Math.PI * 2); g.fill(); }
       } }
     // The route's label at the top of the first arc, small and quiet, when it is in front and clear of the words.
     if (ARCL && ARCS.length && R >= 120) { v = view(ARCS[0][24], cr, sr); if (v[2] > 0 || Math.hypot(v[0], v[1]) > 1) { var ax = cx - v[0] * R, ay = cy - v[1] * R - 12, aw = 0, clear = true;
       g.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace"; aw = g.measureText(ARCL).width;
       for (var t2 = 0; t2 < txt.length; t2++) { var T2 = txt[t2]; if (ax - aw / 2 < T2[2] && ax + aw / 2 > T2[0] && ay - 8 < T2[3] && ay + 8 > T2[1]) clear = false; }
-      if (clear) { g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = lite ? "rgba(60,48,120,.75)" : "rgba(220,214,255,.72)"; g.fillText(ARCL, ax, ay); g.textAlign = "start"; } } }
+      if (clear) { g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = lite ? "rgba(48,76,120,.75)" : "rgba(214,230,255,.72)"; g.fillText(ARCL, ax, ay); g.textAlign = "start"; } } }
     // The links: a thin curve from the first green place to each element named, a light running along each.
     if (O && lk.length) { v = view(unit(O[0], O[1]), cr, sr); if (v[2] > 0.06) { var ox = cx - v[0] * R, oy = cy - v[1] * R;
       for (var n2 = 0; n2 < lk.length; n2++) { var Q = lk[n2], mx = (ox + Q[0]) / 2, my = (oy + Q[1]) / 2 - Math.abs(Q[0] - ox) * 0.22 - (Q[1] - oy) * 0.15, lg = g.createLinearGradient(ox, oy, Q[0], Q[1]);
@@ -253,7 +253,7 @@ export const globeScript = (o: GlobeOptions): string => `
       var vx = cx - v[0] * R, vy = cy - v[1] * R, fade = Math.min(1, (v[2] - 0.06) / 0.2), rgb = P[3] ? green : vio;
       if (P[3]) { g.globalAlpha = fade * (1 - pulse); g.strokeStyle = "rgb(" + rgb + ")"; g.lineWidth = 1.5; g.beginPath(); g.arc(vx, vy, 4 + pulse * Math.min(16, R * 0.18), 0, Math.PI * 2); g.stroke();
         g.globalAlpha = fade; g.fillStyle = "rgba(" + rgb + ",.25)"; g.beginPath(); g.arc(vx, vy, 8, 0, Math.PI * 2); g.fill(); }
-      g.globalAlpha = fade; g.fillStyle = lite ? "#fff" : "rgba(12,10,32,.95)"; g.beginPath(); g.arc(vx, vy, P[3] ? 5 : 4, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = fade; g.fillStyle = lite ? "#fff" : "rgba(10,18,32,.95)"; g.beginPath(); g.arc(vx, vy, P[3] ? 5 : 4, 0, Math.PI * 2); g.fill();
       g.fillStyle = "rgb(" + rgb + ")"; g.beginPath(); g.arc(vx, vy, P[3] ? 3.5 : 2.8, 0, Math.PI * 2); g.fill();
       if (LABELS && R >= 80 && P[2]) {
         // Outward from the globe's middle first, then the other side, below, above; never on words or another label.
@@ -263,9 +263,9 @@ export const globeScript = (o: GlobeOptions): string => `
           for (var v2 = 0; v2 < txt.length && !hit; v2++) { var T = txt[v2]; if (lx < T[2] && lx + w > T[0] && ly - 11 < T[3] && ly + 11 > T[1]) hit = true; }
           fit = !hit; }
         if (fit) { placed.push([lx, ly, w]);
-          g.fillStyle = lite ? "rgba(255,255,255,.92)" : "rgba(14,12,34,.82)"; g.strokeStyle = "rgba(" + rgb + ",.45)"; g.lineWidth = 1; g.beginPath();
+          g.fillStyle = lite ? "rgba(255,255,255,.92)" : "rgba(12,20,34,.82)"; g.strokeStyle = "rgba(" + rgb + ",.45)"; g.lineWidth = 1; g.beginPath();
           if (g.roundRect) g.roundRect(lx + 0.5, ly - 10.5, w - 1, 21, 10.5); else g.rect(lx + 0.5, ly - 10.5, w - 1, 21); g.fill(); g.stroke();
-          g.fillStyle = lite ? "#231d47" : "rgba(242,239,255,.96)"; g.fillText(P[2], lx + 8, ly + 0.5); }
+          g.fillStyle = lite ? "#1d2d47" : "rgba(239,245,255,.96)"; g.fillText(P[2], lx + 8, ly + 0.5); }
       }
       g.globalAlpha = 1;
     }

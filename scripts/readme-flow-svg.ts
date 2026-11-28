@@ -15,8 +15,8 @@ export const FLOW_FILES = { light: `${FLOW_DIR}/flow-light.svg`, dark: `${FLOW_D
 
 interface Palette { bg: string; surface: string; border: string; text: string; muted: string; faint: string; accent: string; accentSoft: string; ok: string; okSoft: string; bad: string; badSoft: string; awx: string; awxSoft: string; metal: string; metalSoft: string }
 // src/redesign/ui.ts's tokens, light and dark.
-const LIGHT: Palette = { bg: "#f7f8fa", surface: "#ffffff", border: "#e3e6ec", text: "#0b1220", muted: "#586174", faint: "#646d7e", accent: "#4f46e5", accentSoft: "#eef0ff", ok: "#0b7d43", okSoft: "#e6f6ee", bad: "#c5363c", badSoft: "#fdecec", awx: "#ad4a0c", awxSoft: "#fdf0e7", metal: "#0b7a70", metalSoft: "#e3f5f2" };
-const DARK: Palette = { bg: "#0a0c11", surface: "#12151d", border: "#262b37", text: "#eef1f6", muted: "#a4adbd", faint: "#858fa1", accent: "#8b85ff", accentSoft: "#23224a", ok: "#3ccf82", okSoft: "#12291e", bad: "#ff6b70", badSoft: "#341a1c", awx: "#ff8a4c", awxSoft: "#33200f", metal: "#2dd4bf", metalSoft: "#0f2a28" };
+const LIGHT: Palette = { bg: "#f7f8fa", surface: "#ffffff", border: "#e3e6ec", text: "#0b1220", muted: "#586174", faint: "#646d7e", accent: "#4382e8", accentSoft: "#eef0ff", ok: "#0b7d43", okSoft: "#e6f6ee", bad: "#c5363c", badSoft: "#fdecec", awx: "#ad4a0c", awxSoft: "#fdf0e7", metal: "#0b7a70", metalSoft: "#e3f5f2" };
+const DARK: Palette = { bg: "#0a0c11", surface: "#12151d", border: "#262b37", text: "#eef1f6", muted: "#a4adbd", faint: "#858fa1", accent: "#85b4ff", accentSoft: "#22314a", ok: "#3ccf82", okSoft: "#12291e", bad: "#ff6b70", badSoft: "#341a1c", awx: "#ff8a4c", awxSoft: "#33200f", metal: "#2dd4bf", metalSoft: "#0f2a28" };
 
 /** The amount the drawing pays, from the Airwallex two-locks run's record, and the one a cent above it. */
 export function flowAmounts(): { paid: string; changed: string } {

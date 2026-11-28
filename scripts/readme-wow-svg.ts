@@ -59,8 +59,8 @@ ok    signature          the ES256 signature verifies with the receipt's public 
 NOT VALID: tampered.json (terms hash)`;
 
 const TERM = {
-  dark: { page: "#0b1222", win: "#0d1117", bar: "#161b22", border: "#30363d", text: "#e6edf3", muted: "#8b949e", prompt: "#a9a4ff", ok: "#3fb950", bad: "#ff7b72", caret: "#e6edf3" },
-  light: { page: "#ffffff", win: "#ffffff", bar: "#f3f4f6", border: "#d0d7de", text: "#1f2328", muted: "#57606a", prompt: "#4f46e5", ok: "#1a7f37", bad: "#cf222e", caret: "#1f2328" },
+  dark: { page: "#0b1222", win: "#0d1117", bar: "#161b22", border: "#30363d", text: "#e6edf3", muted: "#8b949e", prompt: "#a4c7ff", ok: "#3fb950", bad: "#ff7b72", caret: "#e6edf3" },
+  light: { page: "#ffffff", win: "#ffffff", bar: "#f3f4f6", border: "#d0d7de", text: "#1f2328", muted: "#57606a", prompt: "#4382e8", ok: "#1a7f37", bad: "#cf222e", caret: "#1f2328" },
 } as const;
 
 const COLS = 138, CW = 7.8, LH = 19, TX = 26, FS = 13, LOOP = 11;
@@ -139,8 +139,8 @@ export function statFigures(): { tests: number; decisions: number; alta: number;
 }
 
 const STAT = {
-  dark: { bg: "#0b1222", card: "#111a2e", border: "#24304a", text: "#eef1f6", muted: "#a4adbd", tones: ["#3ccf82", "#ef9a76", "#2dd4bf", "#8b85ff"] },
-  light: { bg: "#ffffff", card: "#f7f8fa", border: "#e3e6ec", text: "#0b1220", muted: "#586174", tones: ["#0b7d43", "#b4532a", "#0b7a70", "#4f46e5"] },
+  dark: { bg: "#0b1222", card: "#111a2e", border: "#24304a", text: "#eef1f6", muted: "#a4adbd", tones: ["#3ccf82", "#ef9a76", "#2dd4bf", "#85b4ff"] },
+  light: { bg: "#ffffff", card: "#f7f8fa", border: "#e3e6ec", text: "#0b1220", muted: "#586174", tones: ["#0b7d43", "#b4532a", "#0b7a70", "#4382e8"] },
 } as const;
 
 export function statsSvg(theme: Theme, f = statFigures()): string {
@@ -196,10 +196,10 @@ ${body}
 // ---------------------------------------------------------------------------------------------------------------------
 // The system map: everything Purser is, in six zones, left to right.
 const MAP = {
-  dark: { bg: "#0b1222", zone: "#0f182c", zoneLine: "#24304a", card: "#141e34", text: "#eef1f6", muted: "#a4adbd", path: "#a9a4ff", dot: "#c9c6ff", bad: "#ff6b70", badSoft: "#3a1a1f",
-    tones: { who: "#93a4c3", surf: "#8b85ff", agent: "#ef9a76", code: "#22d3ee", awx: "#ff8a4c", alta: "#2dd4bf", visa: "#7aa2ff", proof: "#3ccf82" } },
-  light: { bg: "#ffffff", zone: "#f6f7fa", zoneLine: "#dde1e8", card: "#ffffff", text: "#0b1220", muted: "#4f586b", path: "#4f46e5", dot: "#4f46e5", bad: "#c5363c", badSoft: "#fdecec",
-    tones: { who: "#55637d", surf: "#4f46e5", agent: "#b4532a", code: "#0e7490", awx: "#ad4a0c", alta: "#0b7a70", visa: "#1d4ed8", proof: "#0b7d43" } },
+  dark: { bg: "#0b1222", zone: "#0f182c", zoneLine: "#24304a", card: "#141e34", text: "#eef1f6", muted: "#a4adbd", path: "#a4c7ff", dot: "#c6dcff", bad: "#ff6b70", badSoft: "#3a1a1f",
+    tones: { who: "#93a4c3", surf: "#85b4ff", agent: "#ef9a76", code: "#22d3ee", awx: "#ff8a4c", alta: "#2dd4bf", visa: "#7aa2ff", proof: "#3ccf82" } },
+  light: { bg: "#ffffff", zone: "#f6f7fa", zoneLine: "#dde1e8", card: "#ffffff", text: "#0b1220", muted: "#4f586b", path: "#4382e8", dot: "#4382e8", bad: "#c5363c", badSoft: "#fdecec",
+    tones: { who: "#55637d", surf: "#4382e8", agent: "#b4532a", code: "#0e7490", awx: "#ad4a0c", alta: "#0b7a70", visa: "#1d4ed8", proof: "#0b7d43" } },
 } as const;
 type Tone = keyof (typeof MAP)["dark"]["tones"];
 interface Box { id: string; title: string; sub: string[]; tone: Tone | "bad"; h?: number }

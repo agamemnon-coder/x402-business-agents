@@ -22,8 +22,8 @@ flowchart LR
   PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]:::testmoney
   RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]:::proof
   BK --> LOG["Hash-chained audit log"]:::proof --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]:::proof
-  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
-  classDef agent fill:#4338ca,stroke:#818cf8,color:#fff
+  classDef purser fill:#246bdd,stroke:#89b5fc,color:#fff
+  classDef agent fill:#356fcd,stroke:#818cf8,color:#fff
   classDef paid fill:#047857,stroke:#34d399,color:#fff
   classDef refused fill:#be123c,stroke:#fb7185,color:#fff
   classDef testmoney fill:#b45309,stroke:#fbbf24,color:#fff

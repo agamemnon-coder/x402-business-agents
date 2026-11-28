@@ -6,7 +6,7 @@
 
 **Use your own AI assistant with your company's Purser: it reads your books and may propose a payment; it can never approve or pay.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tried live: the Claude iOS app, 13 November](https://img.shields.io/badge/tried_live-the_Claude_iOS_app_%C2%B7_13_Nov-d97757?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![The other clients: listed from their own documentation, not tried live](https://img.shields.io/badge/other_clients-from_their_own_docs-f59e0b?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![Your AI can never approve or pay](https://img.shields.io/badge/approve_or_pay-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#what-your-ai-can-do)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, CIMD or DCR](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE_%C2%B7_CIMD_%C2%B7_DCR-0ea5e9?style=flat-square&labelColor=1f2937)](#oauth-details)&nbsp;[![The demo company's public token: purser-demo-read-only](https://img.shields.io/badge/demo_token-purser--demo--read--only-8b5cf6?style=flat-square&labelColor=1f2937)](#three-steps)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tried live: the Claude iOS app, 13 November](https://img.shields.io/badge/tried_live-the_Claude_iOS_app_%C2%B7_13_Nov-d97757?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![The other clients: listed from their own documentation, not tried live](https://img.shields.io/badge/other_clients-from_their_own_docs-f59e0b?style=flat-square&labelColor=1f2937)](#which-clients-were-verified-and-how)&nbsp;[![Your AI can never approve or pay](https://img.shields.io/badge/approve_or_pay-never%2C_for_any_token-f43f5e?style=flat-square&labelColor=1f2937)](#what-your-ai-can-do)&nbsp;[![Sign-in: OAuth 2.1 with PKCE, CIMD or DCR](https://img.shields.io/badge/sign--in-OAuth_2.1_%2B_PKCE_%C2%B7_CIMD_%C2%B7_DCR-0ea5e9?style=flat-square&labelColor=1f2937)](#oauth-details)&nbsp;[![The demo company's public token: purser-demo-read-only](https://img.shields.io/badge/demo_token-purser--demo--read--only-5996f9?style=flat-square&labelColor=1f2937)](#three-steps)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Three steps](#three-steps) · [Claude](#claude) · [ChatGPT](#chatgpt) · [Cursor](#cursor) · [VS Code](#vs-code-github-copilot-agent-mode) · [Gemini CLI](#gemini-cli) · [Windsurf](#windsurf-now-devin-desktop) · [Verified](#which-clients-were-verified-and-how) · [Security](#security) · [OAuth](#oauth-details)
 
@@ -54,8 +54,8 @@ flowchart LR
   end
   TOK --> ADD --> CON --> ASK["Ask: what needs my Face ID?"]
   ASK --> FID["Every payment:<br/>the CFO's Face ID in Purser Cloud"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class TOK,CON,FID purser
   class ADD sourcing

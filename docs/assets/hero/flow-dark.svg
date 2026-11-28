@@ -44,8 +44,8 @@ text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,H
 </g>
 <g transform="translate(440 220)">
   <rect width="330" height="62" rx="14" fill="#12151d" stroke="#262b37"/>
-  <rect class="lit l2" width="330" height="62" rx="14" fill="#23224a" stroke="#8b85ff" stroke-width="2"/>
-  <g transform="translate(18 15)"><rect width="32" height="32" rx="9" fill="#0a0c11" stroke="#262b37"/><g class="lit l2"><rect width="32" height="32" rx="9" fill="#8b85ff"/><path d="M10 16.5l4 4 8-9" fill="none" stroke="#12151d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g></g>
+  <rect class="lit l2" width="330" height="62" rx="14" fill="#22314a" stroke="#85b4ff" stroke-width="2"/>
+  <g transform="translate(18 15)"><rect width="32" height="32" rx="9" fill="#0a0c11" stroke="#262b37"/><g class="lit l2"><rect width="32" height="32" rx="9" fill="#85b4ff"/><path d="M10 16.5l4 4 8-9" fill="none" stroke="#12151d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g></g>
   <text x="64" y="28" class="t" font-size="16" font-weight="650">CFO passkey</text>
   <text x="64" y="47" class="m" font-size="13">Face ID on the exact terms</text>
 </g>

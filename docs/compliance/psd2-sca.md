@@ -6,7 +6,7 @@
 
 **How the CFO's passkey approval maps to the RTS on SCA: two elements, and a signature bound to the exact amount and payee. And where Purser is not a PSP.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Dynamic linking: terms hash](https://img.shields.io/badge/dynamic_linking-terms_hash-10b981?style=flat-square&labelColor=1f2937)](#dynamic-linking-rts-art-5)&nbsp;[![Purser: not a PSP](https://img.shields.io/badge/Purser-not_a_PSP-f43f5e?style=flat-square&labelColor=1f2937)](#where-purser-is-not-a-psp)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Dynamic linking: terms hash](https://img.shields.io/badge/dynamic_linking-terms_hash-10b981?style=flat-square&labelColor=1f2937)](#dynamic-linking-rts-art-5)&nbsp;[![Purser: not a PSP](https://img.shields.io/badge/Purser-not_a_PSP-f43f5e?style=flat-square&labelColor=1f2937)](#where-purser-is-not-a-psp)
 
 [Not a PSP](#where-purser-is-not-a-psp) · [Two elements](#two-elements-rts-art-4) · [Dynamic linking](#dynamic-linking-rts-art-5) · [Credentials](#the-credentials-rts-arts-22-to-27) · [Open](#what-is-open)
 

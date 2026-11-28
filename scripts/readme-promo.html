@@ -2,10 +2,10 @@
 <!-- Rendered to docs/assets/readme/promo.webp (720x720, 30 fps, 12 s loop): render(t) is called for t = i/30, i = 0..359, each frame screenshotted with Playwright at 1080x1080, then scaled to 720x720; identical neighbouring frames are merged into one longer frame, and every frame is written whole (Pillow WebP: quality 65, method 6, kmax=1: each frame a key frame, no blending), so a phone that drops frames never shows a half-drawn one. Values from the live /try run of 16 Nov 2026 (test money). -->
 <html><head><meta charset="utf-8"><title>Purser promo</title>
 <style>
-:root{--bg:#0b1020;--card:#121a30;--line:#24304f;--text:#eef2ff;--muted:#9aa6c6;--ok:#22c55e;--okbg:rgba(34,197,94,.14);--bad:#ef4444;--badbg:rgba(239,68,68,.15);--warn:#f59e0b;--violet:#8b7bff;--mono:'DejaVu Sans Mono',ui-monospace,monospace}
+:root{--bg:#0b1020;--card:#121a30;--line:#24304f;--text:#eef2ff;--muted:#9aa6c6;--ok:#22c55e;--okbg:rgba(34,197,94,.14);--bad:#ef4444;--badbg:rgba(239,68,68,.15);--warn:#f59e0b;--violet:#7baeff;--mono:'DejaVu Sans Mono',ui-monospace,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1080px;height:1080px;overflow:hidden}
-body{background:radial-gradient(1200px 700px at 85% -10%,#2a2366 0%,transparent 60%),radial-gradient(900px 600px at -10% 110%,#0f3b3a 0%,transparent 55%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:56px 60px}
+body{background:radial-gradient(1200px 700px at 85% -10%,#233d66 0%,transparent 60%),radial-gradient(900px 600px at -10% 110%,#0f3b3a 0%,transparent 55%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:56px 60px}
 .brand{display:flex;align-items:center;gap:14px;font-weight:700;font-size:34px;color:#c9d2f0}
 .brand i{width:44px;height:44px;border-radius:12px;background:#fff;display:grid;place-items:center;font-style:normal;color:#0b1020;font-size:26px}
 h1{margin-top:22px;font-size:72px;line-height:1.02;font-weight:800;letter-spacing:-.02em}
@@ -13,7 +13,7 @@ h1 span{color:var(--violet)}
 .steps{display:flex;gap:12px;margin-top:28px}
 .steps div{flex:1;padding:14px 16px;border-radius:16px;border:2px solid var(--line);font-size:27px;font-weight:650;color:var(--muted);white-space:nowrap}
 .steps div b{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--line);color:var(--text);font-size:21px;margin-right:10px;vertical-align:2px}
-.steps div.on{color:var(--text);border-color:var(--violet);background:rgba(139,123,255,.14)}
+.steps div.on{color:var(--text);border-color:var(--violet);background:rgba(123,174,255,.14)}
 .steps div.on b{background:var(--violet)}
 .stage{position:relative;margin-top:24px;height:590px}
 .scene{position:absolute;inset:0;border-radius:28px;background:var(--card);border:2px solid var(--line);padding:34px 38px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
@@ -28,8 +28,8 @@ h1 span{color:var(--violet)}
 .row.code{font-family:var(--mono);font-size:33px;background:#0a1124;border:2px solid var(--line);color:#c7f9d4}
 .row.warn{font-family:var(--mono);font-size:33px;background:#0a1124;border:2px solid var(--line);color:#fcd38d}
 .row.bad{font-family:var(--mono);font-size:33px;background:#0a1124;border:2px solid var(--bad);color:#fecaca}
-.row.sign{background:rgba(139,123,255,.16);border:2px solid var(--violet)}
-.row.sign b{font-family:var(--mono);color:#d9d4ff}
+.row.sign{background:rgba(123,174,255,.16);border:2px solid var(--violet)}
+.row.sign b{font-family:var(--mono);color:#d4e4ff}
 .row.stamp{background:var(--okbg);border:2px solid var(--ok);color:#bbf7d0;font-weight:750}
 .row.stamp::before{content:"✓";display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--ok);color:#052e16;font-weight:900;flex:none}
 .row.refused{background:var(--badbg);border:2px solid var(--bad);color:#fecaca;font-weight:800;font-size:40px}
@@ -81,7 +81,7 @@ window.render=(t)=>{t=((t%L)+L)%L;
       let x=(1-p)*-18;
       if(k==='bad'||k==='refused'){const q=t-at;if(q>0&&q<0.5)x+=Math.sin(q*60)*10*(1-q/0.5)}
       r.style.transform=`translateX(${x}px)`;
-      if(k==='sign'&&t>at&&t<at+0.8){const q=(t-at)/0.8;r.style.boxShadow=`0 0 0 ${q*16}px rgba(139,123,255,${0.35*(1-q)})`}else r.style.boxShadow='';
+      if(k==='sign'&&t>at&&t<at+0.8){const q=(t-at)/0.8;r.style.boxShadow=`0 0 0 ${q*16}px rgba(123,174,255,${0.35*(1-q)})`}else r.style.boxShadow='';
       if(k==='stamp'||k==='refused'){const q=t-at;const sc=q>0&&q<0.35?1+0.06*Math.sin(q/0.35*Math.PI):1;r.style.transform+=` scale(${sc})`}});
     const shown=s.rows.filter(([at])=>t>=at).length;e.querySelector('.bar i').style.width=(shown/s.rows.length*100)+'%';
     document.getElementById('s'+i).classList.toggle('on',t>=s.from&&t<s.to)});

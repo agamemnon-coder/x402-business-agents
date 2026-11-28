@@ -10,20 +10,20 @@
 <text x="32" y="80" class="h">Agent proposes</text><text x="32" y="100" class="s">Claude, exact terms</text>
 <circle cx="94.0" cy="148" r="5" fill="#0b0d17" stroke="#818cf8" stroke-width="2"/></g>
 <path d="M172 86.0h10m-4 -4 4 4 -4 4" fill="none" stroke="#2e3150" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-<g><rect x="184" y="50" width="148" height="72" rx="14" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-opacity=".7"/>
-<rect x="198" y="50" width="120" height="3" rx="1.5" fill="#a78bfa"/>
+<g><rect x="184" y="50" width="148" height="72" rx="14" fill="#89b5fc" fill-opacity="0.16" stroke="#89b5fc" stroke-opacity=".7"/>
+<rect x="198" y="50" width="120" height="3" rx="1.5" fill="#89b5fc"/>
 <text x="196" y="80" class="h">Purser's checks</text><text x="196" y="100" class="s">limits · payee · duplicates</text>
-<circle cx="258.0" cy="148" r="5" fill="#0b0d17" stroke="#a78bfa" stroke-width="2"/></g>
+<circle cx="258.0" cy="148" r="5" fill="#0b0d17" stroke="#89b5fc" stroke-width="2"/></g>
 <path d="M336 86.0h10m-4 -4 4 4 -4 4" fill="none" stroke="#2e3150" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-<g><rect x="348" y="50" width="148" height="72" rx="14" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-opacity=".7"/>
-<rect x="362" y="50" width="120" height="3" rx="1.5" fill="#a78bfa"/>
+<g><rect x="348" y="50" width="148" height="72" rx="14" fill="#89b5fc" fill-opacity="0.16" stroke="#89b5fc" stroke-opacity=".7"/>
+<rect x="362" y="50" width="120" height="3" rx="1.5" fill="#89b5fc"/>
 <text x="360" y="80" class="h">CFO's passkey</text><text x="360" y="100" class="s">signs the terms' hash</text>
-<circle cx="422.0" cy="148" r="5" fill="#0b0d17" stroke="#a78bfa" stroke-width="2"/></g>
+<circle cx="422.0" cy="148" r="5" fill="#0b0d17" stroke="#89b5fc" stroke-width="2"/></g>
 <path d="M500 86.0h10m-4 -4 4 4 -4 4" fill="none" stroke="#2e3150" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-<g><rect x="512" y="50" width="148" height="72" rx="14" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-opacity=".7"/>
-<rect x="526" y="50" width="120" height="3" rx="1.5" fill="#a78bfa"/>
+<g><rect x="512" y="50" width="148" height="72" rx="14" fill="#89b5fc" fill-opacity="0.16" stroke="#89b5fc" stroke-opacity=".7"/>
+<rect x="526" y="50" width="120" height="3" rx="1.5" fill="#89b5fc"/>
 <text x="524" y="80" class="h">Executor re-check</text><text x="524" y="100" class="s">hash still matches?</text>
-<circle cx="586.0" cy="148" r="5" fill="#0b0d17" stroke="#a78bfa" stroke-width="2"/></g>
+<circle cx="586.0" cy="148" r="5" fill="#0b0d17" stroke="#89b5fc" stroke-width="2"/></g>
 <path d="M664 86.0h10m-4 -4 4 4 -4 4" fill="none" stroke="#2e3150" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 <g><rect x="676" y="50" width="148" height="72" rx="14" fill="#fbbf24" fill-opacity="0.16" stroke="#fbbf24" stroke-opacity=".7"/>
 <rect x="690" y="50" width="120" height="3" rx="1.5" fill="#fbbf24"/>
@@ -44,8 +44,8 @@
 <g class="st"><circle cx="750.0" cy="148" r="8" fill="#34d399"/><path d="M746.4 148l2.4 2.4 4.8-4.8" fill="none" stroke="#0b0d17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
 <g class="mv" opacity="0"><circle cx="914.0" cy="148" r="8" fill="#34d399"/><path d="M910.4 148l2.4 2.4 4.8-4.8" fill="none" stroke="#0b0d17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.4;0.4125;0.4625;0.4813;1"/></g>
 <g class="st"><circle cx="914.0" cy="148" r="8" fill="#34d399"/><path d="M910.4 148l2.4 2.4 4.8-4.8" fill="none" stroke="#0b0d17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
-<circle class="mv" cx="94.0" cy="148" r="7" fill="#a78bfa" opacity="0"><animate attributeName="cx" dur="16.0s" repeatCount="indefinite" values="94.0;94.0;914.0;914.0" keyTimes="0;0.025;0.4;1"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.025;0.45;0.475;1"/><animate attributeName="fill" dur="16.0s" repeatCount="indefinite" calcMode="discrete" values="#a78bfa;#34d399;#a78bfa" keyTimes="0;0.325;0.5"/></circle>
-<circle class="mv" cx="94.0" cy="148" r="7" fill="#a78bfa" opacity="0"><animate attributeName="cx" dur="16.0s" repeatCount="indefinite" values="94.0;94.0;586.0;586.0" keyTimes="0;0.525;0.75;1"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.5188;0.5312;0.975;1"/><animate attributeName="fill" dur="16.0s" repeatCount="indefinite" calcMode="discrete" values="#a78bfa;#fb7185" keyTimes="0;0.6813"/></circle>
+<circle class="mv" cx="94.0" cy="148" r="7" fill="#89b5fc" opacity="0"><animate attributeName="cx" dur="16.0s" repeatCount="indefinite" values="94.0;94.0;914.0;914.0" keyTimes="0;0.025;0.4;1"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.025;0.45;0.475;1"/><animate attributeName="fill" dur="16.0s" repeatCount="indefinite" calcMode="discrete" values="#89b5fc;#34d399;#89b5fc" keyTimes="0;0.325;0.5"/></circle>
+<circle class="mv" cx="94.0" cy="148" r="7" fill="#89b5fc" opacity="0"><animate attributeName="cx" dur="16.0s" repeatCount="indefinite" values="94.0;94.0;586.0;586.0" keyTimes="0;0.525;0.75;1"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.5188;0.5312;0.975;1"/><animate attributeName="fill" dur="16.0s" repeatCount="indefinite" calcMode="discrete" values="#89b5fc;#fb7185" keyTimes="0;0.6813"/></circle>
 <g class="mv" opacity="0"><circle cx="586.0" cy="148" r="8" fill="#fb7185"/><path d="M583.0 145l6 6m0 -6-6 6" stroke="#0b0d17" stroke-width="2" stroke-linecap="round"/><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.75;0.7625;0.975;1"/></g>
 <rect class="mv" x="512" y="50" width="148" height="72" rx="14" fill="none" stroke="#fb7185" stroke-width="2.5" opacity="0"><animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.75;0.7625;0.975;1"/></rect>
 <text class="c mv" x="20" y="204" fill="#34d399" opacity="0">Terms as signed: every check passes, the rail pays on test money, the chain records it.<animate attributeName="opacity" dur="16.0s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;0.025;0.4625;0.4875;1"/></text>

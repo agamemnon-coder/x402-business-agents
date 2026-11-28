@@ -5,7 +5,7 @@
 // from the server goes in as text, never as markup; bars and dots move through the CSSOM (element.style), never through
 // a style attribute, so the pages' nonce policy holds.
 //
-// The colour system (cloud/src/consoleColor.ts): violet Purser and the CFO's approval (--accent), emerald agreed and
+// The colour system (cloud/src/consoleColor.ts): blue Purser and the CFO's approval (--accent), emerald agreed and
 // within (--n-ok), amber what goes to the CFO and test money (--n-wait), rose refused (--n-bad); each agent its own hue
 // (--n-p Purser's Sourcing agent, --n-s the simulated supplier). Laid out by the view's own width (container queries),
 // so /try's narrow card and the page's wide one each get theirs: one column on a phone; the two agents in two columns
@@ -86,7 +86,7 @@ const MIX = ["ok", "wait", "bad"].map((h) => `--t-${h}:color-mix(in srgb,var(--n
 
 /** The view's style: every selector under .neg, .negagreed or .negcard, or a class only the view uses; after the page's own. */
 export const NEG_CSS = `
-:root{--n-ok:#047857;--n-wait:#b45309;--n-bad:#be123c;--n-p:#4338ca;--n-s:#0f766e}
+:root{--n-ok:#047857;--n-wait:#b45309;--n-bad:#be123c;--n-p:#356fcd;--n-s:#0f766e}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${DARK}}}:root[data-theme="dark"]{${DARK}}
 .neg,.negagreed,.neg-err{${MIX}}
 .neg{container-type:inline-size;display:grid;gap:12px}.ngrid,.nside{display:grid;gap:12px;align-content:start;min-width:0}.nchat{min-width:0}

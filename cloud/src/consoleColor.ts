@@ -1,5 +1,5 @@
 // Purser Cloud's console in colour (26 Nov, Max: "add a bit more colours to the purser cloud and more details"): one
-// colour per meaning, the same on every page, after every other style so it has the last word. Violet is Purser and
+// colour per meaning, the same on every page, after every other style so it has the last word. Blue is Purser and
 // the CFO's approval (--accent), green paid and healthy (--ok), amber what waits and test money (--warn), rose what was
 // refused or stopped (--bad), sky the cash and money moving (--sky), indigo the agents (--ind). Each agent keeps its own
 // colour (--g0 to --g5, by passHue in cloud/src/agentWallet.ts: Sourcing, Support, Treasury, then by name), the colour
@@ -9,7 +9,7 @@
 // (light: 700 to 800 shades; dark: 300 to 400). Motion only without prefers-reduced-motion; nothing here moves.
 
 const DARK = "--sky:#38bdf8;--ind:#818cf8;--g0:#818cf8;--g1:#2dd4bf;--g2:#60a5fa;--g3:#fbbf24;--g4:#f472b6;--g5:#94a3b8;"
-  + "--m0:#b4aaff;--m1:#7dd3fc;--m2:#6ee7b7;--m3:#fcd34d;--m4:#fda4af;--m5:#a5b4fc;--m6:#5eead4;--m7:#f0abfc";
+  + "--m0:#aacbff;--m1:#7dd3fc;--m2:#6ee7b7;--m3:#fcd34d;--m4:#fda4af;--m5:#a5b4fc;--m6:#5eead4;--m7:#f0abfc";
 
 // The icons a state carries in every pill (lucide's, as CSS masks in the text's own colour: no image of their own).
 const mask = (paths: string) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'>${paths}</svg>`)}")`;
@@ -32,10 +32,10 @@ const hues = (p: string, v: string, n: number) => Array.from({ length: n }, (_, 
 // 26 Nov, later (Max: "can we get more out of it? cause this is barely anything i like the colours"): the same
 // meanings, pushed. Every tile and card carries its own hue as a wash and a top band, each figure's series in that hue
 // under it, the charts in sky (cash) and rose (below zero), every state pill with its icon, tables with a coloured edge
-// per state and a violet zebra, each agent's card in its own colour with its limit as a ring, the sidebar's page as a
-// violet pill, and the connections by their honest label (live green, test money amber, built indigo, planned dashed).
+// per state and a blue zebra, each agent's card in its own colour with its limit as a ring, the sidebar's page as a
+// blue pill, and the connections by their honest label (live green, test money amber, built indigo, planned dashed).
 // Text stays in the theme's text colours or a hue mixed with them: at least 4.5:1 on the colour behind it, measured in
-// both themes on every page of the guest console and the sign-up (26 Nov). The sign-up's steps in violet, a done step in
+// both themes on every page of the guest console and the sign-up (26 Nov). The sign-up's steps in blue, a done step in
 // green, its test money in amber. Nothing here moves.
 const MORE_CSS = `
 :root{${ICON_VARS}}
@@ -45,7 +45,7 @@ const MORE_CSS = `
 .pill.tmoney,.ovs-run.sandbox,.ovs-run.testnet{background:var(--warn-soft);color:var(--warn)}
 .pill.ok,.pill.bad,.pill.warn,.pill.tmoney{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 22%,transparent)}
 .st{box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 20%,transparent)}
-/* Tables: a violet zebra and hover, the header in violet's own ground, a coloured edge per state. */
+/* Tables: a blue zebra and hover, the header in blue's own ground, a coloured edge per state. */
 .signed-in .card.list>.row:not(.th):nth-child(odd),.signed-in .card.list>.trow:not(.th):nth-child(odd),.ov-tbl>a.ov-tr:nth-of-type(even),table.table.jt tbody tr:nth-child(even){background-color:color-mix(in srgb,var(--accent) 3.5%,transparent)}
 .signed-in .card.list>a.row:hover,.signed-in .card.list>.trow:not(.th):hover,.ov-tbl>a.ov-tr:hover,table.table.jt tbody tr:hover{background-color:color-mix(in srgb,var(--accent) 8%,transparent)}
 .signed-in .card.list>.row.th,.signed-in .card.list>.trow.th,.ov-th{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 10%,var(--surface)),color-mix(in srgb,var(--sky) 6%,var(--surface)));color:color-mix(in srgb,var(--accent) 45%,var(--muted))}
@@ -105,7 +105,7 @@ svg.chart .b.fin{fill:var(--sky)}.klegend i.fin,.chtip .sw.fin{background:var(--
 .isl i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
 .isb{height:8px}
 .signed-in .chip[aria-pressed="true"]{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 24%,var(--surface)),color-mix(in srgb,var(--accent) 10%,var(--surface)));border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
-/* The sidebar: the page in a violet pill, each section's icons in its colour, the integrations' state as a dot. */
+/* The sidebar: the page in a blue pill, each section's icons in its colour, the integrations' state as a dot. */
 .signed-in .appbar nav.apptabs a[aria-current="page"]{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 30%,transparent),color-mix(in srgb,var(--accent) 9%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent),0 8px 20px -14px var(--accent);font-weight:650}
 .signed-in .appbar nav.apptabs a[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
 .signed-in .appbar nav.apptabs a .ic{color:color-mix(in srgb,var(--nc,var(--faint)) 80%,var(--muted))}
@@ -157,7 +157,7 @@ table.table.jt thead th,table.table.vat thead th,table.table.ctab thead th{color
 /* Agents: the card itself glows faintly in its agent's colour. */
 .dk-item:has(.dk-meta.g0){--agc:var(--g0)}.dk-item:has(.dk-meta.g1){--agc:var(--g1)}.dk-item:has(.dk-meta.g2){--agc:var(--g2)}.dk-item:has(.dk-meta.g3){--agc:var(--g3)}.dk-item:has(.dk-meta.g4){--agc:var(--g4)}.dk-item:has(.dk-meta.g5){--agc:var(--g5)}
 .dk-item:has(.dk-meta[class*=" g"]) button.dk-face{box-shadow:0 26px 46px -30px var(--agc),0 0 0 1px color-mix(in srgb,var(--agc) 30%,transparent)}
-/* The sign-up ("Set it up") and a passkey's enrolment: the steps in violet, done in green, test money in amber. */
+/* The sign-up ("Set it up") and a passkey's enrolment: the steps in blue, done in green, test money in amber. */
 .auth p.tm-chip{display:inline-flex;align-items:center;gap:7px;margin:2px 0 4px;padding:5px 12px 5px 9px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font:650 11.5px/1.2 var(--mono,ui-monospace,monospace);letter-spacing:.05em;text-transform:uppercase;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn) 30%,transparent)}
 .auth p.tm-chip .ic,.auth p.tm-chip svg{width:13px;height:13px;display:inline-flex}
 .auth.start ol.stepper{margin-top:14px;gap:4px}
@@ -182,7 +182,7 @@ ol.stepper li:not(.now):not(.done) .n{background:transparent;box-shadow:inset 0 
 `;
 
 export const COLOR_CSS = `
-:root{--sky:#0369a1;--ind:#4338ca;--g0:#4f46e5;--g1:#0f766e;--g2:#1d4ed8;--g3:#b45309;--g4:#be185d;--g5:#475569;--m0:#6d28d9;--m1:#0369a1;--m2:#047857;--m3:#92400e;--m4:#be123c;--m5:#4338ca;--m6:#0f766e;--m7:#a21caf}
+:root{--sky:#0369a1;--ind:#356fcd;--g0:#4382e8;--g1:#0f766e;--g2:#1d4ed8;--g3:#b45309;--g4:#be185d;--g5:#475569;--m0:#246bdd;--m1:#0369a1;--m2:#047857;--m3:#92400e;--m4:#be123c;--m5:#356fcd;--m6:#0f766e;--m7:#a21caf}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${DARK}}}
 :root[data-theme="dark"]{${DARK}}
 ${hues("m", "h", 8)}${hues("g", "ag", 6)}.gi{--ag:var(--accent)}

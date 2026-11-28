@@ -602,7 +602,7 @@ export function statusCounts(): StatusCount[] {
 }
 
 /** The palette of the compliance pages: evidence emerald, documented sky, gap rose; violet and amber for people and signatures. */
-export const PALETTE = { violet: "#8b5cf6", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e", sky: "#0ea5e9" } as const;
+export const PALETTE = { violet: "#5996f9", emerald: "#10b981", amber: "#f59e0b", rose: "#f43f5e", sky: "#0ea5e9" } as const;
 
 const badge = (label: string, n: number, colour: string) =>
   `![${label}: ${n}](https://img.shields.io/badge/${encodeURIComponent(label.replace(/-/g, "--").replace(/ /g, "_"))}-${n}-${colour.slice(1)}?style=flat-square&labelColor=1f2937)`;

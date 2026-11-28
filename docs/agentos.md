@@ -6,7 +6,7 @@
 
 **AgentOS reads and prepares, and leaves transfers and FX to people; Purser governs that step with the CFO's passkey.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Not an official integration; no partnership with Airwallex](https://img.shields.io/badge/official_integration-no_%C2%B7_no_partnership-f43f5e?style=flat-square&labelColor=1f2937)](#purser-alongside-airwallex-agentos)&nbsp;[![Purser has not been run against AgentOS live](https://img.shields.io/badge/run_with_AgentOS_live-not_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-checked-and-what-needs-live-access-or-airwallex)&nbsp;[![route_money_out: read-only, files nothing](https://img.shields.io/badge/route__money__out-read--only_%C2%B7_files_nothing-8b5cf6?style=flat-square&labelColor=1f2937)](#the-tool-built-for-this-route_money_out)&nbsp;[![Money out: the CFO's Face ID over the exact terms](https://img.shields.io/badge/money_out-the_CFO%27s_Face_ID_over_the_exact_terms-8b5cf6?style=flat-square&labelColor=1f2937)](#who-does-what)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Not an official integration; no partnership with Airwallex](https://img.shields.io/badge/official_integration-no_%C2%B7_no_partnership-f43f5e?style=flat-square&labelColor=1f2937)](#purser-alongside-airwallex-agentos)&nbsp;[![Purser has not been run against AgentOS live](https://img.shields.io/badge/run_with_AgentOS_live-not_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-checked-and-what-needs-live-access-or-airwallex)&nbsp;[![route_money_out: read-only, files nothing](https://img.shields.io/badge/route__money__out-read--only_%C2%B7_files_nothing-5996f9?style=flat-square&labelColor=1f2937)](#the-tool-built-for-this-route_money_out)&nbsp;[![Money out: the CFO's Face ID over the exact terms](https://img.shields.io/badge/money_out-the_CFO%27s_Face_ID_over_the_exact_terms-5996f9?style=flat-square&labelColor=1f2937)](#who-does-what)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [What AgentOS is](#what-agentos-is) · [Who does what](#who-does-what) · [route_money_out](#the-tool-built-for-this-route_money_out) · [Both in one client](#running-both-in-one-client) · [A worked flow](#a-worked-flow) · [A second lock](#airwallexs-own-approval-as-a-second-lock) · [What is checked](#what-is-checked-and-what-needs-live-access-or-airwallex)
 
@@ -125,7 +125,7 @@ flowchart LR
   R --> CH["choose<br/>ask the user which"]
   R --> NI["needs_invoice<br/>nothing can be filed"]
   R --> NP["not_in_purser<br/>a person, in Airwallex's app"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
@@ -209,7 +209,7 @@ sequenceDiagram
   AO-->>U: balances, obligations, indicative rates
   U->>AO: pay Bergtex's invoice
   AO-->>U: refused: its hard gate
-  rect rgba(139, 92, 246, 0.14)
+  rect rgba(89, 150, 249, 0.14)
     U->>P: using Purser, route the payment
     P-->>U: route propose, AP-…
     U->>P: propose_invoice_payment

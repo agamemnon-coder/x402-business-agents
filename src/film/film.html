@@ -6,11 +6,11 @@
 <title>Purser: the earlier animation (30 October)</title>
 <style>
 @font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
-:root { --bg: #07080d; --panel: #11141d; --panel2: #171b27; --line: #252a3a; --text: #f3f4f8; --muted: #9aa2b6; --accent: #7c6cff; --accent2: #a99fff; --ok: #34d17e; --bad: #ff5d52; --wait: #f5a524; --metal: #38bdf8; --awx: #ff5b2e; }
+:root { --bg: #07080d; --panel: #11141d; --panel2: #171b27; --line: #252a3a; --text: #f3f4f8; --muted: #9aa2b6; --accent: #6ca4ff; --accent2: #9fc4ff; --ok: #34d17e; --bad: #ff5d52; --wait: #f5a524; --metal: #38bdf8; --awx: #ff5b2e; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
-#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: radial-gradient(1200px 700px at 70% 20%, #1a1640 0%, rgba(7,8,13,0) 60%), radial-gradient(900px 600px at 10% 90%, #0b2a33 0%, rgba(7,8,13,0) 60%), var(--bg); overflow: hidden; }
+#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: radial-gradient(1200px 700px at 70% 20%, #162640 0%, rgba(7,8,13,0) 60%), radial-gradient(900px 600px at 10% 90%, #0b2a33 0%, rgba(7,8,13,0) 60%), var(--bg); overflow: hidden; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
 .layer { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
 .a { position: absolute; will-change: opacity, transform; }
@@ -21,7 +21,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 .muted { color: var(--muted); }
 .ok { color: var(--ok); } .bad { color: var(--bad); } .wait { color: var(--wait); }
 .card { width: 520px; height: 320px; border-radius: 28px; padding: 34px 38px; color: #fff; background: linear-gradient(135deg, #2a2f45 0%, #11131c 100%); box-shadow: 0 40px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); }
-.card.v { background: linear-gradient(135deg, #7c6cff 0%, #3b2fb8 100%); }
+.card.v { background: linear-gradient(135deg, #6ca4ff 0%, #2c63bb 100%); }
 .card .t { font-size: 22px; font-weight: 600; opacity: .85; display: flex; justify-content: space-between; }
 .card .n { font-size: 38px; font-weight: 700; margin-top: 70px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .card .b { display: flex; justify-content: space-between; align-items: end; margin-top: 18px; font-size: 22px; opacity: .9; }
@@ -33,7 +33,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 .pill { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; font-size: 26px; font-weight: 700; background: var(--panel2); border: 1px solid var(--line); white-space: nowrap; }
 .pill.ok { background: rgba(52,209,126,.14); border-color: rgba(52,209,126,.45); }
 .pill.bad { background: rgba(255,93,82,.14); border-color: rgba(255,93,82,.5); }
-.pill.ai { background: rgba(124,108,255,.16); border-color: rgba(124,108,255,.5); color: var(--accent2); font-size: 22px; padding: 9px 18px; }
+.pill.ai { background: rgba(108,164,255,.16); border-color: rgba(108,164,255,.5); color: var(--accent2); font-size: 22px; padding: 9px 18px; }
 .toast { width: 640px; padding: 24px 28px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); display: flex; align-items: center; gap: 20px; font-size: 28px; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
 .toast .ic { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 900; flex: none; }
 .toast.ok .ic { background: rgba(52,209,126,.18); color: var(--ok); } .toast.bad .ic { background: rgba(255,93,82,.18); color: var(--bad); }

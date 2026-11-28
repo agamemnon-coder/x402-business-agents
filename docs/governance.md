@@ -193,7 +193,7 @@ flowchart TB
   classDef person fill:#f59e0b,stroke:#1f2937,color:#1f2937
   classDef key fill:#10b981,stroke:#1f2937,color:#fff
   classDef change fill:#0ea5e9,stroke:#1f2937,color:#fff
-  classDef ai fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef ai fill:#5996f9,stroke:#1f2937,color:#fff
   class CFO,TWO,MNT person
   class KEY key
   class PAY,POL,LOOSE,CODE,EVID change

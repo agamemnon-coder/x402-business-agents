@@ -72,8 +72,8 @@ flowchart LR
   X -- "match" --> L
   L --> B["Purser's books<br/>hash-chained audit log"]
   B --> T["T:0 general ledger<br/>(sandbox)"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
@@ -227,8 +227,8 @@ flowchart LR
   L -- "yes, EUR 12.00" --> AI["Airi: a single-use<br/>Visa credential"]
   L -- "no, EUR 45.00" --> F["The CFO's Face ID<br/>on the exact terms"] --> AI
   AI --> CH["The cardholder's passkey<br/>in Airi"] --> OK["PaymentIntent SUCCEEDED"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827

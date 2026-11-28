@@ -6,7 +6,7 @@
 
 **In-context learning from signed outcomes: the most similar earlier cases go to Claude as precedent; code's checks still decide.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![In-context learning from signed outcomes; no model is trained or fine-tuned](https://img.shields.io/badge/learning-in_context_%C2%B7_no_model_trained-8b5cf6?style=flat-square&labelColor=1f2937)](#how-the-agents-learn-from-the-cfos-past-decisions)&nbsp;[![No limit changes on its own: a suggestion waits for the CFO's Face ID](https://img.shields.io/badge/a_limit_changes_on_its_own-never_%C2%B7_Face_ID-f43f5e?style=flat-square&labelColor=1f2937)](#the-four-parts)&nbsp;[![The precedent eval of 14 November: 49 of 49 without, 48 of 49 with; precedent did not improve agreement](https://img.shields.io/badge/precedent_eval%2C_14_Nov-49_%E2%86%92_48_of_49_%C2%B7_no_gain-f59e0b?style=flat-square&labelColor=1f2937)](#does-precedent-help-the-eval)&nbsp;[![Total cost of the two eval runs: USD 0.14](https://img.shields.io/badge/eval_cost-USD_0.14-0ea5e9?style=flat-square&labelColor=1f2937)](#does-precedent-help-the-eval)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![In-context learning from signed outcomes; no model is trained or fine-tuned](https://img.shields.io/badge/learning-in_context_%C2%B7_no_model_trained-5996f9?style=flat-square&labelColor=1f2937)](#how-the-agents-learn-from-the-cfos-past-decisions)&nbsp;[![No limit changes on its own: a suggestion waits for the CFO's Face ID](https://img.shields.io/badge/a_limit_changes_on_its_own-never_%C2%B7_Face_ID-f43f5e?style=flat-square&labelColor=1f2937)](#the-four-parts)&nbsp;[![The precedent eval of 14 November: 49 of 49 without, 48 of 49 with; precedent did not improve agreement](https://img.shields.io/badge/precedent_eval%2C_14_Nov-49_%E2%86%92_48_of_49_%C2%B7_no_gain-f59e0b?style=flat-square&labelColor=1f2937)](#does-precedent-help-the-eval)&nbsp;[![Total cost of the two eval runs: USD 0.14](https://img.shields.io/badge/eval_cost-USD_0.14-0ea5e9?style=flat-square&labelColor=1f2937)](#does-precedent-help-the-eval)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [The four parts](#the-four-parts) · [Where it runs](#where-it-runs) · [Does precedent help?](#does-precedent-help-the-eval) · [Agent evals](agent-evals.md) · [The record](evals/precedent.json)
 
@@ -34,7 +34,7 @@ flowchart LR
   CODE --> DEC["The decision"]
   MEM --> CAL["Calibration<br/>signed / (signed + rejected)"]
   MEM --> SUG["Suggestions<br/>3 signed, none rejected"] --> FID["A policy change<br/>waits for the CFO's Face ID"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
@@ -71,7 +71,7 @@ Run on 14 Nov 2026 with `claude-haiku-5-5`, real Claude calls (`docs/evals/prece
 | With precedent | 48 of 49 | 48 of 49 |
 
 ```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#8b5cf6"}}}}%%
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#5996f9"}}}}%%
 xychart-beta
   title "The Checker's agreement after code enforces it, of 49 cases"
   x-axis ["Without precedent", "With precedent", "With precedent, reworded"]

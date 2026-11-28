@@ -6,7 +6,7 @@
 
 **How code stops a changed IBAN, a lookalike supplier and a planted instruction before anything is signed.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Fraud checks: in code, before Airwallex is called](https://img.shields.io/badge/fraud_checks-in_code%2C_before_Airwallex-8b5cf6?style=flat-square&labelColor=1f2937)](#invoice-fraud)&nbsp;[![Nothing a model says can approve or move money](https://img.shields.io/badge/a_model%27s_words-approve_nothing-f43f5e?style=flat-square&labelColor=1f2937)](#prompt-injection)&nbsp;[![Live runs: fraud and injection, 29 October](https://img.shields.io/badge/live_runs-fraud_%C2%B7_injection_%C2%B7_29_Oct-0ea5e9?style=flat-square&labelColor=1f2937)](runs/2026-10-29-fraud.md)&nbsp;[![Payees from the allowlist; only a person changes it](https://img.shields.io/badge/payees-allowlist_%C2%B7_a_person_changes_it-10b981?style=flat-square&labelColor=1f2937)](#invoice-fraud)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Fraud checks: in code, before Airwallex is called](https://img.shields.io/badge/fraud_checks-in_code%2C_before_Airwallex-5996f9?style=flat-square&labelColor=1f2937)](#invoice-fraud)&nbsp;[![Nothing a model says can approve or move money](https://img.shields.io/badge/a_model%27s_words-approve_nothing-f43f5e?style=flat-square&labelColor=1f2937)](#prompt-injection)&nbsp;[![Live runs: fraud and injection, 29 October](https://img.shields.io/badge/live_runs-fraud_%C2%B7_injection_%C2%B7_29_Oct-0ea5e9?style=flat-square&labelColor=1f2937)](runs/2026-10-29-fraud.md)&nbsp;[![Payees from the allowlist; only a person changes it](https://img.shields.io/badge/payees-allowlist_%C2%B7_a_person_changes_it-10b981?style=flat-square&labelColor=1f2937)](#invoice-fraud)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Invoice fraud](#invoice-fraud) · [Prompt injection](#prompt-injection) · [Fraud run](runs/2026-10-29-fraud.md) · [Injection run](runs/2026-10-29-injection.md) · [Security](security.md)
 
@@ -37,7 +37,7 @@ flowchart LR
   BLK["Blocked<br/>invoice.fraud_suspected"] --> OP["Opus explains it to the CFO<br/>do not pay, or verify first"]
   OP -. "the block stands either way" .-> BLK
   PERSON["A person calls the supplier<br/>on the number on file"] --> ALLOW[("The payee allowlist")]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
@@ -83,7 +83,7 @@ flowchart LR
   CODE --> PROP
   PROP --> FID["Only the passkey, or the typed hash,<br/>approves; the executor runs that hash"]
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class DOC wait

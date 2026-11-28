@@ -370,7 +370,7 @@ const ONE_CSS = `.op { padding: 22px 0 28px; }
 @media print {
   @page { size: A4; margin: 10mm; }
   /* On paper always light, whatever the screen's theme. */
-  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f1f3f7; --border: #d5d9e0; --text: #0b1220; --muted: #4b5466; --faint: #586174; --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #0b7d43; color-scheme: light; }
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f1f3f7; --border: #d5d9e0; --text: #0b1220; --muted: #4b5466; --faint: #586174; --accent: #4382e8; --accent-soft: #eef0ff; --ok: #0b7d43; color-scheme: light; }
   body { background: #fff !important; color: #0b1220 !important; }
   header.top, .awx-row, footer.foot, .op-bar, .noprint { display: none !important; }
   .op { padding: 0; } .op .wrap { max-width: none; gap: 0; }

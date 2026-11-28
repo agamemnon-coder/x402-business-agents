@@ -6,7 +6,7 @@
 
 **For a business that deploys Purser: what it does and does not do, its limits, the oversight it needs, how to stop it, and how accurate it was measured to be.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![EU AI Act Art. 13](https://img.shields.io/badge/EU_AI_Act-Art._13%283%29-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#1-the-provider)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![EU AI Act Art. 13](https://img.shields.io/badge/EU_AI_Act-Art._13%283%29-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#1-the-provider)
 
 [Provider](#1-the-provider) · [Purpose](#2-what-purser-is-for) · [Does not](#3-what-purser-does-not-do) · [Oversight](#4-the-human-oversight-it-needs) · [Stop it](#5-how-to-stop-it) · [Accuracy](#6-accuracy-and-robustness-as-measured) · [Logs](#7-how-logs-are-collected) · [Running it](#8-what-it-needs-to-run)
 

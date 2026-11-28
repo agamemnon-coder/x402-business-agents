@@ -6,7 +6,7 @@
 
 **The Starter Kit 11 brief's flow, step by step, as Purser ran it live once on 3 November, with an id for every step.**
 
-[![Run live once: the main run of 3 November](https://img.shields.io/badge/run_live-once_%C2%B7_the_main_run%2C_3_Nov-8b5cf6?style=flat-square&labelColor=1f2937)](runs/2026-11-03-main-run.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![86 Alta transactions in the main run](https://img.shields.io/badge/Alta_transactions-86-0ea5e9?style=flat-square&labelColor=1f2937)](runs/2026-11-03-main-run-metal-transactions.md)&nbsp;[![Purchase #24 refused on chain by Alta: mandate_cap_exceeded](https://img.shields.io/badge/purchase_%2324-refused_on_chain_by_Alta-f43f5e?style=flat-square&labelColor=1f2937)](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![Run live once: the main run of 3 November](https://img.shields.io/badge/run_live-once_%C2%B7_the_main_run%2C_3_Nov-5996f9?style=flat-square&labelColor=1f2937)](runs/2026-11-03-main-run.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![86 Alta transactions in the main run](https://img.shields.io/badge/Alta_transactions-86-0ea5e9?style=flat-square&labelColor=1f2937)](runs/2026-11-03-main-run-metal-transactions.md)&nbsp;[![Purchase #24 refused on chain by Alta: mandate_cap_exceeded](https://img.shields.io/badge/purchase_%2324-refused_on_chain_by_Alta-f43f5e?style=flat-square&labelColor=1f2937)](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [The steps](#kit-11-step-by-step) · [The main run's log](runs/2026-11-03-main-run.md) · [All 86 transactions](runs/2026-11-03-main-run-metal-transactions.md) · [Alta](metal-award.md) · [Airwallex](airwallex.md)
 
@@ -24,7 +24,7 @@ flowchart LR
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   class A,B,G rails
   class C,H ok
   class D stop
@@ -32,7 +32,7 @@ flowchart LR
 ```
 
 ```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#6366f1"}}}}%%
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#6099f4"}}}}%%
 xychart-beta
   title "The three mandates on Alta testnet, in all"
   x-axis ["Sourcing", "Support", "Treasury"]

@@ -15,25 +15,25 @@ text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helveti
 <text x="52" y="35" font-size="15" font-weight="700" fill="#e6edf3">Purser<tspan dx="8" font-weight="400" fill="#9198a1">one payment on /try, as recorded</tspan></text>
 <rect x="799.55" y="18.5" width="145.95" height="23" rx="11.5" fill="none" stroke="#d29922"/><text x="872.53" y="34" font-size="11.5" font-weight="600" fill="#d29922" text-anchor="middle">Test money · sandbox</text></g>
 <g class="in" style="animation-delay:0.3s"><rect x="14.5" y="60.5" width="177.4" height="157" rx="10" fill="#151b23" stroke="#3d444d"/>
-<circle cx="37" cy="85" r="11" fill="#a371f7"/><text x="37" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">1</text>
+<circle cx="37" cy="85" r="11" fill="#6ea4fa"/><text x="37" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">1</text>
 <text x="55" y="90" font-size="15" font-weight="650" fill="#e6edf3">Invoice in</text><text x="27" y="118" font-size="13" fill="#9198a1">BTX-2026-21</text><text x="27" y="139" font-size="13" fill="#9198a1">Bergtex Textil GmbH</text><text x="27" y="160" font-size="17" font-weight="650" fill="#e6edf3">EUR 1,850.00</text></g>
-<path class="in" style="animation-delay:0.7s" d="M195.4 130l4 5-4 5" fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="in" style="animation-delay:0.7s" d="M195.4 130l4 5-4 5" fill="none" stroke="#6ea4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <g class="in" style="animation-delay:1.05s"><rect x="202.9" y="60.5" width="177.4" height="157" rx="10" fill="#151b23" stroke="#3d444d"/>
-<circle cx="225.4" cy="85" r="11" fill="#a371f7"/><text x="225.4" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">2</text>
+<circle cx="225.4" cy="85" r="11" fill="#6ea4fa"/><text x="225.4" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">2</text>
 <text x="243.4" y="90" font-size="15" font-weight="650" fill="#e6edf3">Claude reads</text><text x="215.4" y="118" font-size="13" fill="#9198a1">claude-haiku-5-5, live</text><text x="215.4" y="139" font-size="13" fill="#9198a1">“Total due</text><text x="215.4" y="160" font-size="17" font-weight="650" fill="#e6edf3">EUR 1,850.00”</text></g>
-<path class="in" style="animation-delay:1.45s" d="M383.8 130l4 5-4 5" fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="in" style="animation-delay:1.45s" d="M383.8 130l4 5-4 5" fill="none" stroke="#6ea4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <g class="in" style="animation-delay:1.8s"><rect x="391.3" y="60.5" width="177.4" height="157" rx="10" fill="#151b23" stroke="#3d444d"/>
-<circle cx="413.8" cy="85" r="11" fill="#a371f7"/><text x="413.8" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">3</text>
+<circle cx="413.8" cy="85" r="11" fill="#6ea4fa"/><text x="413.8" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">3</text>
 <text x="431.8" y="90" font-size="15" font-weight="650" fill="#e6edf3">Purser’s checks</text><text x="403.8" y="118" font-size="13" fill="#3fb950" class="tick" style="animation-delay:2.15s">✓ not paid before</text><text x="403.8" y="139" font-size="13" fill="#3fb950" class="tick" style="animation-delay:2.33s">✓ bank on file</text><text x="403.8" y="160" font-size="13" fill="#3fb950" class="tick" style="animation-delay:2.51s">✓ known supplier</text><text x="403.8" y="181" font-size="13" fill="#d29922">! over 2× the usual</text><text x="403.8" y="202" font-size="13" fill="#d29922">   EUR 870.00, flagged</text></g>
-<path class="in" style="animation-delay:2.2s" d="M572.2 130l4 5-4 5" fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="in" style="animation-delay:2.2s" d="M572.2 130l4 5-4 5" fill="none" stroke="#6ea4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <g class="in" style="animation-delay:2.55s"><rect x="579.7" y="60.5" width="177.4" height="157" rx="10" fill="#151b23" stroke="#3d444d"/>
-<circle cx="602.2" cy="85" r="11" fill="#a371f7"/><text x="602.2" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">4</text>
+<circle cx="602.2" cy="85" r="11" fill="#6ea4fa"/><text x="602.2" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">4</text>
 <text x="620.2" y="90" font-size="15" font-weight="650" fill="#e6edf3">CFO signs</text><text x="592.2" y="118" font-size="13" fill="#9198a1">above the agent’s</text><text x="592.2" y="139" font-size="13" fill="#9198a1">EUR 500.00 limit:</text><text x="592.2" y="160" font-size="13" fill="#9198a1">a passkey signs the</text><text x="592.2" y="181" font-size="13" fill="#9198a1">SHA-256 of the terms</text><text x="592.2" y="202" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace" font-size="12" fill="#9198a1">0c4ce29d…db4b1</text></g>
-<path class="in" style="animation-delay:2.95s" d="M760.6 130l4 5-4 5" fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path class="in" style="animation-delay:2.95s" d="M760.6 130l4 5-4 5" fill="none" stroke="#6ea4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <g class="in" style="animation-delay:3.3s"><rect x="768.1" y="60.5" width="177.4" height="157" rx="10" fill="#12261b" stroke="#3fb950"/>
 <circle cx="790.6" cy="85" r="11" fill="#3fb950"/><text x="790.6" y="89.5" font-size="12.5" font-weight="700" fill="#0d1117" text-anchor="middle">5</text>
 <text x="808.6" y="90" font-size="15" font-weight="650" fill="#e6edf3">Paid</text><text x="780.6" y="118" font-size="13" fill="#9198a1">Airwallex sandbox</text><text x="780.6" y="139" font-size="13" font-weight="600" fill="#3fb950">transfer PAID</text><text x="780.6" y="160" font-size="13" fill="#9198a1">settlement simulated</text></g>
-<rect x="14" y="232" width="932" height="4" rx="2" fill="#262c36"/><rect class="fill" x="14" y="232" width="932" height="4" rx="2" fill="#a371f7" style="animation-duration:3.6s"/>
+<rect x="14" y="232" width="932" height="4" rx="2" fill="#262c36"/><rect class="fill" x="14" y="232" width="932" height="4" rx="2" fill="#6ea4fa" style="animation-duration:3.6s"/>
 <g class="in" style="animation-delay:4.05s"><path d="M668.4 218V250" stroke="#f85149" stroke-width="1.5" stroke-dasharray="3 3"/>
 <rect x="14.5" y="250.5" width="931" height="57" rx="10" fill="#2c1216" stroke="#f85149"/>
 <circle cx="40" cy="279" r="11" fill="#f85149"/><path d="M35.5 274.5l9 9m0-9l-9 9" stroke="#0d1117" stroke-width="2.2" stroke-linecap="round"/>

@@ -72,7 +72,7 @@ function server(): Promise<{ url: string; close: () => void }> {
 /** The overlay: a highlighted cursor that glides and a click ripple. Scrolls and zooms are driven frame by frame (below). */
 const OVERLAY = `(() => {
   const c = document.createElement("div");
-  c.style.cssText = "position:fixed;left:-60px;top:-60px;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:rgba(91,76,240,.28);border:3px solid #5b4cf0;box-shadow:0 0 0 6px rgba(91,76,240,.12);z-index:2147483647;pointer-events:none;transition:left .7s cubic-bezier(.3,.7,.3,1),top .7s cubic-bezier(.3,.7,.3,1),transform .2s";
+  c.style.cssText = "position:fixed;left:-60px;top:-60px;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:rgba(73,138,243,.28);border:3px solid #498af3;box-shadow:0 0 0 6px rgba(73,138,243,.12);z-index:2147483647;pointer-events:none;transition:left .7s cubic-bezier(.3,.7,.3,1),top .7s cubic-bezier(.3,.7,.3,1),transform .2s";
   document.documentElement.appendChild(c);
   // A screenshot waits for the next drawn frame, and an unchanged page draws none: an invisible pixel that changes on
   // every frame keeps the frames coming.

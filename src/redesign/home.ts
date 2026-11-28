@@ -54,7 +54,7 @@ ul.agents > li, ul.prow a, ol.steps3 > li:not(.pilot), .af-n:not(.af-purser) { b
 .btn.ghost:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-line)); }
 
 /* 1. The hero: the words, three figures and three buttons on the left; the Workflow card on the right; the product card
-   from one /try run under both; the violet wave behind (src/redesign/heroWave.ts). */
+   from one /try run under both; the blue wave behind (src/redesign/heroWave.ts). */
 main.ent section.e-hero { position: relative; padding: 88px 0 80px; overflow: hidden; }
 .e-hero .h-hero span + span { filter: drop-shadow(0 6px 28px color-mix(in srgb, var(--accent) 35%, transparent)); }
 /* The product card in a frame of its own: a pane of glass, lit from below. */

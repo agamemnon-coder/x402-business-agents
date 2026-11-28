@@ -6,7 +6,7 @@
 
 **Each promise Purser makes about money, argued with the code that enforces it, its tests, its CI job and its record.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Six money invariants, each with its code, tests, CI job and record](https://img.shields.io/badge/money_invariants-6_%C2%B7_code%2C_tests%2C_CI_job%2C_record-8b5cf6?style=flat-square&labelColor=1f2937)](#assurance-case-each-invariant-the-code-that-holds-it-its-tests-and-the-record)&nbsp;[![Every link, function and CI job named here checked by test/assurance.test.ts](https://img.shields.io/badge/links_and_functions-checked_by_test%2Fassurance.test.ts-10b981?style=flat-square&labelColor=1f2937)](../test/assurance.test.ts)&nbsp;[![No outside audit or penetration test](https://img.shields.io/badge/outside_audit-none_%C2%B7_no_pen_test-f43f5e?style=flat-square&labelColor=1f2937)](#the-rest-of-the-assurance-case)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Six money invariants, each with its code, tests, CI job and record](https://img.shields.io/badge/money_invariants-6_%C2%B7_code%2C_tests%2C_CI_job%2C_record-5996f9?style=flat-square&labelColor=1f2937)](#assurance-case-each-invariant-the-code-that-holds-it-its-tests-and-the-record)&nbsp;[![Every link, function and CI job named here checked by test/assurance.test.ts](https://img.shields.io/badge/links_and_functions-checked_by_test%2Fassurance.test.ts-10b981?style=flat-square&labelColor=1f2937)](../test/assurance.test.ts)&nbsp;[![No outside audit or penetration test](https://img.shields.io/badge/outside_audit-none_%C2%B7_no_pen_test-f43f5e?style=flat-square&labelColor=1f2937)](#the-rest-of-the-assurance-case)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [The invariants](#assurance-case-each-invariant-the-code-that-holds-it-its-tests-and-the-record) · [The rest of the case](#the-rest-of-the-assurance-case) · [Controls matrix](controls-matrix.md) · [Security](security.md) · [Zero trust](zero-trust.md)
 
@@ -39,7 +39,7 @@ flowchart TB
   G --> I6["Duplicates and<br/>bank-detail changes held"]
   I1 & I2 & I3 & I4 & I5 & I6 --> E["Each: the function that enforces it,<br/>its tests, the CI job, the record"]
   E -.-> NO["Not argued: an outside audit<br/>or a penetration test"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827

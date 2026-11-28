@@ -20,8 +20,8 @@ const EMBED = "https://www.youtube-nocookie.com";
 const CSS = `.film { padding: 0 0 48px; }
 .film .wrap { max-width: 1160px; }
 /* The hero is dark in both themes: a cinema, not a card. */
-.hero { background: radial-gradient(90% 70% at 70% 0%, #1b1a3a 0%, #0a0c11 60%); color: #eef1f6; padding: 34px 0 30px; border-bottom: 1px solid #1d2230; }
-.hero .eyebrow { color: #a5a0ff; margin: 0 0 8px; }
+.hero { background: radial-gradient(90% 70% at 70% 0%, #1a263a 0%, #0a0c11 60%); color: #eef1f6; padding: 34px 0 30px; border-bottom: 1px solid #1d2230; }
+.hero .eyebrow { color: #a0c4ff; margin: 0 0 8px; }
 .hero h1 { font-size: clamp(30px, 4vw, 52px); font-weight: 780; letter-spacing: -.035em; margin: 0 0 20px; max-width: 18em; }
 .player { position: relative; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: #0a0c11; box-shadow: 0 30px 80px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.07); isolation: isolate; }
 .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
@@ -52,8 +52,8 @@ ${Array.from({ length: 16 }, (_, i) => `ol.rail li:nth-child(${i + 1}) { animati
 .ch .th img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
 a.ch:hover .th img, a.ch:focus-visible .th img { transform: scale(1.05); }
 .ch .th time { position: absolute; left: 8px; bottom: 8px; font: 650 13px/1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: #eef1f6; background: rgba(10,12,17,.78); padding: 5px 8px; border-radius: 8px; }
-.ch .tile { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; background: radial-gradient(80% 80% at 70% 20%, #23224a, #12151d 70%); color: #c3c9d6; font: 600 13px/1.2 Inter, system-ui, sans-serif; }
-.ch .tile .i { width: 26px; height: 26px; color: #a5a0ff; }
+.ch .tile { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; background: radial-gradient(80% 80% at 70% 20%, #22314a, #12151d 70%); color: #c3c9d6; font: 600 13px/1.2 Inter, system-ui, sans-serif; }
+.ch .tile .i { width: 26px; height: 26px; color: #a0c4ff; }
 .ch b { display: block; margin-top: 9px; font-size: 15.5px; font-weight: 650; line-height: 1.3; }
 /* The runs the film shows, each with its record. */
 ul.runs { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }

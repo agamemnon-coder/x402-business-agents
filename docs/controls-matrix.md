@@ -6,7 +6,7 @@
 
 **Each risk to a business whose AI agents spend money, the control against it, who enforces it, its test and its evidence.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Risks: 33, each with its control and its test](https://img.shields.io/badge/risks-33_%C2%B7_each_with_a_control_and_a_test-8b5cf6?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Every control's test runs in CI](https://img.shields.io/badge/tests-run_in_CI_on_every_change-10b981?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Evidence: the Airwallex sandbox, Metal testnet, or the red team on stand-ins](https://img.shields.io/badge/evidence-sandbox_%C2%B7_testnet_%C2%B7_red_team_on_stand--ins-0ea5e9?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![What is not covered: listed](https://img.shields.io/badge/not_covered-listed-f59e0b?style=flat-square&labelColor=1f2937)](#not-covered-known)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Risks: 33, each with its control and its test](https://img.shields.io/badge/risks-33_%C2%B7_each_with_a_control_and_a_test-5996f9?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Every control's test runs in CI](https://img.shields.io/badge/tests-run_in_CI_on_every_change-10b981?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![Evidence: the Airwallex sandbox, Metal testnet, or the red team on stand-ins](https://img.shields.io/badge/evidence-sandbox_%C2%B7_testnet_%C2%B7_red_team_on_stand--ins-0ea5e9?style=flat-square&labelColor=1f2937)](#spending-limits)&nbsp;[![What is not covered: listed](https://img.shields.io/badge/not_covered-listed-f59e0b?style=flat-square&labelColor=1f2937)](#not-covered-known)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Zero trust](#layer-by-layer-zero-trust) · [Spending limits](#spending-limits) · [Approvals](#approvals) · [Fraud and payees](#fraud-and-payees) · [Detection](#detection-and-evidence) · [Keys and operations](#keys-and-operations) · [Not covered](#not-covered-known)
 
@@ -35,8 +35,8 @@ flowchart LR
     CHAIN["Chain<br/>Metal's contracts or facilitator refuse"]
   end
   RAILS --> PAID["Paid"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class A sourcing
@@ -46,7 +46,7 @@ flowchart LR
 ```
 
 ```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#8b5cf6"}}}}%%
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#5996f9"}}}}%%
 xychart-beta
   title "Who enforces: rows each takes part in, of 33"
   x-axis ["Code", "Person", "Chain", "Airwallex"]

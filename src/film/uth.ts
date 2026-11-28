@@ -168,22 +168,22 @@ export function cardPage(body: string, font: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:Inter;src:url(${font}) format("woff2");font-weight:100 900}
 *{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden}
-body{background:radial-gradient(1200px 600px at 15% 0%,#1d1b4b 0%,transparent 60%),#0b0d12;color:#e8eaf2;font:400 32px/1.4 Inter,system-ui,sans-serif;padding:90px 110px 160px;display:flex;flex-direction:column;justify-content:center}
+body{background:radial-gradient(1200px 600px at 15% 0%,#1b2d4b 0%,transparent 60%),#0b0d12;color:#e8eaf2;font:400 32px/1.4 Inter,system-ui,sans-serif;padding:90px 110px 160px;display:flex;flex-direction:column;justify-content:center}
 .mono,.hash,pre,code{font-family:"DejaVu Sans Mono",ui-monospace,monospace}
 .hero h1{font-size:96px;line-height:1.05;letter-spacing:-.03em;margin:0 0 28px;font-weight:750}
 .hero h2{font-size:56px;line-height:1.1;letter-spacing:-.02em;margin:0 0 28px;font-weight:700}
-.kicker{color:#8b85ff;font-weight:650;font-size:28px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 24px}
+.kicker{color:#85b4ff;font-weight:650;font-size:28px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 24px}
 .sub{color:#a3a9bb;font-size:32px;margin:0}
-.links{font-size:34px;color:#c9ccff;margin:0 0 20px}
+.links{font-size:34px;color:#c9deff;margin:0 0 20px}
 .two{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:start}
 .grid3{display:grid;grid-template-columns:1fr 1fr .8fr;gap:32px;align-items:stretch}
 .stack{display:grid;gap:24px}
 .pane{background:#141824;border:1px solid #262c3d;border-radius:20px;padding:32px 36px}
 .pane.bad{border-color:#6b2a30}
-.pane.why{background:#17163a;border-color:#3b3780}
+.pane.why{background:#16243a;border-color:#375380}
 .lab{margin:0 0 16px;color:#9aa1b5;font-size:24px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 pre.code{margin:0;font-size:23px;line-height:1.45;color:#cdd3e4;white-space:pre-wrap}
-.hl{color:#a9a4ff}
+.hl{color:#a4c7ff}
 .hash{font-size:36px;line-height:1.45;word-break:break-all;color:#fff;margin:0}
 .hash.big{font-size:44px}
 .hash mark{background:#ff6b70;color:#0b0d12;border-radius:3px}
@@ -198,7 +198,7 @@ dt{color:#9aa1b5}dd{margin:0;word-break:break-all}
 .small{color:#9aa1b5;font-size:24px;margin:0;white-space:nowrap}
 .foot{color:#8a91a6;font-size:24px;margin:28px 0 0}
 .term{background:#05070b;border:1px solid #262c3d;border-radius:18px;padding:36px 44px}
-.term .prompt{color:#8b85ff;font-family:"DejaVu Sans Mono",monospace;font-size:26px;margin:0 0 18px}
+.term .prompt{color:#85b4ff;font-family:"DejaVu Sans Mono",monospace;font-size:26px;margin:0 0 18px}
 .term pre{margin:0;font-size:23px;line-height:1.6;color:#d6dbe8;white-space:pre-wrap}
 .band{display:grid;grid-template-columns:repeat(5,1fr);gap:24px}
 .band div{background:#141824;border:1px solid #262c3d;border-radius:20px;padding:36px 28px;display:grid;gap:12px}

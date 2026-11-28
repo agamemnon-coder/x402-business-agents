@@ -18,9 +18,9 @@ export { SITE_URL };
  * The file name carries the version (OG_FILE, served by the Worker beside the old /assets/og.png): a new name is a new
  * address, so LinkedIn, Slack and the rest fetch the new image instead of the one they cached. No square version.
  * 21 Nov (Max: "the preview banner looks dated"): the new design, dark with the site's purple particle wave, "Payment
- * operations for AI agents.", the Built on Airwallex badge on a white pill and a quiet "Test money only"; og-1121.png.
+ * operations for AI agents.", the Built on Airwallex badge on a white pill and a quiet "Test money only"; og-1121.png; og-1128.png is the same card in the blue of 28 Nov.
  */
-export const OG_FILE = "og-1121.png";
+export const OG_FILE = "og-1128.png";
 export const OG_IMAGE = `${SITE_URL}/assets/${OG_FILE}`;
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 /** Every page's preview says the same (the owner, 13 Nov: a long, page-by-page description looked messy in a chat). */

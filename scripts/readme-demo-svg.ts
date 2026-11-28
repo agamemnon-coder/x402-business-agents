@@ -121,8 +121,8 @@ const MONO = `ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monos
 
 // GitHub's neutrals; Purser's violet as the one accent (the mark, the thumbnail); green for paid, red for refused.
 const PAL = {
-  light: { bg: "#ffffff", card: "#f6f8fa", line: "#d1d9e0", ink: "#1f2328", ink2: "#59636e", muted: "#656d76", accent: "#8250df", accentBg: "#fbefff", good: "#1a7f37", goodBg: "#dafbe1", bad: "#cf222e", badBg: "#ffebe9", warn: "#9a6700", track: "#e6eaef", markBg: "#0b1220", markInk: "#ffffff" },
-  dark: { bg: "#0d1117", card: "#151b23", line: "#3d444d", ink: "#e6edf3", ink2: "#9198a1", muted: "#8b949e", accent: "#a371f7", accentBg: "#271b3d", good: "#3fb950", goodBg: "#12261b", bad: "#f85149", badBg: "#2c1216", warn: "#d29922", track: "#262c36", markBg: "#f0f3f6", markInk: "#0b1220" },
+  light: { bg: "#ffffff", card: "#f6f8fa", line: "#d1d9e0", ink: "#1f2328", ink2: "#59636e", muted: "#656d76", accent: "#4d86e2", accentBg: "#eff5ff", good: "#1a7f37", goodBg: "#dafbe1", bad: "#cf222e", badBg: "#ffebe9", warn: "#9a6700", track: "#e6eaef", markBg: "#0b1220", markInk: "#ffffff" },
+  dark: { bg: "#0d1117", card: "#151b23", line: "#3d444d", ink: "#e6edf3", ink2: "#9198a1", muted: "#8b949e", accent: "#6ea4fa", accentBg: "#1b283d", good: "#3fb950", goodBg: "#12261b", bad: "#f85149", badBg: "#2c1216", warn: "#d29922", track: "#262c36", markBg: "#f0f3f6", markInk: "#0b1220" },
 } as const;
 
 // Width of a line of text, estimated (the layout throws rather than let a line spill out of its card).

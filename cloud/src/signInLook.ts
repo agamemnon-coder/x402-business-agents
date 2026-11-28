@@ -38,7 +38,7 @@ export const SIGNIN_CSS = `
 .signed-out .hero::before { content: ""; position: absolute; z-index: -3; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none;
   background: radial-gradient(50% 30% at var(--si-gx, 30%) var(--si-gy, 74%), color-mix(in srgb, var(--accent) var(--si-ga, 42%), transparent), color-mix(in srgb, var(--accent) 9%, transparent) 55%, transparent 82%),
     radial-gradient(22% 20% at calc(var(--si-gx, 30%) + 12%) calc(var(--si-gy, 74%) - 2%), color-mix(in srgb, #e879f9 16%, transparent), transparent 75%),
-    radial-gradient(95% 70% at calc(var(--si-gx, 30%) + 26%) -6%, color-mix(in srgb, #4f46e5 var(--si-nb, 11%), transparent), transparent 75%),
+    radial-gradient(95% 70% at calc(var(--si-gx, 30%) + 26%) -6%, color-mix(in srgb, #4382e8 var(--si-nb, 11%), transparent), transparent 75%),
     radial-gradient(55% 45% at calc(var(--si-gx, 30%) - 6%) 4%, color-mix(in srgb, var(--accent) var(--si-nb2, 7%), transparent), transparent 72%); }
 /* 26 Nov, later (Max: "the glow like really far or the stars like space"): depth, back to front: the stars (the
    canvas, dark only), a far violet and indigo haze high in the sky, the glow at the limb, the Earth. */

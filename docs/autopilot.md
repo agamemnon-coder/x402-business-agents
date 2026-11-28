@@ -6,7 +6,7 @@
 
 **Every pending supplier invoice one step forward, until nothing can move without a person.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The autopilot decides nothing new: the same functions and checks as a person's commands](https://img.shields.io/badge/decides-nothing_new-8b5cf6?style=flat-square&labelColor=1f2937)](#the-autopilot)&nbsp;[![Every supplier payment waits for the CFO's Face ID](https://img.shields.io/badge/every_supplier_payment-waits_for_Face_ID-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Every step writes one audit row, autopilot.step](https://img.shields.io/badge/audit-one_row_per_step-10b981?style=flat-square&labelColor=1f2937)](#what-it-does-step-by-step)&nbsp;[![The task token: tested on stand-in rails, not run against the sandbox](https://img.shields.io/badge/task_token-stand--in_rails%2C_not_the_sandbox-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The autopilot decides nothing new: the same functions and checks as a person's commands](https://img.shields.io/badge/decides-nothing_new-5996f9?style=flat-square&labelColor=1f2937)](#the-autopilot)&nbsp;[![Every supplier payment waits for the CFO's Face ID](https://img.shields.io/badge/every_supplier_payment-waits_for_Face_ID-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Every step writes one audit row, autopilot.step](https://img.shields.io/badge/audit-one_row_per_step-10b981?style=flat-square&labelColor=1f2937)](#what-it-does-step-by-step)&nbsp;[![The task token: tested on stand-in rails, not run against the sandbox](https://img.shields.io/badge/task_token-stand--in_rails%2C_not_the_sandbox-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Step by step](#what-it-does-step-by-step) · [What waits for a person](#what-waits-for-a-person) · [Running it](#running-it) · [Ledger](ledger.md) · [Moneybird](moneybird.md)
 
@@ -47,7 +47,7 @@ flowchart LR
   P4 -. "waits" .-> H["A person checks the account<br/>with the supplier"]
   P5 -. "waits" .-> FID["The CFO's Face ID"]
   FID --> P6
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class P1,P2,P3,P4,P5 purser

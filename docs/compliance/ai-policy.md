@@ -6,7 +6,7 @@
 
 **How Purser uses AI: models read and propose, people and code decide, and no model output ever moves money.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#review)&nbsp;[![ISO/IEC 42001 A.2.2](https://img.shields.io/badge/ISO%2FIEC_42001-A.2.2-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#isoiec-420012023-annex-a-reference-controls)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#scope)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#review)&nbsp;[![ISO/IEC 42001 A.2.2](https://img.shields.io/badge/ISO%2FIEC_42001-A.2.2-0ea5e9?style=flat-square&labelColor=1f2937)](controls.md#isoiec-420012023-annex-a-reference-controls)&nbsp;[![Money: test only](https://img.shields.io/badge/money-test_only-10b981?style=flat-square&labelColor=1f2937)](#scope)
 
 [Principle](#the-principle-no-model-output-moves-money) · [Scope](#scope) · [Roles](#roles) · [Oversight](#human-oversight) · [Acceptable use](#acceptable-use-of-claude-agents) · [Suppliers](#ai-suppliers) · [Review](#review)
 
@@ -46,7 +46,7 @@ flowchart LR
   H --> X
   X --> R["Rail<br/>Airwallex, Alta, Airi"]
   M -. "no key, no token,<br/>no card number" .-> R
-  classDef ai fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef ai fill:#5996f9,stroke:#1f2937,color:#fff
   classDef code fill:#0ea5e9,stroke:#1f2937,color:#fff
   classDef person fill:#f59e0b,stroke:#1f2937,color:#1f2937
   classDef rail fill:#10b981,stroke:#1f2937,color:#fff

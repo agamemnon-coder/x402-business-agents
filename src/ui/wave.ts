@@ -95,17 +95,17 @@ export const waveScript = (o: WaveOptions): string => `
     "    a0 *= inten * (1.0 - 0.72 * calm) * (lite > 0.5 ? 0.6 : 1.0);",
     "    if (glow > 0.5) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); vK = 0.0; return; }",
     "    gl_PointSize = sz * dpr; vA = a0; vK = kind;",
-    "    vC = lite > 0.5 ? vec3(0.45, 0.2, 0.9) : (kind < 2.5 ? mix(vec3(0.85, 0.8, 1.0), vec3(1.0), 0.6) : vec3(1.0, 0.97, 1.0));",
+    "    vC = lite > 0.5 ? vec3(0.20, 0.47, 0.90) : (kind < 2.5 ? mix(vec3(0.80, 0.88, 1.00), vec3(1.0), 0.6) : vec3(1.0, 0.97, 1.0));",
     "    return;",
     "  }",
     "  vK = 0.0;",
     "  if (glow > 0.5) { bool crestG = hot > 0.25; if (near > 0.5 || (!crestG && fract(sd * 31.0) > 0.12)) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; } sz *= crestG ? 11.0 : 9.0; a0 *= crestG ? 0.022 : 0.045; }",
     "  gl_PointSize = sz * dpr;",
-    "  vec3 vio = vec3(0.47, 0.30, 1.0), ind = vec3(0.28, 0.22, 0.92), mag = vec3(0.92, 0.30, 1.0), wht = vec3(1.0, 0.98, 1.0);",
+    "  vec3 vio = vec3(0.30, 0.57, 1.00), ind = vec3(0.22, 0.49, 0.92), mag = vec3(0.30, 0.82, 1.00), wht = vec3(1.0, 0.98, 1.0);",
     "  vec3 col = mix(vio, ind, dep);",
     "  col = mix(col, mag, smoothstep(0.45, 0.95, abs(q.x)) * 0.85 + (near > 0.5 ? 0.3 : 0.0));",
     "  col = mix(col, wht, clamp(hot * 1.4, 0.0, 1.0));",
-    "  if (lite > 0.5) { col = mix(col * 0.75, vec3(0.42, 0.16, 0.85), 0.35); a0 *= 0.75; }",
+    "  if (lite > 0.5) { col = mix(col * 0.75, vec3(0.16, 0.42, 0.85), 0.35); a0 *= 0.75; }",
     "  vA = a0; vC = col; vK = 0.0;",
     "}"].join("\\n");
   var FS = [
@@ -233,8 +233,8 @@ function wave2d() {
     var k = Math.max(0.3, Math.min(1.15, (W * H) / (1440 * 820))) * (phone ? 0.6 : 0.75);
     D = dark();
     sprites = D
-      ? { far: sprite("124,92,246", 0.05, 0.4), mid: sprite("176,160,255", 0.08, 0.32), near: sprite("246,244,255", 0.12, 0.26), warm: sprite("232,121,249", 0.06, 0.36), haze: sprite("139,92,246", 0.02, 0.3), lens: sprite("255,255,255", 0.04, 0.24) }
-      : { far: sprite("167,139,250", 0.05, 0.4), mid: sprite("139,92,246", 0.08, 0.32), near: sprite("109,40,217", 0.14, 0.26), warm: sprite("192,132,252", 0.06, 0.36), haze: sprite("167,139,250", 0.02, 0.3), lens: sprite("196,181,253", 0.04, 0.24) };
+      ? { far: sprite("89,150,249", 0.05, 0.4), mid: sprite("160,196,255", 0.08, 0.32), near: sprite("246,244,255", 0.12, 0.26), warm: sprite("56,189,248", 0.06, 0.36), haze: sprite("89,150,249", 0.02, 0.3), lens: sprite("255,255,255", 0.04, 0.24) }
+      : { far: sprite("137,181,252", 0.05, 0.4), mid: sprite("89,150,249", 0.08, 0.32), near: sprite("36,107,221", 0.14, 0.26), warm: sprite("130,177,254", 0.06, 0.36), haze: sprite("137,181,252", 0.02, 0.3), lens: sprite("180,208,254", 0.04, 0.24) };
     // A ribbon: its line (y at u = 0 and 1, as shares of the height), sway, thickness, direction; its layers far to near.
     ribbons = [
       { y0: 1.02, y1: 0.22, thick: 0.3, dir: 1, layers: [

@@ -6,7 +6,7 @@
 
 **Each agent that can move money lists exactly what it may call; anything else is refused in code and written to the audit log.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![A tool not on the agent's list is refused in code before it runs](https://img.shields.io/badge/each_tool-on_the_agent%27s_list%2C_or_refused-8b5cf6?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![Each refusal written to the audit log as principal.tool_refused](https://img.shields.io/badge/refusals-principal.tool__refused_in_the_audit_log-f43f5e?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![The tables held to the code by test/agent-permissions.test.ts](https://img.shields.io/badge/tables-held_to_the_code_by_a_test-10b981?style=flat-square&labelColor=1f2937)](../../test/agent-permissions.test.ts)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![A tool not on the agent's list is refused in code before it runs](https://img.shields.io/badge/each_tool-on_the_agent%27s_list%2C_or_refused-5996f9?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![Each refusal written to the audit log as principal.tool_refused](https://img.shields.io/badge/refusals-principal.tool__refused_in_the_audit_log-f43f5e?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![The tables held to the code by test/agent-permissions.test.ts](https://img.shields.io/badge/tables-held_to_the_code_by_a_test-10b981?style=flat-square&labelColor=1f2937)](../../test/agent-permissions.test.ts)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
 
 [Sourcing](#sourcing) · [Support](#support) · [Treasury](#treasury) · [Outside agents](#outside) · [Agent identity](agent-identity.md) · [Security index](README.md)
 
@@ -36,10 +36,10 @@ flowchart LR
   G -- "yes" --> P{"The payment itself:<br/>mandate, card limits,<br/>the CFO's policy, Face ID"}
   P -- "within them" --> OK["Runs"]
   P -- "outside them" --> R
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
   classDef support fill:#14b8a6,stroke:#0f766e,color:#111827
   classDef treasury fill:#3b82f6,stroke:#1d4ed8,color:#111827
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
@@ -65,7 +65,7 @@ person or code still decides), **pay** (moves money within the agent's own manda
 action among its capabilities).
 
 ```mermaid
-%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#6366f1, #f59e0b"}}}}%%
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#6099f4, #f59e0b"}}}}%%
 xychart-beta
   title "Tools and actions per agent (indigo), of which pay or action (amber)"
   x-axis ["sourcing", "support", "treasury", "outside"]

@@ -6,7 +6,7 @@
 
 **The limits the agents work within, set by the CFO and changed only with the CFO's Face ID.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every policy change signed with the CFO's Face ID](https://img.shields.io/badge/every_change-signed_with_Face_ID-8b5cf6?style=flat-square&labelColor=1f2937)](#cfo-policy)&nbsp;[![Tightening: on the phone, applied at once](https://img.shields.io/badge/tighten-on_the_phone-10b981?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Loosening: a proposal from the runner, never the phone page](https://img.shields.io/badge/loosen-a_proposal%2C_never_the_phone-f59e0b?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Four eyes is off by default](https://img.shields.io/badge/four_eyes-off_by_default-6366f1?style=flat-square&labelColor=1f2937)](#four-eyes-two-people-above-a-threshold)&nbsp;[![Emergency stop: all agents, one Face ID](https://img.shields.io/badge/emergency_stop-all_agents_%C2%B7_one_Face_ID-f43f5e?style=flat-square&labelColor=1f2937)](#emergency-stop-and-changed-bank-details)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Every policy change signed with the CFO's Face ID](https://img.shields.io/badge/every_change-signed_with_Face_ID-5996f9?style=flat-square&labelColor=1f2937)](#cfo-policy)&nbsp;[![Tightening: on the phone, applied at once](https://img.shields.io/badge/tighten-on_the_phone-10b981?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Loosening: a proposal from the runner, never the phone page](https://img.shields.io/badge/loosen-a_proposal%2C_never_the_phone-f59e0b?style=flat-square&labelColor=1f2937)](#the-agents-page)&nbsp;[![Four eyes is off by default](https://img.shields.io/badge/four_eyes-off_by_default-6099f4?style=flat-square&labelColor=1f2937)](#four-eyes-two-people-above-a-threshold)&nbsp;[![Emergency stop: all agents, one Face ID](https://img.shields.io/badge/emergency_stop-all_agents_%C2%B7_one_Face_ID-f43f5e?style=flat-square&labelColor=1f2937)](#emergency-stop-and-changed-bank-details)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [CFO policy](#cfo-policy) · [Simulator](#what-would-have-happened-the-policy-simulator) · [Agents page](#the-agents-page) · [In plain words](#the-cfo-policy-in-plain-words) · [Two people](#four-eyes-two-people-above-a-threshold) · [Emergency stop](#emergency-stop-and-changed-bank-details)
 
@@ -41,8 +41,8 @@ flowchart LR
   AG["An agent's payment"] --> P
   P -- "within the policy" --> W
   P -- "over a limit" --> X["Refused or escalated<br/>before anything is signed"]
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
   classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
   class AG sourcing
@@ -88,7 +88,7 @@ flowchart LR
   T -- "tighter: a lower limit, stop an agent" --> PH["On the phone<br/>/policy?agent=id"] --> FID1["Face ID"] --> NOW["Applied at once"]
   T -- "looser: a higher limit, start again" --> RUN["A proposal from the runner<br/>npm run policy -- set"] --> FID2["Face ID"] --> NOW
   PH -. "the phone page never loosens" .-> RUN
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
   class T,FID1,FID2 purser

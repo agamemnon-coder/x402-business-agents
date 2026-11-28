@@ -112,7 +112,7 @@ describe("/business (26 Nov): one screen that is the pilot's registration", () =
     // The meaning-colours of Purser Cloud's console (cloud/src/consoleColor.ts): violet approval, emerald paid, amber test
     // money, sky money moving, the agents' own hues; each route's light takes one.
     expect(PAGE_CSS).toContain(BUSINESS_TONES);
-    for (const v of ["--sky: #38bdf8", "--g0: #818cf8", "--g1: #2dd4bf", "--g2: #60a5fa", "--sky: #0369a1", "--g0: #4f46e5"]) expect(BUSINESS_TONES).toContain(v);
+    for (const v of ["--sky: #38bdf8", "--g0: #818cf8", "--g1: #2dd4bf", "--g2: #60a5fa", "--sky: #0369a1", "--g0: #4382e8"]) expect(BUSINESS_TONES).toContain(v);
     expect(ROUTES.map((r) => r.tone)).toEqual(["accent", "ok", "sky", "g0", "g1", "g2"]);
     const still = PAGE_CSS.replace(/@media \(prefers-reduced-motion: no-preference\)[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ").replace(/@keyframes [\w-]+ \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ");
     expect(still).not.toMatch(/(?<![\w-])animation(-name)?\s*:/);

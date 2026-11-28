@@ -6,7 +6,7 @@
 
 **What a finance team gets beyond the demo, each with where to check it; test money today.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C_last_full_run-10239_passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Approval alerts: built and tested with stand-ins, not sent live yet](https://img.shields.io/badge/approval_alerts-built_%C2%B7_not_sent_live_yet-f59e0b?style=flat-square&labelColor=1f2937)](cloud.md#approval-alerts)&nbsp;[![An alert never carries anything that approves](https://img.shields.io/badge/an_alert-never_approves-8b5cf6?style=flat-square&labelColor=1f2937)](cloud.md#approval-alerts)&nbsp;[![Purser Cloud: a public test preview](https://img.shields.io/badge/Purser_Cloud-test_preview_%C2%B7_Try_as_guest-0ea5e9?style=flat-square&labelColor=1f2937)](https://purser-try.max-31b.workers.dev/)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C_last_full_run-10239_passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Approval alerts: built and tested with stand-ins, not sent live yet](https://img.shields.io/badge/approval_alerts-built_%C2%B7_not_sent_live_yet-f59e0b?style=flat-square&labelColor=1f2937)](cloud.md#approval-alerts)&nbsp;[![An alert never carries anything that approves](https://img.shields.io/badge/an_alert-never_approves-5996f9?style=flat-square&labelColor=1f2937)](cloud.md#approval-alerts)&nbsp;[![Purser Cloud: a public test preview](https://img.shields.io/badge/Purser_Cloud-test_preview_%C2%B7_Try_as_guest-0ea5e9?style=flat-square&labelColor=1f2937)](https://purser-try.max-31b.workers.dev/)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
 
 [Purser Cloud](cloud.md) · [Approval alerts](cloud.md#approval-alerts) · [Zero trust](security.md#zero-trust-layer-by-layer) · [Connect any AI](connect-any-ai.md) · [Before real money](go-live.md)
 
@@ -25,8 +25,8 @@ flowchart LR
   AI["Your AI<br/>MCP: read, and propose"] --> CO
   AG --> CFO["The CFO's passkey<br/>step-up on sensitive settings"]
   CO -. "e-mail, Slack, Teams<br/>never approve" .-> CFO
-  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef sourcing fill:#6099f4,stroke:#356fcd,color:#ffffff
+  classDef purser fill:#5996f9,stroke:#246bdd,color:#ffffff
   classDef ok fill:#10b981,stroke:#047857,color:#111827
   class AI sourcing
   class AG,CFO purser

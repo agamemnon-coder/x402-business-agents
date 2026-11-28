@@ -32,7 +32,7 @@ describe("every page's head (Q5)", () => {
       expect({ name, missing }).toEqual({ name, missing: [] });
       expect({ name, relative: /og:image" content="(?!https:)/.test(h) }).toEqual({ name, relative: false });
     }
-    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og-1121.png"); // 21 Nov (Max): the new banner, a new address
+    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og-1128.png"); // 21 Nov (Max): the new banner, a new address
   });
 
   // The owner, 13 Nov: the preview in a chat looked messy (a cropped image, a long description). Every page of the site
@@ -61,7 +61,7 @@ describe("every page's head (Q5)", () => {
       '<meta property="og:site_name" content="Purser">',
       '<meta property="og:title" content="Purser · AI agents spend. You sign off. Built on Airwallex.">',
       '<meta property="og:description" content="Your AI agents pay suppliers; above their limit, each payment needs your Face ID. Built on Airwallex.">',
-      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og-1121.png">',
+      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og-1128.png">',
       '<meta property="og:image:type" content="image/png">',
       '<meta property="og:image:width" content="1200">',
       '<meta property="og:image:height" content="630">',
@@ -69,7 +69,7 @@ describe("every page's head (Q5)", () => {
       '<meta name="twitter:card" content="summary_large_image">',
       '<meta name="twitter:title" content="Purser · AI agents spend. You sign off. Built on Airwallex.">',
       '<meta name="twitter:description" content="Your AI agents pay suppliers; above their limit, each payment needs your Face ID. Built on Airwallex.">',
-      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og-1121.png">',
+      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og-1128.png">',
       '<meta name="twitter:image:alt" content="Purser. Payment operations for AI agents. Agents pay suppliers within your rules. The CFO signs with Face ID. Built on Airwallex. Test money only.">',
     ]);
     expect(previewTags({ url: "https://kit11.max-31b.workers.dev/home" })).toContain('<meta property="og:url" content="https://kit11.max-31b.workers.dev/home">');

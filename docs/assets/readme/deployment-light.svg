@@ -2,11 +2,11 @@
 <title id="t">Purser deployment</title>
 <desc id="d">The visitor's browser holds the passkey; only its public key and signatures reach Purser. Two Cloudflare Workers: kit11 (the site, /verify, the relay Durable Object RelayObject and the Airwallex entrypoints, which hands /try to purser-try) and purser-try (Purser Cloud's console and API, /try's engine as the Durable Object CompanyEngine, one per company, the D1 database purser-try, the MCP server). They call each other through service bindings. Keys are Worker secrets, none in git or the browser. A Node runner does the live runs and syncs through the relay. Outside: the Airwallex sandbox API, Alta testnet, the Anthropic Claude API and the T:0 sandbox. GitHub Actions runs checks on every push and deploys nothing; deploys are by hand with wrangler.</desc>
 <defs>
-<marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker>
+<marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4382e8"/></marker>
 <marker id="ahr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c5363c"/></marker>
 <marker id="ahg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#586174"/></marker>
-<radialGradient id="glow" cx="0.85" cy="0.05" r="0.75"><stop offset="0" stop-color="#4f46e5" stop-opacity="0.07"/><stop offset="1" stop-color="#4f46e5" stop-opacity="0"/></radialGradient>
-<marker id="ahk" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f46e5"/></marker><marker id="aha" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ad4a0c"/></marker><marker id="ahl" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0b7a70"/></marker><marker id="ahc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a84d2b"/></marker><marker id="aht" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker></defs>
+<radialGradient id="glow" cx="0.85" cy="0.05" r="0.75"><stop offset="0" stop-color="#4382e8" stop-opacity="0.07"/><stop offset="1" stop-color="#4382e8" stop-opacity="0"/></radialGradient>
+<marker id="ahk" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4382e8"/></marker><marker id="aha" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ad4a0c"/></marker><marker id="ahl" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0b7a70"/></marker><marker id="ahc" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a84d2b"/></marker><marker id="aht" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker></defs>
 <rect width="1200" height="770" fill="#f7f8fa"/><rect width="1200" height="770" fill="url(#glow)"/>
 <text x="32" y="38" font-size="21" font-weight="750" fill="#0b1220" letter-spacing="-0.01em">Purser: where it runs</text>
 <text x="32" y="59" font-size="13" font-weight="500" fill="#586174">Two Cloudflare Workers, deployed by hand with wrangler. The test rails and the models are outside. Test money only.</text>
@@ -18,8 +18,8 @@
 <text x="48" y="183" font-size="12.5" font-weight="500" fill="#586174">purser-try's console</text>
 <text x="48" y="200" font-size="12.5" font-weight="500" fill="#586174">/verify checks a proof here,</text>
 <text x="48" y="217" font-size="12.5" font-weight="500" fill="#586174">in WebCrypto, with no server</text>
-<rect x="46" y="248" width="204" height="96" rx="10" fill="#eaeaf8" stroke="#4f46e5" stroke-width="1.5"/>
-<circle cx="64" cy="270" r="6.5" fill="none" stroke="#4f46e5" stroke-width="2.2"/><path d="M70.5 270 L85 270 M80 270 L80 275 M84.5 270 L84.5 274" stroke="#4f46e5" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+<rect x="46" y="248" width="204" height="96" rx="10" fill="#eaeff8" stroke="#4382e8" stroke-width="1.5"/>
+<circle cx="64" cy="270" r="6.5" fill="none" stroke="#4382e8" stroke-width="2.2"/><path d="M70.5 270 L85 270 M80 270 L80 275 M84.5 270 L84.5 274" stroke="#4382e8" stroke-width="2.2" stroke-linecap="round" fill="none"/>
 <text x="93" y="275" font-size="13.5" font-weight="750" fill="#0b1220">Passkey, on the device</text>
 <text x="58" y="296" font-size="12" font-weight="500" fill="#586174">Face ID, Touch ID or a key.</text>
 <text x="58" y="312" font-size="12" font-weight="500" fill="#586174">Signs the SHA-256 of the</text>
@@ -30,8 +30,8 @@
 <text x="48" y="495" font-size="15" font-weight="750" fill="#0b1220">Your AI</text>
 <text x="48" y="516" font-size="12.5" font-weight="500" fill="#586174">purser-try/mcp: reads the</text>
 <text x="48" y="533" font-size="12.5" font-weight="500" fill="#586174">books, may propose, never pays</text>
-<rect x="300" y="84" width="574" height="532" rx="18" fill="#ebecf9" stroke="#4f46e5" stroke-width="1.6" stroke-dasharray="8 6"/>
-<text x="318" y="114" font-size="16.5" font-weight="800" fill="#4f46e5">Cloudflare Workers</text>
+<rect x="300" y="84" width="574" height="532" rx="18" fill="#ebecf9" stroke="#4382e8" stroke-width="1.6" stroke-dasharray="8 6"/>
+<text x="318" y="114" font-size="16.5" font-weight="800" fill="#4382e8">Cloudflare Workers</text>
 <text x="856" y="114" font-size="12" font-weight="600" fill="#646d7e" text-anchor="end">workers.dev · test money</text>
 <rect class="box" x="318" y="132" width="538" height="204" rx="12" fill="#ffffff" stroke="#d5dbe6" stroke-width="1.2"/>
 <rect x="318" y="144" width="4" height="180" rx="2" fill="#475569"/>
@@ -50,15 +50,15 @@
 <text x="612" y="259" font-size="12" font-weight="500" fill="#586174">Checks the phone's passkey</text>
 <text x="612" y="275" font-size="12" font-weight="500" fill="#586174">(WebCrypto). It can refuse;</text>
 <text x="612" y="291" font-size="12" font-weight="500" fill="#586174">it never approves or pays.</text>
-<path d="M420,339 L420,390" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
-<path d="M468,391 L468,340" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<path d="M420,339 L420,390" fill="none" stroke="#4382e8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<path d="M468,391 L468,340" fill="none" stroke="#4382e8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
 <text x="410" y="369" font-size="11" font-weight="750" fill="#0b1220" text-anchor="end">TRY_ENGINE</text>
 <text x="480" y="362" font-size="11" font-weight="750" fill="#0b1220">AWX_FX, AWX_READ, AWX_CARDS, AWX_GATEWAY</text>
 <text x="480" y="378" font-size="11" font-weight="500" fill="#586174">service bindings: the Airwallex calls go through kit11</text>
 <rect class="box" x="318" y="394" width="538" height="166" rx="12" fill="#ffffff" stroke="#d5dbe6" stroke-width="1.2"/>
-<rect x="318" y="406" width="4" height="142" rx="2" fill="#4f46e5"/>
+<rect x="318" y="406" width="4" height="142" rx="2" fill="#4382e8"/>
 <text x="334" y="419" font-size="15" font-weight="750" fill="#0b1220">Worker purser-try</text>
-<text x="334" y="437" font-size="12" font-weight="650" fill="#4f46e5">cloud/ · wrangler deploy -c cloud/wrangler.try.jsonc</text>
+<text x="334" y="437" font-size="12" font-weight="650" fill="#4382e8">cloud/ · wrangler deploy -c cloud/wrangler.try.jsonc</text>
 <text x="334" y="458" font-size="12.5" font-weight="500" fill="#586174">Purser Cloud: console and API</text>
 <text x="334" y="475" font-size="12.5" font-weight="500" fill="#586174">/try's engine and its passkey check</text>
 <text x="334" y="492" font-size="12.5" font-weight="500" fill="#586174">/mcp (read, propose); hourly cron</text>
@@ -104,10 +104,10 @@
 <text x="938" y="554" font-size="15" font-weight="750" fill="#0b1220">T:0 sandbox</text>
 <text x="938" y="575" font-size="12.5" font-weight="500" fill="#586174">an outside ledger: the runner</text>
 <text x="938" y="592" font-size="12.5" font-weight="500" fill="#586174">posts, then reads it back</text>
-<path d="M266,160 L314,160" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<path d="M266,160 L314,160" fill="none" stroke="#4382e8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
 <text x="291" y="152" font-size="10.5" font-weight="750" fill="#586174" text-anchor="middle">HTTPS</text>
-<path d="M252,300 L314,300" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
-<path d="M266,346 L284,346 L284,434 L314,434" fill="none" stroke="#4f46e5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<path d="M252,300 L314,300" fill="none" stroke="#4382e8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<path d="M266,346 L284,346 L284,434 L314,434" fill="none" stroke="#4382e8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahk)"/>
 <path d="M266,516 L314,516" fill="none" stroke="#a84d2b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahc)"/>
 <path d="M908,200 L860,200" fill="none" stroke="#0e7490" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aht)" marker-start="url(#aht)"/>
 <text x="883" y="189" font-size="10.5" font-weight="750" fill="#0e7490" text-anchor="middle">sync</text>
@@ -116,16 +116,16 @@
 <path d="M858,322 L892,322 L892,389 L920,389" fill="none" stroke="#0b7a70" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahl)"/>
 <path d="M858,332 L882,332 L882,468 L920,468" fill="none" stroke="#a84d2b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahc)"/>
 <path d="M858,494 L920,494" fill="none" stroke="#a84d2b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ahc)"/>
-<rect x="32" y="632" width="842" height="30" rx="15" fill="#eaeaf8" stroke="#4f46e5" stroke-width="1.3"/>
+<rect x="32" y="632" width="842" height="30" rx="15" fill="#eaeff8" stroke="#4382e8" stroke-width="1.3"/>
 <text x="453" y="652" font-size="13.5" font-weight="700" fill="#0b1220" text-anchor="middle">Only the passkey's public key and signatures reach Purser; private keys never leave the device.</text>
 <rect x="32" y="676" width="1140" height="84" rx="16" fill="#eef0f5" stroke="#d5dbe6" stroke-width="1.2"/>
 <text x="50" y="704" font-size="15" font-weight="800" fill="#0b1220">GitHub Actions CI</text>
 <text x="50" y="723" font-size="12" font-weight="500" fill="#586174">on every push; it checks,</text>
 <text x="50" y="739" font-size="12" font-weight="500" fill="#586174">it does not deploy</text>
-<rect x="250" y="689" width="47.6" height="24" rx="12" fill="#e6e6f8" stroke="#4f46e5" stroke-width="1"/>
-<text x="273.8" y="705.3" font-size="12" font-weight="650" fill="#3f38b7" text-anchor="middle" class="pill">test</text>
-<rect x="306.6" y="689" width="54.5" height="24" rx="12" fill="#e6e6f8" stroke="#4f46e5" stroke-width="1"/>
-<text x="333.9" y="705.3" font-size="12" font-weight="650" fill="#3f38b7" text-anchor="middle" class="pill">judge</text>
+<rect x="250" y="689" width="47.6" height="24" rx="12" fill="#e6edf8" stroke="#4382e8" stroke-width="1"/>
+<text x="273.8" y="705.3" font-size="12" font-weight="650" fill="#3568ba" text-anchor="middle" class="pill">test</text>
+<rect x="306.6" y="689" width="54.5" height="24" rx="12" fill="#e6edf8" stroke="#4382e8" stroke-width="1"/>
+<text x="333.9" y="705.3" font-size="12" font-weight="650" fill="#3568ba" text-anchor="middle" class="pill">judge</text>
 <rect x="370.1" y="689" width="68.3" height="24" rx="12" fill="#e5e8ec" stroke="#475569" stroke-width="1"/>
 <text x="404.3" y="705.3" font-size="12" font-weight="650" fill="#394454" text-anchor="middle" class="pill">Firefox</text>
 <rect x="447.40000000000003" y="689" width="61.4" height="24" rx="12" fill="#e5e8ec" stroke="#475569" stroke-width="1"/>

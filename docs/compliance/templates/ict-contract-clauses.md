@@ -6,7 +6,7 @@
 
 **The clauses DORA Art. 30 says a contract for ICT services must hold, what Purser can point to for each today, and which providers of the register each contract would be with.**
 
-[![Version 1.0](https://img.shields.io/badge/version-1.0-8b5cf6?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![DORA Art. 30](https://img.shields.io/badge/DORA-Art._30-0ea5e9?style=flat-square&labelColor=1f2937)](../controls.md#dora-regulation-eu-20222554)&nbsp;[![Contracts: none yet](https://img.shields.io/badge/contracts-none_yet-f43f5e?style=flat-square&labelColor=1f2937)](#per-provider)&nbsp;[![Template, not legal advice](https://img.shields.io/badge/template-not_legal_advice-475569?style=flat-square&labelColor=1f2937)](#document-control)
+[![Version 1.0](https://img.shields.io/badge/version-1.0-5996f9?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![Review by 2027-05-26](https://img.shields.io/badge/review_by-2027--05--26-f59e0b?style=flat-square&labelColor=1f2937)](#document-control)&nbsp;[![DORA Art. 30](https://img.shields.io/badge/DORA-Art._30-0ea5e9?style=flat-square&labelColor=1f2937)](../controls.md#dora-regulation-eu-20222554)&nbsp;[![Contracts: none yet](https://img.shields.io/badge/contracts-none_yet-f43f5e?style=flat-square&labelColor=1f2937)](#per-provider)&nbsp;[![Template, not legal advice](https://img.shields.io/badge/template-not_legal_advice-475569?style=flat-square&labelColor=1f2937)](#document-control)
 
 [Who signs](#who-signs-which-contract) · [Art. 30(1)](#art-301-in-writing-one-document) · [Art. 30(2)](#art-302-every-contract) · [Art. 30(3)](#art-303-critical-or-important-functions) · [Per provider](#per-provider) · [Before signing](#before-signing)
 
@@ -42,7 +42,7 @@ flowchart LR
   FE -->|"own wallet"| AL["Alta<br/>testnet today"]
   AW -.->|"through Airi"| VI["Visa"]
   classDef entity fill:#f59e0b,stroke:#1f2937,color:#1f2937
-  classDef op fill:#8b5cf6,stroke:#1f2937,color:#fff
+  classDef op fill:#5996f9,stroke:#1f2937,color:#fff
   classDef prov fill:#0ea5e9,stroke:#1f2937,color:#fff
   class FE entity
   class OP op

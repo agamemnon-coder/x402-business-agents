@@ -180,7 +180,7 @@ export const TOKEN_LIFE_CSS = `
 .tl-sub { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
 .tl-body { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: center; }
 .tl-cardw { display: grid; gap: 8px; min-width: 0; }
-.acard.tl-card { display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 8px; padding: 16px 18px; font-size: 12px; background: linear-gradient(140deg, #1a1838, #09090f 62%, #14122b); }
+.acard.tl-card { display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 8px; padding: 16px 18px; font-size: 12px; background: linear-gradient(140deg, #182438, #09090f 62%, #121c2b); }
 .tl-card .ac-top { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
 .tl-card .ac-mark { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: rgba(255,255,255,.1); }
 .tl-card .ac-who { flex: 1; display: grid; gap: 2px; min-width: 0; } .tl-card .ac-name { font-size: 13.5px; } .tl-card .ac-co { opacity: .7; }
