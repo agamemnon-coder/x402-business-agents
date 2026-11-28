@@ -97,7 +97,7 @@ export const VISA_CARD_HERO_CSS = `.vcard { padding: 18px 20px 14px; display: gr
 .vc-grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 22px; align-items: center; }
 @media (max-width: 760px) { .vc-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 .vc-card { position: relative; aspect-ratio: 1.586; width: 100%; max-width: 340px; margin: 0 auto; border-radius: 18px; padding: 18px 20px; box-sizing: border-box; color: #fff;
-  background: linear-gradient(135deg, #183b73 0%, #2b3a9e 55%, #4382e8 100%); box-shadow: 0 14px 30px rgba(24, 59, 115, .28); display: grid; grid-template-rows: auto 1fr auto auto; gap: 6px; overflow: hidden; }
+  background: linear-gradient(135deg, #1a1f71 0%, #2b3a9e 55%, #4382e8 100%); box-shadow: 0 14px 30px rgba(24, 59, 115, .28); display: grid; grid-template-rows: auto 1fr auto auto; gap: 6px; overflow: hidden; }
 .vc-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; } .vc-top b { font-size: 17px; letter-spacing: -.01em; } .vc-top span { opacity: .85; }
 .vc-chip { width: 42px; height: 30px; border-radius: 7px; background: linear-gradient(135deg, #e9d48b, #c8a64b); align-self: center; }
 .vc-num { font: 600 clamp(17px, 2.2vw, 20px)/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .06em; white-space: nowrap; }

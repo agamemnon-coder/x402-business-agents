@@ -15,7 +15,7 @@
   <linearGradient id="a" gradientUnits="userSpaceOnUse" x1="198.099" y1="1683.0726" x2="942.2344" y2="394.2607" gradientTransform="matrix(1 0 0 -1 0 2075.3333)">
     <stop offset="0" stop-color="#5a62c3"/>
     <stop offset=".5" stop-color="#4d55bd"/>
-    <stop offset="1" stop-color="#3764ad"/>
+    <stop offset="1" stop-color="#3940ab"/>
   </linearGradient>
   <path fill="url(#a)" d="M95.01,466.5h950.312c52.473,0,95.01,42.538,95.01,95.01v950.312c0,52.473-42.538,95.01-95.01,95.01	H95.01c-52.473,0-95.01-42.538-95.01-95.01V561.51C0,509.038,42.538,466.5,95.01,466.5z"/>
   <path fill="#FFF" d="M820.211,828.193H630.241v517.297H509.211V828.193H320.123V727.844h500.088V828.193z"/>

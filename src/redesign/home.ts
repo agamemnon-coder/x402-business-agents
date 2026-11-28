@@ -121,7 +121,7 @@ ul.prow { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 16
 @media (min-width: 720px) { ul.prow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1100px) { ul.prow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; } }
 ul.prow a { --pc: var(--accent); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 22px 22px 18px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease; }
-ul.prow li.p-awx a { --pc: var(--awx); } ul.prow li.p-alta a { --pc: var(--metal); } ul.prow li.p-visa a { --pc: #183b73; } ul.prow li.p-cent a { --pc: var(--bad); }
+ul.prow li.p-awx a { --pc: var(--awx); } ul.prow li.p-alta a { --pc: var(--metal); } ul.prow li.p-visa a { --pc: #1a1f71; } ul.prow li.p-cent a { --pc: var(--bad); }
 :root[data-theme="dark"] ul.prow li.p-visa a { --pc: #8fa3ff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) ul.prow li.p-visa a { --pc: #8fa3ff; } }
 ul.prow a:hover, ul.prow a:focus-visible { border-color: var(--pc); box-shadow: 0 16px 36px -24px var(--pc); }
